@@ -420,6 +420,10 @@ public struct ${Self}<Pointee>
   // Protocol conformance
   //
 
+  public func isEqual(to rhs: ${Self}<Pointee>) -> Bool {
+    return Bool(Builtin.cmp_eq_RawPointer(lhs._rawValue, rhs._rawValue))
+  }
+
   /// The hash value.
   ///
   /// **Axiom:** `x == y` implies `x.hashValue == y.hashValue`.
@@ -479,15 +483,13 @@ extension ${Self} : CustomPlaygroundQuickLookable {
 }
 
 @_transparent
-public func == <Pointee>(
-  lhs: ${Self}<Pointee>, rhs: ${Self}<Pointee>
-) -> Bool {
-  return Bool(Builtin.cmp_eq_RawPointer(lhs._rawValue, rhs._rawValue))
-}
-
-@_transparent
-public func < <Pointee>(lhs: ${Self}<Pointee>, rhs: ${Self}<Pointee>) -> Bool {
-  return Bool(Builtin.cmp_ult_RawPointer(lhs._rawValue, rhs._rawValue))
+public func <=> <Pointee>(lhs: ${Self}<Pointee>, rhs: ${Self}<Pointee>) -> Ordering {
+  if Bool(Builtin.cmp_ult_RawPointer(lhs._rawValue, rhs._rawValue)) {
+    return .ascending
+  } else if Bool(Builtin.cmp_ugt_RawPointer(lhs._rawValue, rhs._rawValue)) {
+    return .descending
+  }
+  return .equivalent
 }
 
 @_transparent

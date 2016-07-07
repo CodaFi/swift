@@ -473,6 +473,11 @@ public struct AutoreleasingUnsafeMutablePointer<Pointee /* TODO : class */>
     guard let unwrapped = from else { return nil }
     self.init(unwrapped)
   }
+
+  @_transparent
+  public func isEqual(to rhs: AutoreleasingUnsafeMutablePointer<Pointee>) -> Bool {
+    return Bool(Builtin.cmp_eq_RawPointer(self._rawValue, rhs._rawValue))
+  }
 }
 
 extension AutoreleasingUnsafeMutablePointer : CustomDebugStringConvertible {
@@ -480,14 +485,6 @@ extension AutoreleasingUnsafeMutablePointer : CustomDebugStringConvertible {
   public var debugDescription: String {
     return _rawPointerToString(_rawValue)
   }
-}
-
-@_transparent
-public func == <Pointee> (
-  lhs: AutoreleasingUnsafeMutablePointer<Pointee>,
-  rhs: AutoreleasingUnsafeMutablePointer<Pointee>
-) -> Bool {
-  return Bool(Builtin.cmp_eq_RawPointer(lhs._rawValue, rhs._rawValue))
 }
 
 @_fixed_layout

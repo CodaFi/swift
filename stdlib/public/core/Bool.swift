@@ -144,6 +144,11 @@ extension Bool : Equatable, Hashable {
   public var hashValue: Int {
     return self ? 1 : 0
   }
+
+  @_transparent
+  public func isEqual(to rhs: Bool) -> Bool {
+    return Bool(Builtin.cmp_eq_Int1(self._value, rhs._value))
+  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -170,7 +175,3 @@ public prefix func !(a: Bool) -> Bool {
   return Bool(Builtin.xor_Int1(a._value, true._value))
 }
 
-@_transparent
-public func ==(lhs: Bool, rhs: Bool) -> Bool {
-  return Bool(Builtin.cmp_eq_Int1(lhs._value, rhs._value))
-}
