@@ -250,3 +250,4 @@ public func &&(lhs: Bool, rhs: @autoclosure () throws -> Bool) rethrows -> Bool{
 public func ||(lhs: Bool, rhs: @autoclosure () throws -> Bool) rethrows -> Bool{
   return lhs ? true : try rhs()
 }
+
