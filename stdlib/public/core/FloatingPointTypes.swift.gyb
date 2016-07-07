@@ -666,6 +666,15 @@ extension ${Self}: BinaryFloatingPoint {
   }
 }
 
+public func <=>(lhs: ${Self}, rhs: ${Self}) -> Ordering {
+  if lhs.isLess(rhs) {
+    return .ascending
+  } else if rhs.isLess(lhs) {
+    return .descending
+  }
+  return .equivalent
+}
+
 @_transparent
 extension ${Self} : _ExpressibleByBuiltinIntegerLiteral, ExpressibleByIntegerLiteral {
   public

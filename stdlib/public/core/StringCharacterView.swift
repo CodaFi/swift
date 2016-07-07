@@ -154,7 +154,7 @@ extension String.CharacterView : BidirectionalCollection {
   ///         print(Array(hearts.utf8.prefix(upTo: j)))
   ///     }
   ///     // Prints "[72, 101, 97, 114, 116, 115]"
-  public struct Index : Comparable, CustomPlaygroundQuickLookable {
+  public struct Index : CustomPlaygroundQuickLookable {
     public // SPI(Foundation)    
     init(_base: String.UnicodeScalarView.Index, in c: String.CharacterView) {
       self._base = _base
@@ -175,6 +175,10 @@ extension String.CharacterView : BidirectionalCollection {
     public // SPI(Foundation)
     var _utf16Index: Int {
       return _base._position
+    }
+
+    public func isEqual(to rhs: Index) -> Bool {
+      return self._base == to._base
     }
 
     /// The one past end index for this extended grapheme cluster in Unicode
@@ -328,6 +332,12 @@ extension String.CharacterView : BidirectionalCollection {
   public subscript(i: Index) -> Character {
     return Character(String(unicodeScalars[i._base..<i._endBase]))
   }
+}
+
+extension String.CharacterView.Index : Comparable {}
+
+public func <=>(lhs : String.CharacterView.Index, rhs : String.CharacterView.Index) -> Ordering {
+  return lhs._base <=> rhs._base
 }
 
 extension String.CharacterView : RangeReplaceableCollection {

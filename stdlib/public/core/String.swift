@@ -515,22 +515,20 @@ public func _stdlib_compareNSStringDeterministicUnicodeCollationPointer(
 #endif
 
 extension String : Equatable {
-}
-
-public func ==(lhs: String, rhs: String) -> Bool {
-  if lhs._core.isASCII && rhs._core.isASCII {
-    if lhs._core.count != rhs._core.count {
-      return false
+  public func isEqual(to rhs: String) -> Bool {
+    if self._core.isASCII && rhs._core.isASCII {
+      if self._core.count != rhs._core.count {
+        return false
+      }
+      return _swift_stdlib_memcmp(
+        self._core.startASCII, rhs._core.startASCII,
+        rhs._core.count) == 0
     }
-    return _swift_stdlib_memcmp(
-      lhs._core.startASCII, rhs._core.startASCII,
-      rhs._core.count) == 0
+    return self._compareString(rhs) == 0
   }
-  return lhs._compareString(rhs) == 0
 }
 
-extension String : Comparable {
-}
+extension String : Comparable {}
 
 extension String {
 #if _runtime(_ObjC)
@@ -620,8 +618,13 @@ extension String {
   }
 }
 
-public func <(lhs: String, rhs: String) -> Bool {
-  return lhs._compareString(rhs) < 0
+public func <=>(lhs: String, rhs: String) -> Ordering {
+  if lhs._compareString(rhs) < 0 {
+    return .ascending
+  } else if lhs._compareString(rhs) > 0 {
+    return .descending
+  }
+  return .equivalent
 }
 
 // Support for copy-on-write

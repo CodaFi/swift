@@ -644,7 +644,7 @@ internal protocol _AnyIndexBox : class {
 
   func _isEqual(to rhs: _AnyIndexBox) -> Bool
 
-  func _isLess(than rhs: _AnyIndexBox) -> Bool
+  func _compare(to rhs: _AnyIndexBox) -> Ordering
 }
 
 internal final class _IndexBox<
@@ -672,8 +672,8 @@ internal final class _IndexBox<
     return _base == _unsafeUnbox(rhs)
   }
 
-  internal func _isLess(than rhs: _AnyIndexBox) -> Bool {
-    return _base < _unsafeUnbox(rhs)
+  internal func _compare(to rhs: _AnyIndexBox) -> Ordering {
+    return _base <=> _unsafeUnbox(rhs)
   }
 }
 
@@ -696,20 +696,20 @@ public struct AnyIndex : Comparable {
   }
 
   internal var _box: _AnyIndexBox
+
+  /// Returns `true` iff `lhs` and `rhs` wrap equal underlying indices.
+  ///
+  /// - Precondition: The types of indices wrapped by `lhs` and `rhs` are
+  ///   identical.
+  public func isEqual(to rhs: AnyIndex) -> Bool {
+    _precondition(self._typeID == rhs._typeID, "base index types differ")
+    return self._box._equal(to: rhs._box)
+  }
 }
 
-/// Returns `true` iff `lhs` and `rhs` wrap equal underlying indices.
-///
-/// - Precondition: The types of indices wrapped by `lhs` and `rhs` are
-///   identical.
-public func == (lhs: AnyIndex, rhs: AnyIndex) -> Bool {
+public func <=> (lhs: AnyIndex, rhs: AnyIndex) -> Ordering {
   _precondition(lhs._typeID == rhs._typeID, "base index types differ")
-  return lhs._box._isEqual(to: rhs._box)
-}
-
-public func < (lhs: AnyIndex, rhs: AnyIndex) -> Bool {
-  _precondition(lhs._typeID == rhs._typeID, "base index types differ")
-  return lhs._box._isLess(than: rhs._box)
+  return lhs._box._compare(to: rhs._box)
 }
 
 //===--- Collections ------------------------------------------------------===//

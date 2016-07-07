@@ -155,6 +155,10 @@ public struct ${Index}<BaseElements> : Comparable
   BaseElements : ${collectionForTraversal(traversal)},
   ${constraints % {'Base': 'BaseElements.'}} {
 
+  public func isEqual(to rhs: ${Index}<BaseElements>) -> Bool {
+    return self._outer == rhs._outer && self._inner == rhs._inner
+  }
+
   internal init(
     _ _outer: BaseElements.Index,
     _ inner: BaseElements.Iterator.Element.Index?) {
@@ -174,24 +178,17 @@ public struct ${Index}<BaseElements> : Comparable
   internal let _inner: BaseElements.Iterator.Element.Index?
 }
 
-public func == <BaseElements> (
+public func <=> <BaseElements> (
   lhs: ${Index}<BaseElements>, 
   rhs: ${Index}<BaseElements>
-) -> Bool {
-  return lhs._outer == rhs._outer && lhs._inner == rhs._inner
-}
-
-public func < <BaseElements> (
-  lhs: ${Index}<BaseElements>, 
-  rhs: ${Index}<BaseElements>
-) -> Bool {
+) -> Ordering {
   // FIXME: swift-3-indexing-model: tests.
   if lhs._outer != rhs._outer {
-    return lhs._outer < rhs._outer
+    return lhs._outer <=> rhs._outer
   }
 
   if let lhsInner = lhs._inner, let rhsInner = rhs._inner {
-    return lhsInner < rhsInner
+    return lhsInner <=> rhsInner
   }
 
   // When combined, the two conditions above guarantee that both
@@ -199,7 +196,8 @@ public func < <BaseElements> (
   // are `nil`, since `_inner` is `nil` iff `_outer == base.endIndex`.
   _precondition(lhs._inner == nil && rhs._inner == nil)
 
-  return false
+  fatalError("")
+//  return false
 }
 
 /// A flattened view of a base collection of collections.

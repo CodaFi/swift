@@ -215,7 +215,7 @@ T : UnsignedInteger, U : _SignedInteger
 @_fixed_layout
 public struct ${Self}
    : ${'SignedInteger' if sign == 's' else 'UnsignedInteger'},
-     Comparable, Equatable {
+     Comparable {
   public // @testable
   var _value: Builtin.${BuiltinName}
 
@@ -364,6 +364,23 @@ extension ${Self} : Hashable {
 % end
     }
   }
+}
+
+extension ${Self} : Equatable {
+  public func isEqual(to rhs: ${Self}) -> Bool {
+    return Bool(Builtin.cmp_eq_${BuiltinName}(self._value, rhs._value))
+  }
+}
+
+/// - SeeAlso: `Equatable`, `Comparable`
+@_transparent
+public func <=> (lhs: ${Self}, rhs: ${Self}) -> Ordering {
+  if Bool(Builtin.cmp_${sign}lt_${BuiltinName}(lhs._value, rhs._value)) {
+    return .ascending
+  } else if Bool(Builtin.cmp_${sign}gt_${BuiltinName}(lhs._value, rhs._value)) {
+    return .descending
+  }
+  return .equivalent
 }
 
 extension ${Self} : CustomStringConvertible {
@@ -574,24 +591,6 @@ public prefix func ~(rhs: ${Self}) -> ${Self} {
   let mask = ${Self}.subtractWithOverflow(0, 1).0
   return ${Self}(Builtin.xor_${BuiltinName}(rhs._value, mask._value))
 }
-
-% for op, name, comment in (
-%   ('==', 'eq', 'the two arguments have equal values'),
-%   ('!=', 'ne', 'the two arguments have unequal values'),
-%   ('<', sign + 'lt', 'the first argument is less than the second argument'),
-%   ('<=', sign + 'le', 'the first argument is less than or equal to the second argument'),
-%   ('>', sign + 'gt', 'the first argument is greater than the second argument'),
-%   ('>=', sign + 'ge', 'the first argument is greater than or equal to the second argument'),
-% ):
-/// Returns a Boolean value that indicates whether
-/// ${comment}.
-///
-/// - SeeAlso: `Equatable`, `Comparable`
-@_transparent
-public func ${op} (lhs: ${Self}, rhs: ${Self}) -> Bool {
-  return Bool(Builtin.cmp_${name}_${BuiltinName}(lhs._value, rhs._value))
-}
-% end
 
 % for op, name in (('<<','shl'), ('>>','ashr' if signed else 'lshr')):
 @_transparent
