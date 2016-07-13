@@ -1143,7 +1143,6 @@ public:
 class OverloadedDeclRefExpr : public OverloadSetRefExpr {
   DeclNameLoc Loc;
   bool IsSpecialized = false;
-  bool IsPotentiallyDelayedGlobalOperator = false;
 
 public:
   OverloadedDeclRefExpr(ArrayRef<ValueDecl*> Decls, DeclNameLoc Loc,
@@ -1160,13 +1159,6 @@ public:
   /// \brief Determine whether this declaration reference was immediately
   /// specialized by <...>.
   bool isSpecialized() const { return IsSpecialized; }
-  
-  void setIsPotentiallyDelayedGlobalOperator() {
-    IsPotentiallyDelayedGlobalOperator = true;
-  }
-  bool isPotentiallyDelayedGlobalOperator() const {
-    return IsPotentiallyDelayedGlobalOperator;
-  }
 
   static bool classof(const Expr *E) {
     return E->getKind() == ExprKind::OverloadedDeclRef;

@@ -66,7 +66,7 @@ ValueDecl *DerivedConformance::getDerivableRequirement(NominalTypeDecl *nominal,
 
   // Functions.
   if (auto func = dyn_cast<FuncDecl>(requirement)) {
-    if (func->isOperator() && name.getBaseName().str() == "==")
+    if (!func->isOperator() && name.getBaseName().str() == "isEqual")
       return getRequirement(KnownProtocolKind::Equatable);
 
     return nullptr;

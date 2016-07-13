@@ -52,14 +52,6 @@ static ValueDecl *findReferencedDecl(Expr *expr, DeclNameLoc &loc) {
   } while (true);
 }
 
-/// \brief Return 'true' if the decl in question refers to an operator that
-/// could be added to the global scope via a delayed protocol conformance.
-/// Currently, this is only true for '==', which is added via an Equatable
-/// conformance.
-static bool isDelayedOperatorDecl(ValueDecl *vd) {
-  return vd && (vd->getName().str() == "==");
-}
-
 static bool isArithmeticOperatorDecl(ValueDecl *vd) {
   return vd && 
   (vd->getName().str() == "+" ||
@@ -1037,9 +1029,6 @@ namespace {
       if (!declRef)
         return;
       
-      if (!declRef->isPotentiallyDelayedGlobalOperator())
-        return;
-      
       Identifier eqOperator = CS.TC.Context.Id_EqualsOperator;
       if (declRef->getDecls()[0]->getName() != eqOperator)
         return;
@@ -1491,9 +1480,6 @@ namespace {
       auto tv = CS.createTypeVariable(locator, TVO_CanBindToLValue);
       ArrayRef<ValueDecl*> decls = expr->getDecls();
       SmallVector<OverloadChoice, 4> choices;
-      
-      if (!decls.empty() && isDelayedOperatorDecl(decls[0]))
-        expr->setIsPotentiallyDelayedGlobalOperator();
       
       for (unsigned i = 0, n = decls.size(); i != n; ++i) {
         // If the result is invalid, skip it.
