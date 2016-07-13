@@ -121,7 +121,7 @@ public struct LazyFilterIndex<Base : Collection> : Comparable {
 public func <=> <Base : Collection>(
   lhs: LazyFilterIndex<Base>,
   rhs: LazyFilterIndex<Base>
-) -> Bool {
+) -> Ordering {
   return lhs.base <=> rhs.base
 }
 

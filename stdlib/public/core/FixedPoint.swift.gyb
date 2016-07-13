@@ -372,6 +372,24 @@ extension ${Self} : Equatable {
   }
 }
 
+% for op, name, comment in (
+%   ('==', 'eq', 'the two arguments have equal values'),
+%   ('!=', 'ne', 'the two arguments have unequal values'),
+%   ('<', sign + 'lt', 'the first argument is less than the second argument'),
+%   ('<=', sign + 'le', 'the first argument is less than or equal to the second argument'),
+%   ('>', sign + 'gt', 'the first argument is greater than the second argument'),
+%   ('>=', sign + 'ge', 'the first argument is greater than or equal to the second argument'),
+% ):
+/// Returns a Boolean value that indicates whether
+/// ${comment}.
+///
+/// - SeeAlso: `Equatable`, `Comparable`
+@_transparent
+public func ${op} (lhs: ${Self}, rhs: ${Self}) -> Bool {
+  return Bool(Builtin.cmp_${name}_${BuiltinName}(lhs._value, rhs._value))
+}
+% end
+
 /// - SeeAlso: `Equatable`, `Comparable`
 @_transparent
 public func <=> (lhs: ${Self}, rhs: ${Self}) -> Ordering {
