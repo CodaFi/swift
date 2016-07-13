@@ -142,13 +142,11 @@ public struct EmptyCollection<Element> :
       "invalid bounds for an empty collection")
   }
 
+  public func isEqual(to rhs: EmptyCollection<Element>) -> Bool {
+    return true
+  }
+  
   public typealias Indices = CountableRange<Int>
-}
-
-public func == <Element>(
-  lhs: EmptyCollection<Element>, rhs: EmptyCollection<Element>
-) -> Bool {
-  return true
 }
 
 @available(*, unavailable, renamed: "EmptyIterator")

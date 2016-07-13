@@ -38,21 +38,14 @@ public struct ObjectIdentifier : Hashable, Comparable {
   public init(_ x: Any.Type) {
     self._value = unsafeBitCast(x, to: Builtin.RawPointer.self)
   }
-}
 
-extension ObjectIdentifier : CustomDebugStringConvertible {
-  /// A textual representation of `self`, suitable for debugging.
-  public var debugDescription: String {
-    return "ObjectIdentifier(\(_rawPointerToString(_value)))"
+  public func isEqual(to y: ObjectIdentifier) -> Bool {
+    return Bool(Builtin.cmp_eq_RawPointer(self._value, y._value))
   }
 }
 
-public func <(lhs: ObjectIdentifier, rhs: ObjectIdentifier) -> Bool {
-  return UInt(lhs) < UInt(rhs)
-}
-
-public func ==(x: ObjectIdentifier, y: ObjectIdentifier) -> Bool {
-  return Bool(Builtin.cmp_eq_RawPointer(x._value, y._value))
+public func <=>(lhs: ObjectIdentifier, rhs: ObjectIdentifier) -> Ordering {
+  return UInt(lhs) <=> UInt(rhs)
 }
 
 extension UInt {

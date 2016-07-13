@@ -33,6 +33,18 @@ public struct ClosedRangeIndex<Bound> : Comparable
   // contexts.
   Bound : protocol<_Strideable, Comparable>,
   Bound.Stride : SignedInteger {
+  
+  public func isEqual(to rhs: ClosedRangeIndex<Bound>) -> Bool {
+    switch (self._value, rhs._value) {
+    case (.inRange(let l), .inRange(let r)):
+      return l == r
+    case (.pastEnd, .pastEnd):
+      return true
+    default:
+      return false
+    }
+  }
+
   /// Creates the "past the end" position.
   internal init() { _value = .pastEnd }
 
@@ -48,25 +60,16 @@ public struct ClosedRangeIndex<Bound> : Comparable
   }
 }
 
-public func == <B>(lhs: ClosedRangeIndex<B>, rhs: ClosedRangeIndex<B>) -> Bool {
+public func <=> <B>(lhs: ClosedRangeIndex<B>, rhs: ClosedRangeIndex<B>) -> Ordering {
   switch (lhs._value, rhs._value) {
   case (.inRange(let l), .inRange(let r)):
-    return l == r
-  case (.pastEnd, .pastEnd):
-    return true
-  default:
-    return false
-  }
-}
-
-public func < <B>(lhs: ClosedRangeIndex<B>, rhs: ClosedRangeIndex<B>) -> Bool {
-  switch (lhs._value, rhs._value) {
-  case (.inRange(let l), .inRange(let r)):
-    return l < r
+    return l <=> r
   case (.inRange(_), .pastEnd):
-    return true
-  default:
-    return false
+    return .ascending
+  case (.pastEnd, .inRange(_)):
+    return .descending
+  case (.pastEnd, .pastEnd):
+    return .equivalent
   }
 }
 

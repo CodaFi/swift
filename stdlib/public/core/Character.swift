@@ -360,6 +360,21 @@ extension Character : CustomDebugStringConvertible {
   }
 }
 
+extension Character : Equatable {
+  public func isEqual(to rhs: Character) -> Bool {
+    switch (self._representation, rhs._representation) {
+    case let (.small(lbits), .small(rbits)) where
+      Bool(Builtin.cmp_uge_Int63(lbits, _minASCIICharReprBuiltin))
+        && Bool(Builtin.cmp_uge_Int63(rbits, _minASCIICharReprBuiltin)):
+      return Bool(Builtin.cmp_eq_Int63(lbits, rbits))
+    default:
+      // FIXME(performance): constructing two temporary strings is extremely
+      // wasteful and inefficient.
+      return String(self) == String(rhs)
+    }
+  }
+}
+
 extension String {
   /// Creates a string containing the given character.
   ///
@@ -404,17 +419,18 @@ public func ==(lhs: Character, rhs: Character) -> Bool {
   }
 }
 
-public func <(lhs: Character, rhs: Character) -> Bool {
-  switch (lhs._representation, rhs._representation) {
-  case let (.small(lbits), .small(rbits)) where
-    // Note: This is consistent with Foundation but unicode incorrect.
-    // See String._compareASCII.
-    Bool(Builtin.cmp_uge_Int63(lbits, _minASCIICharReprBuiltin))
-    && Bool(Builtin.cmp_uge_Int63(rbits, _minASCIICharReprBuiltin)):
-    return Bool(Builtin.cmp_ult_Int63(lbits, rbits))
-  default:
-    // FIXME(performance): constructing two temporary strings is extremely
-    // wasteful and inefficient.
-    return String(lhs) < String(rhs)
-  }
+public func <=>(lhs: Character, rhs: Character) -> Ordering {
+  fatalError("")
+//  switch (lhs._representation, rhs._representation) {
+//  case let (.small(lbits), .small(rbits)) where
+//    // Note: This is consistent with Foundation but unicode incorrect.
+//    // See String._compareASCII.
+//    Bool(Builtin.cmp_uge_Int63(lbits, _minASCIICharReprBuiltin))
+//    && Bool(Builtin.cmp_uge_Int63(rbits, _minASCIICharReprBuiltin)):
+//    return Bool(Builtin.cmp_ult_Int63(lbits, rbits))
+//  default:
+//    // FIXME(performance): constructing two temporary strings is extremely
+//    // wasteful and inefficient.
+//    return String(lhs) <=> String(rhs)
+//  }
 }
