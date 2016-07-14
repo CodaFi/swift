@@ -196,8 +196,7 @@ public func <=> <BaseElements> (
   // are `nil`, since `_inner` is `nil` iff `_outer == base.endIndex`.
   _precondition(lhs._inner == nil && rhs._inner == nil)
 
-  fatalError("")
-//  return false
+  return .equivalent
 }
 
 /// A flattened view of a base collection of collections.

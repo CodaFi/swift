@@ -42,19 +42,19 @@ public func _stdlib_isOSVersionAtLeast(
 #endif
 }
 
-extension _SwiftNSOperatingSystemVersion : Comparable { }
+extension _SwiftNSOperatingSystemVersion : Comparable {}
 
 /// Lexicographic comparison of version components.
 public func <=> (
   lhs: _SwiftNSOperatingSystemVersion,
   rhs: _SwiftNSOperatingSystemVersion
-) -> Bool {
+) -> Ordering {
   let majorResult = lhs.majorVersion <=> rhs.majorVersion
-  guard case .equal = majorResult else {
+  guard case .equivalent = majorResult else {
     return majorResult
   }
   let minorResult = lhs.minorVersion <=> rhs.minorVersion
-  guard case .equal = minorResult else {
+  guard case .equivalent = minorResult else {
     return minorResult
   }
   return lhs.patchVersion <=> rhs.patchVersion

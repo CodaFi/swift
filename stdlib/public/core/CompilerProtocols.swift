@@ -145,13 +145,18 @@ public protocol RawRepresentable {
   var rawValue: RawValue { get }
 }
 
+/* Creates an ambiguity with <T: Equatable>(T, T) -> Bool.  This can be resolved
+ * one of three ways:
+ * 1) Remove this
+ * 2) Make RawRepresentable require Equatable and derive it
+ * 3) Make RawRepresentable require Comparable and derive it
+ *
 /// Returns a Boolean value indicating whether the two arguments are equal.
 ///
 /// - Parameters:
 ///   - lhs: A raw-representable instance.
 ///   - rhs: A second raw-representable instance.
-public func == <T : RawRepresentable>(lhs: T, rhs: T) -> Bool
-  where T.RawValue : Equatable {
+public func == <T : RawRepresentable where T.RawValue : Equatable>(lhs: T, rhs: T) -> Bool {
   return lhs.rawValue == rhs.rawValue
 }
 
@@ -176,6 +181,7 @@ public func != <T : Equatable>(lhs: T, rhs: T) -> Bool
   where T : RawRepresentable, T.RawValue : Equatable {
   return lhs.rawValue != rhs.rawValue
 }
+*/
 
 /// A type that can be initialized using the nil literal, `nil`.
 ///

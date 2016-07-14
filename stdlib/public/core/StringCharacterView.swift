@@ -178,7 +178,7 @@ extension String.CharacterView : BidirectionalCollection {
     }
 
     public func isEqual(to rhs: Index) -> Bool {
-      return self._base == to._base
+      return self._base == rhs._base
     }
 
     /// The one past end index for this extended grapheme cluster in Unicode

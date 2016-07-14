@@ -984,7 +984,7 @@ FuncDecl *ASTContext::getEqualIntDecl(LazyResolver *resolver) const {
   CanType intType = getIntDecl()->getDeclaredType().getCanonicalTypeOrNull();
   CanType boolType = getBoolDecl()->getDeclaredType().getCanonicalTypeOrNull();
   SmallVector<ValueDecl *, 30> equalFuncs;
-  lookupInSwiftModule("Int.isEqual(to:)", equalFuncs);
+  lookupInSwiftModule("==", equalFuncs);
   
   // Find the overload for Int.
   for (ValueDecl *vd : equalFuncs) {

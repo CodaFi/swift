@@ -543,59 +543,8 @@ namespace {
     
     return false;
   }
-  
-  /// Extracts == from a type's Equatable conformance.
-  ///
-  /// This only applies to types whose Equatable conformance can be derived.
-  /// Performing the conformance check forces the function to be synthesized.
-  void addNewEqualsOperatorOverloads(ConstraintSystem &CS,
-                                     SmallVectorImpl<Constraint *> &newConstraints,
-                                     Type paramTy,
-                                     Type tyvarType,
-                                     ConstraintLocator *csLoc) {
-    ProtocolDecl *equatableProto =
-    CS.TC.Context.getProtocol(KnownProtocolKind::Equatable);
-    if (!equatableProto)
-      return;
-    
-    paramTy = paramTy->getLValueOrInOutObjectType();
-    paramTy = paramTy->getReferenceStorageReferent();
-    
-    auto nominal = paramTy->getAnyNominal();
-    if (!nominal)
-      return;
-    if (!nominal->derivesProtocolConformance(equatableProto))
-      return;
-    
-    ProtocolConformance *conformance = nullptr;
-    if (!CS.TC.conformsToProtocol(paramTy, equatableProto,
-                                  CS.DC, ConformanceCheckFlags::InExpression,
-                                  &conformance))
-      return;
-    if (!conformance)
-      return;
-    
-    auto requirement =
-    equatableProto->lookupDirect(CS.TC.Context.Id_EqualsOperator);
-    assert(requirement.size() == 1 && "broken Equatable protocol");
-    ConcreteDeclRef witness =
-        conformance->getWitness(requirement.front(), &CS.TC);
-    if (!witness)
-      return;
-    
-    // FIXME: If we ever have derived == for generic types, we may need to
-    // revisit this.
-    if (witness.getDecl()->getType()->hasArchetype())
-      return;
-    
-    OverloadChoice choice{
-      Type(), witness.getDecl(), /*specialized=*/false, CS
-    };
-    auto overload =
-        Constraint::createBindOverload(CS, tyvarType, choice, csLoc);
-    newConstraints.push_back(overload);
-  }
-  
+
+
   /// Favor certain overloads in a call based on some basic analysis
   /// of the overload set and call arguments.
   ///
@@ -840,7 +789,7 @@ namespace {
       auto fnTy = valueTy->getAs<AnyFunctionType>();
       if (!fnTy)
         return false;
-      
+
       // Figure out the parameter type.
       if (value->getDeclContext()->isTypeContext()) {
         fnTy = fnTy->getResult()->castTo<AnyFunctionType>();
@@ -974,7 +923,18 @@ namespace {
       auto secondFavoredTy = CS.getFavoredType(argTupleExpr->getElement(1));
       
       auto favoredExprTy = CS.getFavoredType(expr);
-      
+
+      if (value->getName().str() == "==") {
+        if (auto d = dyn_cast_or_null<FuncDecl>(value)) {
+          if (auto gp = d->getInterfaceType()->getAs<GenericFunctionType>()) {
+            if (gp->getRequirements().size() > 2) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+
       if (isArithmeticOperatorDecl(value)) {
         // If the parent has been favored on the way down, propagate that
         // information to its children.
@@ -1013,7 +973,7 @@ namespace {
       
       auto resultTy = fnTy->getResult();
       auto contextualTy = CS.getContextualType(expr);
-      
+
       return
         (isFavoredParamAndArg(CS, firstParamTy, firstArgTy, secondArgTy) ||
          isFavoredParamAndArg(CS, secondParamTy, secondArgTy, firstArgTy)) &&
@@ -1038,15 +998,6 @@ namespace {
       
       replacementConstraints.append(oldConstraints.begin(),
                                     oldConstraints.end());
-      
-      auto csLoc = CS.getConstraintLocator(expr->getFn());
-      addNewEqualsOperatorOverloads(CS, replacementConstraints, firstArgTy,
-                                    tyvarType, csLoc);
-      if (!firstArgTy->isEqual(secondArgTy)) {
-        addNewEqualsOperatorOverloads(CS, replacementConstraints,
-                                      secondArgTy,
-                                      tyvarType, csLoc);
-      }
     };
     
     favorCallOverloads(expr, CS, isFavoredDecl, createReplacements);

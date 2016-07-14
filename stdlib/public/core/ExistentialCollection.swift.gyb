@@ -703,7 +703,7 @@ public struct AnyIndex : Comparable {
   ///   identical.
   public func isEqual(to rhs: AnyIndex) -> Bool {
     _precondition(self._typeID == rhs._typeID, "base index types differ")
-    return self._box._equal(to: rhs._box)
+    return self._box._isEqual(to: rhs._box)
   }
 }
 

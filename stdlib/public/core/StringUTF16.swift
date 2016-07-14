@@ -142,7 +142,7 @@ extension String {
       // FIXME: swift-3-indexing-model: add complete set of forwards for Comparable
       //        assuming String.UTF8View.Index continues to exist
       public func isEqual(to rhs: Index) -> Bool {
-        return lhs._offset == rhs._offset
+        return self._offset == rhs._offset
       }
     }
 

@@ -55,9 +55,10 @@ extension DarwinBoolean : CustomStringConvertible {
   }
 }
 
-extension DarwinBoolean : Equatable {}
-public func ==(lhs: DarwinBoolean, rhs: DarwinBoolean) -> Bool {
-  return lhs.boolValue == rhs.boolValue
+extension DarwinBoolean : Equatable {
+  public func isEqual(to rhs: DarwinBoolean) -> Bool {
+    return self.boolValue == rhs.boolValue
+  }
 }
 
 public // COMPILER_INTRINSIC

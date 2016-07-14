@@ -62,7 +62,7 @@
 /// [scalars]: http://www.unicode.org/glossary/#unicode_scalar_value
 public struct Character :
   _ExpressibleByBuiltinExtendedGraphemeClusterLiteral,
-  ExpressibleByExtendedGraphemeClusterLiteral, Equatable, Hashable, Comparable {
+  ExpressibleByExtendedGraphemeClusterLiteral, Hashable, Comparable {
 
   // Fundamentally, it is just a String, but it is optimized for the
   // common case where the UTF-8 representation fits in 63 bits.  The
@@ -420,17 +420,22 @@ public func ==(lhs: Character, rhs: Character) -> Bool {
 }
 
 public func <=>(lhs: Character, rhs: Character) -> Ordering {
-  fatalError("")
-//  switch (lhs._representation, rhs._representation) {
-//  case let (.small(lbits), .small(rbits)) where
-//    // Note: This is consistent with Foundation but unicode incorrect.
-//    // See String._compareASCII.
-//    Bool(Builtin.cmp_uge_Int63(lbits, _minASCIICharReprBuiltin))
-//    && Bool(Builtin.cmp_uge_Int63(rbits, _minASCIICharReprBuiltin)):
-//    return Bool(Builtin.cmp_ult_Int63(lbits, rbits))
-//  default:
-//    // FIXME(performance): constructing two temporary strings is extremely
-//    // wasteful and inefficient.
-//    return String(lhs) <=> String(rhs)
-//  }
+  switch (lhs._representation, rhs._representation) {
+  case let (.small(lbits), .small(rbits)) where
+    // Note: This is consistent with Foundation but unicode incorrect.
+    // See String._compareASCII.
+    Bool(Builtin.cmp_uge_Int63(lbits, _minASCIICharReprBuiltin))
+    && Bool(Builtin.cmp_uge_Int63(rbits, _minASCIICharReprBuiltin)):
+    if Bool(Builtin.cmp_ult_Int63(lbits, rbits)) {
+      return .ascending
+    } else if Bool(Builtin.cmp_ugt_Int63(lbits, rbits)) {
+      return .descending
+    } else {
+      return .equivalent
+    }
+  default:
+    // FIXME(performance): constructing two temporary strings is extremely
+    // wasteful and inefficient.
+    return String(lhs) <=> String(rhs)
+  }
 }

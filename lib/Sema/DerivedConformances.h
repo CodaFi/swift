@@ -75,7 +75,19 @@ ValueDecl *deriveEquatable(TypeChecker &tc,
                            Decl *parentDecl,
                            NominalTypeDecl *type,
                            ValueDecl *requirement);
-  
+
+/// Derive a Comparable requirement for a type.
+///
+/// Currently this is only implemented for enums without associated values.
+/// Obvious generalizations would be to enums with all-Hashable payloads and to
+/// structs with all-Hashable stored properties.
+///
+/// \returns the derived member, which will also be added to the type.
+ValueDecl *deriveComparable(TypeChecker &tc,
+                            Decl *parentDecl,
+                            NominalTypeDecl *type,
+                            ValueDecl *requirement);
+
 /// Derive a Hashable requirement for a type.
 ///
 /// Currently this is only implemented for enums without associated values.

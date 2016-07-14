@@ -123,10 +123,11 @@ public struct DispatchQoS : Equatable {
 		self.qosClass = qosClass
 		self.relativePriority = relativePriority
 	}
-}
 
-public func ==(a: DispatchQoS, b: DispatchQoS) -> Bool {
-	return a.qosClass == b.qosClass && a.relativePriority == b.relativePriority
+  public func isEqual(to b: DispatchQoS) -> Bool {
+    return self.qosClass == b.qosClass
+        && self.relativePriority == b.relativePriority
+  }
 }
 
 /// 

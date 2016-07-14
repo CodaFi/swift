@@ -111,21 +111,10 @@ extension String {
       public // SPI(Foundation)
       init(_position: Int) {
         self._position = _position
-        self._core = _core
       }
 
       public func isEqual(to rhs: Index) -> Bool {
         return self._position == rhs._position
-      }
-
-      /// The end index that for this view.
-      internal var _viewStartIndex: Index {
-        return Index(_core.startIndex, _core)
-      }
-
-      /// The end index that for this view.
-      internal var _viewEndIndex: Index {
-        return Index(_core.endIndex, _core)
       }
 
       @_versioned internal var _position: Int

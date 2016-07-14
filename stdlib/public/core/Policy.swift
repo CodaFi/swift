@@ -540,7 +540,7 @@ public protocol Equatable {
   func isEqual(to other: Self) -> Bool
 }
 
-public func == <T : Equatable>(lhs: T, rhs: T) -> Bool {
+public func == <T: Equatable>(lhs: T, rhs: T) -> Bool {
   return lhs.isEqual(to: rhs)
 }
 
@@ -555,7 +555,7 @@ public func == <T : Equatable>(lhs: T, rhs: T) -> Bool {
 /// - Parameters:
 ///   - lhs: A value to compare.
 ///   - rhs: Another value to compare.
-public func != <T : Equatable>(lhs: T, rhs: T) -> Bool {
+public func != <T: Equatable>(lhs: T, rhs: T) -> Bool {
   return !(lhs == rhs)
 }
 
@@ -563,8 +563,8 @@ public func != <T : Equatable>(lhs: T, rhs: T) -> Bool {
 // Comparable
 //
 
-public func == <T : Comparable>(lhs: T, rhs: T) -> Bool {
-  return (lhs <=> rhs) == .same
+public func == <T: Comparable>(lhs: T, rhs: T) -> Bool {
+  return (lhs <=> rhs) == .equivalent
 }
 
 /// Returns a Boolean value indicating whether the value of the first argument
@@ -576,8 +576,8 @@ public func == <T : Comparable>(lhs: T, rhs: T) -> Bool {
 /// - Parameters:
 ///   - lhs: A value to compare.
 ///   - rhs: Another value to compare.
-public func < <T : Comparable>(lhs: T, rhs: T) -> Bool {
-  return (l <=> r) == .ascending
+public func < <T: Comparable>(lhs: T, rhs: T) -> Bool {
+  return (lhs <=> rhs) == .ascending
 }
 
 /// Returns a Boolean value indicating whether the value of the first argument
@@ -589,8 +589,8 @@ public func < <T : Comparable>(lhs: T, rhs: T) -> Bool {
 /// - Parameters:
 ///   - lhs: A value to compare.
 ///   - rhs: Another value to compare.
-public func > <T : Comparable>(lhs: T, rhs: T) -> Bool {
-  return (l <=> r) == .descending
+public func > <T: Comparable>(lhs: T, rhs: T) -> Bool {
+  return (lhs <=> rhs) == .descending
 }
 
 /// Returns a Boolean value indicating whether the value of the first argument
@@ -602,8 +602,8 @@ public func > <T : Comparable>(lhs: T, rhs: T) -> Bool {
 /// - Parameters:
 ///   - lhs: A value to compare.
 ///   - rhs: Another value to compare.
-public func <= <T : Comparable>(lhs: T, rhs: T) -> Bool {
-  return (l <=> r) != .descending
+public func <= <T: Comparable>(lhs: T, rhs: T) -> Bool {
+  return (lhs <=> rhs) != .descending
 }
 
 /// Returns a Boolean value indicating whether the value of the first argument
@@ -617,8 +617,8 @@ public func <= <T : Comparable>(lhs: T, rhs: T) -> Bool {
 ///   - rhs: Another value to compare.
 /// - Returns: `true` if `lhs` is greater than or equal to `rhs`; otherwise,
 ///   `false`.
-public func >= <T : Comparable>(lhs: T, rhs: T) -> Bool {
-  return (l <=> r) != .ascending
+public func >= <T: Comparable>(lhs: T, rhs: T) -> Bool {
+  return (lhs <=> rhs) != .ascending
 }
 
 public enum Ordering {
@@ -629,6 +629,12 @@ public enum Ordering {
 
 public protocol Comparable : Equatable {
   func <=> (lhs: Self, rhs: Self) -> Ordering
+}
+
+extension Comparable {
+  public func isEqual(to other: Self) -> Bool {
+    return (self <=> other) == .equivalent
+  }
 }
 
 /// A type that supports standard bitwise arithmetic operators.

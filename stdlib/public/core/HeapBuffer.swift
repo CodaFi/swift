@@ -216,12 +216,11 @@ struct _HeapBuffer<Value, Element> : Equatable {
   mutating func isUniquelyReferencedOrPinned() -> Bool {
     return _isUniqueOrPinned(&_storage)
   }
+
+  // HeapBuffers are equal when they reference the same buffer
+  public // @testable
+  func isEqual(to rhs: _HeapBuffer<Value, Element>) -> Bool {
+  return self._nativeObject == rhs._nativeObject
+  }
 }
 
-// HeapBuffers are equal when they reference the same buffer
-public // @testable
-func == <Value, Element> (
-  lhs: _HeapBuffer<Value, Element>,
-  rhs: _HeapBuffer<Value, Element>) -> Bool {
-  return lhs._nativeObject == rhs._nativeObject
-}
