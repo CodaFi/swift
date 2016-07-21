@@ -562,7 +562,7 @@ namespace {
                                      Type tyvarType,
                                      ConstraintLocator *csLoc) {
     ProtocolDecl *equatableProto =
-    CS.TC.Context.getProtocol(KnownProtocolKind::Equatable);
+    CS.TC.Context.getProtocol(KnownProtocolKind::PartialEquatable);
     if (!equatableProto)
       return;
     

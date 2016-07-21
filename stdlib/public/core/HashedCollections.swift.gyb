@@ -4469,20 +4469,12 @@ internal struct _Native${Self}Index<${TypeParametersDecl}> :
   }
 }
 
-internal func == <${TypeParametersDecl}> (
+internal func <=> <${TypeParametersDecl}> (
   lhs: _Native${Self}Index<${TypeParameters}>,
   rhs: _Native${Self}Index<${TypeParameters}>
-) -> Bool {
+) -> Ordering {
   // FIXME: assert that lhs and rhs are from the same dictionary.
-  return lhs.offset == rhs.offset
-}
-
-internal func < <${TypeParametersDecl}> (
-  lhs: _Native${Self}Index<${TypeParameters}>,
-  rhs: _Native${Self}Index<${TypeParameters}>
-) -> Bool {
-  // FIXME: assert that lhs and rhs are from the same dictionary.
-  return lhs.offset < rhs.offset
+  return lhs.offset <=> rhs.offset
 }
 // TODO: swift-3-indexing-model: forward all Comparable operations.
 
@@ -4547,22 +4539,13 @@ internal struct _Cocoa${Self}Index : Comparable {
   }
 }
 
-internal func ==(lhs: _Cocoa${Self}Index, rhs: _Cocoa${Self}Index) -> Bool {
+internal func <=>(lhs: _Cocoa${Self}Index, rhs: _Cocoa${Self}Index) -> Ordering {
   _precondition(lhs.cocoa${Self} === rhs.cocoa${Self},
     "cannot compare indexes pointing to different ${Self}s")
   _precondition(lhs.allKeys.value == rhs.allKeys.value,
     "one or both of the indexes have been invalidated")
 
-  return lhs.currentKeyIndex == rhs.currentKeyIndex
-}
-
-internal func <(lhs: _Cocoa${Self}Index, rhs: _Cocoa${Self}Index) -> Bool {
-  _precondition(lhs.cocoa${Self} === rhs.cocoa${Self},
-    "cannot compare indexes pointing to different ${Self}s")
-  _precondition(lhs.allKeys.value == rhs.allKeys.value,
-    "one or both of the indexes have been invalidated")
-
-  return lhs.currentKeyIndex < rhs.currentKeyIndex
+  return lhs.currentKeyIndex <=> rhs.currentKeyIndex
 }
 #else
 internal struct _Cocoa${Self}Index {}

@@ -256,7 +256,7 @@ static ConstructorDecl *deriveRawRepresentable_init(TypeChecker &tc,
   // Make sure that the raw type is Equatable. We need it to ensure that we have
   // a suitable ~= for the switch.
   auto equatableProto = tc.getProtocol(enumDecl->getLoc(),
-                                       KnownProtocolKind::Equatable);
+                                       KnownProtocolKind::PartialEquatable);
   if (!equatableProto)
     return nullptr;
 

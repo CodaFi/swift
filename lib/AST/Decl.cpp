@@ -1937,7 +1937,7 @@ bool NominalTypeDecl::derivesProtocolConformance(ProtocolDecl *protocol) const {
     
     // Enums without associated values can implicitly derive Equatable and
     // Hashable conformance.
-    case KnownProtocolKind::Equatable:
+    case KnownProtocolKind::PartialEquatable:
     case KnownProtocolKind::Hashable:
       return enumDecl->hasOnlyCasesWithoutAssociatedValues();
     

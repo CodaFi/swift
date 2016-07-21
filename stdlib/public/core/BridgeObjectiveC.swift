@@ -412,7 +412,7 @@ public struct AutoreleasingUnsafeMutablePointer<Pointee /* TODO : class */>
       // autoreleasing slot, so retains/releases of the original value are
       // unneeded.
       typealias OptionalOpaquePointer = OpaquePointer?
-      var p = UnsafeMutablePointer<OptionalOpaquePointer>(
+      let p = UnsafeMutablePointer<OptionalOpaquePointer>(
         UnsafeMutablePointer<Pointee>(self))
       p.pointee = unsafeBitCast(newValue, to: OptionalOpaquePointer.self)
     }

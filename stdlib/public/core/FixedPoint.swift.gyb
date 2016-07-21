@@ -336,14 +336,14 @@ public struct ${Self}
   public static var _sizeInBits: ${Self} { return ${bits} }
   public static var _sizeInBytes: ${Self} { return ${bits}/8 }
 
-	public static func <=> (lhs: ${Self}, rhs: ${Self}) -> Ordering {
-		if Bool(Builtin.cmp_${sign}lt_${BuiltinName}(lhs._value, rhs._value)) {
-				return .ascending
-		} else if Bool(Builtin.cmp_${sign}gt_${BuiltinName}(lhs._value, rhs._value)) {
-			return .descending
-		}
-		return .equivalent
-	}
+  public static func <=> (lhs: ${Self}, rhs: ${Self}) -> Ordering {
+    if Bool(Builtin.cmp_${sign}lt_${BuiltinName}(lhs._value, rhs._value)) {
+        return .ascending
+    } else if Bool(Builtin.cmp_${sign}gt_${BuiltinName}(lhs._value, rhs._value)) {
+      return .descending
+    }
+    return .equivalent
+  }
 }
 
 extension ${Self} : Hashable {

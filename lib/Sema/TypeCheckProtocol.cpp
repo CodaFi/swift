@@ -4868,7 +4868,7 @@ ValueDecl *TypeChecker::deriveProtocolRequirement(DeclContext *DC,
     return DerivedConformance::deriveRawRepresentable(*this, Decl,
                                                       TypeDecl, Requirement);
 
-  case KnownProtocolKind::Equatable:
+  case KnownProtocolKind::PartialEquatable:
     return DerivedConformance::deriveEquatable(*this, Decl, TypeDecl, Requirement);
   
   case KnownProtocolKind::Hashable:

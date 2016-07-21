@@ -1483,7 +1483,7 @@ namespace {
 
       // Transfer conformances. Each of these needs a forwarding
       // implementation in the standard library.
-      transferKnown(KnownProtocolKind::Equatable);
+      transferKnown(KnownProtocolKind::PartialEquatable);
       transferKnown(KnownProtocolKind::Hashable);
       transferKnown(KnownProtocolKind::Comparable);
       transferKnown(KnownProtocolKind::ObjectiveCBridgeable);
@@ -2307,6 +2307,7 @@ namespace {
 
         ProtocolDecl *protocols[]
           = {cxt.getProtocol(KnownProtocolKind::RawRepresentable),
+             cxt.getProtocol(KnownProtocolKind::PartialEquatable),
              cxt.getProtocol(KnownProtocolKind::Equatable)};
 
         auto options = getDefaultMakeStructRawValuedOptions();

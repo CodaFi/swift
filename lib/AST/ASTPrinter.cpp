@@ -2038,7 +2038,7 @@ void PrintAST::printInherited(const Decl *decl,
         // Conformance to Equatable and Hashable is implied by being a "simple"
         // no-payload enum.
         if (Enum->hasOnlyCasesWithoutAssociatedValues()
-            && (Proto->isSpecificProtocol(KnownProtocolKind::Equatable)
+            && (Proto->isSpecificProtocol(KnownProtocolKind::PartialEquatable)
                 || Proto->isSpecificProtocol(KnownProtocolKind::Hashable)))
           continue;
       }

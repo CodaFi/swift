@@ -2420,6 +2420,7 @@ bool swift::nameConflictsWithStandardLibrary(KnownFoundationEntity entity) {
   case KnownFoundationEntity::NSDictionary:
   case KnownFoundationEntity::NSInteger:
   case KnownFoundationEntity::NSRange:
+  case KnownFoundationEntity::NSComparisonResult:
   case KnownFoundationEntity::NSSet:
   case KnownFoundationEntity::NSString:
   case KnownFoundationEntity::NSCopying:

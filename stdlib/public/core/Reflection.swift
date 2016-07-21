@@ -53,7 +53,7 @@ public func ==(x: ObjectIdentifier, y: ObjectIdentifier) -> Bool {
 }
 
 public func <=>(lhs: ObjectIdentifier, rhs: ObjectIdentifier) -> Ordering {
-	return UInt(lhs) <=> UInt(rhs)
+  return UInt(lhs) <=> UInt(rhs)
 }
 
 extension UInt {

@@ -148,6 +148,11 @@ MAP_STDLIB_TYPE(
   Impl.SwiftContext.getSwiftName(KnownFoundationEntity::NSInteger),
   SignedWord, 0, "Int", false, DefineOnly)
 
+// NSComparisonResult bridges to Swift.Ordering
+MAP_STDLIB_TYPE(
+  Impl.SwiftContext.getSwiftName(KnownFoundationEntity::NSComparisonResult),
+  SignedWord, 0, "Ordering", false, DoNothing)
+
 // Treat NSUInteger specially: exposing it as a typealias for "Int" would be
 // confusing.
 MAP_STDLIB_TYPE(
