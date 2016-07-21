@@ -487,16 +487,16 @@ public func == (
   while true
 }
 
-public func < (
-  lhs: String.UTF8View.Index,
-  rhs: String.UTF8View.Index
-) -> Bool {
-  if lhs._coreIndex == rhs._coreIndex && lhs._buffer != rhs._buffer {
-    // The index with more continuation bytes remaining before the next
-    return lhs._utf8ContinuationBytesUntilNextUnicodeScalar >
-      rhs._utf8ContinuationBytesUntilNextUnicodeScalar
-  }
-  return lhs._coreIndex < rhs._coreIndex
+public func <=> (
+	lhs: String.UTF8View.Index,
+	rhs: String.UTF8View.Index
+) -> Ordering {
+	if lhs._coreIndex == rhs._coreIndex && lhs._buffer != rhs._buffer {
+		// The index with more continuation bytes remaining before the next
+		return lhs._utf8ContinuationBytesUntilNextUnicodeScalar <=>
+			rhs._utf8ContinuationBytesUntilNextUnicodeScalar
+	}
+	return lhs._coreIndex <=> rhs._coreIndex
 }
 
 // Index conversions

@@ -306,3 +306,16 @@ public enum _DebuggerSupport {
   }
 }
 
+internal func == (lhs: _DebuggerSupport.CollectionStatus, rhs: _DebuggerSupport.CollectionStatus) -> Bool {
+	switch (lhs, rhs) {
+	case (.NotACollection, .NotACollection): fallthrough
+	case (.CollectionOfElements, .CollectionOfElements): fallthrough
+	case (.CollectionOfPairs, .CollectionOfPairs): fallthrough
+	case (.Element, .Element): fallthrough
+	case (.Pair, .Pair): fallthrough
+	case (.ElementOfPair, .ElementOfPair):
+		return true
+	default:
+		return false
+	}
+}

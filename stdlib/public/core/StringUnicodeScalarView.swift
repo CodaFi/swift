@@ -10,18 +10,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-public func == (
+public func <=> (
   lhs: String.UnicodeScalarView.Index,
   rhs: String.UnicodeScalarView.Index
-) -> Bool {
-  return lhs._position == rhs._position
-}
-
-public func < (
-  lhs: String.UnicodeScalarView.Index,
-  rhs: String.UnicodeScalarView.Index
-) -> Bool {
-  return lhs._position < rhs._position
+) -> Ordering {
+  return lhs._position <=> rhs._position
 }
 
 extension String {

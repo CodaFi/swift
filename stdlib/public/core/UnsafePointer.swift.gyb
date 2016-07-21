@@ -444,6 +444,31 @@ public func < <Pointee>(lhs: ${Self}<Pointee>, rhs: ${Self}<Pointee>) -> Bool {
 }
 
 @_transparent
+public func > <Pointee>(lhs: ${Self}<Pointee>, rhs: ${Self}<Pointee>) -> Bool {
+	return Bool(Builtin.cmp_ugt_RawPointer(lhs._rawValue, rhs._rawValue))
+}
+
+@_transparent
+public func >= <Pointee>(lhs: ${Self}<Pointee>, rhs: ${Self}<Pointee>) -> Bool {
+	return !Bool(Builtin.cmp_ult_RawPointer(lhs._rawValue, rhs._rawValue))
+}
+
+@_transparent
+public func <= <Pointee>(lhs: ${Self}<Pointee>, rhs: ${Self}<Pointee>) -> Bool {
+	return !Bool(Builtin.cmp_ugt_RawPointer(lhs._rawValue, rhs._rawValue))
+}
+
+@_transparent
+public func <=> <Pointee>(lhs: ${Self}<Pointee>, rhs: ${Self}<Pointee>) -> Ordering {
+	if lhs < rhs {
+		return .ascending
+	} else if rhs > lhs {
+		return .descending
+	}
+	return .equivalent
+}
+
+@_transparent
 public func + <Pointee>(lhs: ${Self}<Pointee>, rhs: Int) -> ${Self}<Pointee> {
   return ${Self}(Builtin.gep_Word(
     lhs._rawValue, (rhs &* strideof(Pointee.self))._builtinWordValue))

@@ -452,3 +452,8 @@ extension String.CharacterView {
     Builtin.unreachable()
   }
 }
+
+public func <=>(lhs : String.CharacterView.Index, rhs : String.CharacterView.Index) -> Ordering {
+	return lhs._base <=> rhs._base
+}
+

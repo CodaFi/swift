@@ -114,46 +114,11 @@ public struct LazyFilterIndex<Base : Collection> : Comparable {
   public let base: Base.Index
 }
 
-public func == <Base : Collection>(
+public func <=> <Base : Collection>(
   lhs: LazyFilterIndex<Base>,
   rhs: LazyFilterIndex<Base>
-) -> Bool {
-  return lhs.base == rhs.base
-}
-
-public func != <Base : Collection>(
-  lhs: LazyFilterIndex<Base>,
-  rhs: LazyFilterIndex<Base>
-) -> Bool {
-  return lhs.base != rhs.base
-}
-
-public func < <Base : Collection>(
-  lhs: LazyFilterIndex<Base>,
-  rhs: LazyFilterIndex<Base>
-) -> Bool {
-  return lhs.base < rhs.base
-}
-
-public func <= <Base : Collection>(
-  lhs: LazyFilterIndex<Base>,
-  rhs: LazyFilterIndex<Base>
-) -> Bool {
-  return lhs.base <= rhs.base
-}
-
-public func >= <Base : Collection>(
-  lhs: LazyFilterIndex<Base>,
-  rhs: LazyFilterIndex<Base>
-) -> Bool {
-  return lhs.base >= rhs.base
-}
-
-public func > <Base : Collection>(
-  lhs: LazyFilterIndex<Base>,
-  rhs: LazyFilterIndex<Base>
-) -> Bool {
-  return lhs.base > rhs.base
+) -> Ordering {
+  return lhs.base <=> rhs.base
 }
 
 // FIXME(ABI)(compiler limitation): `LazyFilter*Collection` types should be

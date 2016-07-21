@@ -4680,42 +4680,20 @@ public struct ${Self}Index<${TypeParametersDecl}> :
   }
 }
 
-public func == <${TypeParametersDecl}> (
+public func <=> <${TypeParametersDecl}> (
   lhs: ${Self}Index<${TypeParameters}>,
   rhs: ${Self}Index<${TypeParameters}>
-) -> Bool {
+) -> Ordering {
   if _fastPath(lhs._guaranteedNative) {
-    return lhs._nativeIndex == rhs._nativeIndex
+    return lhs._nativeIndex <=> rhs._nativeIndex
   }
 
   switch (lhs._value, rhs._value) {
   case (._native(let lhsNative), ._native(let rhsNative)):
-    return lhsNative == rhsNative
+    return lhsNative <=> rhsNative
   case (._cocoa(let lhsCocoa), ._cocoa(let rhsCocoa)):
 #if _runtime(_ObjC)
-    return lhsCocoa == rhsCocoa
-#else
-    _sanityCheckFailure("internal error: unexpected cocoa ${Self}")
-#endif
-  default:
-    _preconditionFailure("comparing indexes from different sets")
-  }
-}
-
-public func < <${TypeParametersDecl}> (
-  lhs: ${Self}Index<${TypeParameters}>,
-  rhs: ${Self}Index<${TypeParameters}>
-) -> Bool {
-  if _fastPath(lhs._guaranteedNative) {
-    return lhs._nativeIndex < rhs._nativeIndex
-  }
-
-  switch (lhs._value, rhs._value) {
-  case (._native(let lhsNative), ._native(let rhsNative)):
-    return lhsNative < rhsNative
-  case (._cocoa(let lhsCocoa), ._cocoa(let rhsCocoa)):
-#if _runtime(_ObjC)
-    return lhsCocoa < rhsCocoa
+    return lhsCocoa <=> rhsCocoa
 #else
     _sanityCheckFailure("internal error: unexpected cocoa ${Self}")
 #endif

@@ -47,12 +47,13 @@ extension ObjectIdentifier : CustomDebugStringConvertible {
   }
 }
 
-public func <(lhs: ObjectIdentifier, rhs: ObjectIdentifier) -> Bool {
-  return UInt(lhs) < UInt(rhs)
-}
 
 public func ==(x: ObjectIdentifier, y: ObjectIdentifier) -> Bool {
   return Bool(Builtin.cmp_eq_RawPointer(x._value, y._value))
+}
+
+public func <=>(lhs: ObjectIdentifier, rhs: ObjectIdentifier) -> Ordering {
+	return UInt(lhs) <=> UInt(rhs)
 }
 
 extension UInt {

@@ -48,26 +48,17 @@ public struct ClosedRangeIndex<Bound> : Comparable
   }
 }
 
-public func == <B>(lhs: ClosedRangeIndex<B>, rhs: ClosedRangeIndex<B>) -> Bool {
-  switch (lhs._value, rhs._value) {
-  case (.inRange(let l), .inRange(let r)):
-    return l == r
-  case (.pastEnd, .pastEnd):
-    return true
-  default:
-    return false
-  }
-}
-
-public func < <B>(lhs: ClosedRangeIndex<B>, rhs: ClosedRangeIndex<B>) -> Bool {
-  switch (lhs._value, rhs._value) {
-  case (.inRange(let l), .inRange(let r)):
-    return l < r
-  case (.inRange(_), .pastEnd):
-    return true
-  default:
-    return false
-  }
+public func <=> <B>(lhs: ClosedRangeIndex<B>, rhs: ClosedRangeIndex<B>) -> Ordering {
+	switch (lhs._value, rhs._value) {
+	case (.inRange(let l), .inRange(let r)):
+		return l <=> r
+	case (.inRange(_), .pastEnd):
+		return .ascending
+	case (.pastEnd, .inRange(_)):
+		return .descending
+	case (.pastEnd, .pastEnd):
+		return .equivalent
+	}
 }
 
 // WORKAROUND: needed because of rdar://25584401

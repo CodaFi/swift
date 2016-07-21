@@ -621,8 +621,14 @@ extension String {
   }
 }
 
-public func <(lhs: String, rhs: String) -> Bool {
-  return lhs._compareString(rhs) < 0
+public func <=>(lhs: String, rhs: String) -> Ordering {
+  let cmpResult = lhs._compareString(rhs)
+	if cmpResult < 0 {
+		return .ascending
+	} else if cmpResult > 0 {
+		return .descending
+	}
+	return .equivalent
 }
 
 // Support for copy-on-write

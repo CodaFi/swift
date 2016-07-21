@@ -134,7 +134,7 @@
 ///   floating-point types compares as neither less than, greater than, nor
 ///   equal to any normal floating-point value. Exceptional values need not
 ///   take part in the strict total order.
-public protocol Comparable : Equatable {
+public protocol PartialComparable : PartialEquatable {
   /// Returns a Boolean value indicating whether the value of the first
   /// argument is less than that of the second argument.
   ///
@@ -172,6 +172,48 @@ public protocol Comparable : Equatable {
   static func > (lhs: Self, rhs: Self) -> Bool
 }
 
+public enum Ordering: Equatable {
+	case ascending
+	case equivalent
+	case descending
+}
+
+public func == (lhs: Ordering, rhs: Ordering) -> Bool {
+	switch (lhs, rhs) {
+	case (.ascending, .ascending):
+		return true
+	case (.descending, .descending):
+		return true
+	case (.equivalent, .equivalent):
+		return true
+	default:
+		return false
+	}
+}
+
+public protocol Comparable : PartialComparable, Equatable {
+	static func <=> (lhs: Self, rhs: Self) -> Ordering
+}
+
+extension Comparable {}
+
+public func == <T : Comparable>(lhs: T, rhs: T) -> Bool {
+	return (lhs <=> rhs) == .equivalent
+}
+
+/// Returns a Boolean value indicating whether the value of the first argument
+/// is less than that of the second argument.
+///
+/// This is the default implementation of the greater-than operator (`>`) for
+/// any type that conforms to `Comparable`.
+///
+/// - Parameters:
+///   - lhs: A value to compare.
+///   - rhs: Another value to compare.
+public func < <T : Comparable>(lhs: T, rhs: T) -> Bool {
+	return (lhs <=> rhs) == .ascending
+}
+
 /// Returns a Boolean value indicating whether the value of the first argument
 /// is greater than that of the second argument.
 ///
@@ -182,7 +224,7 @@ public protocol Comparable : Equatable {
 ///   - lhs: A value to compare.
 ///   - rhs: Another value to compare.
 public func > <T : Comparable>(lhs: T, rhs: T) -> Bool {
-  return rhs < lhs
+	return (lhs <=> rhs) == .descending
 }
 
 /// Returns a Boolean value indicating whether the value of the first argument
@@ -195,7 +237,7 @@ public func > <T : Comparable>(lhs: T, rhs: T) -> Bool {
 ///   - lhs: A value to compare.
 ///   - rhs: Another value to compare.
 public func <= <T : Comparable>(lhs: T, rhs: T) -> Bool {
-  return !(rhs < lhs)
+	return (lhs <=> rhs) != .descending
 }
 
 /// Returns a Boolean value indicating whether the value of the first argument
@@ -210,6 +252,6 @@ public func <= <T : Comparable>(lhs: T, rhs: T) -> Bool {
 /// - Returns: `true` if `lhs` is greater than or equal to `rhs`; otherwise,
 ///   `false`.
 public func >= <T : Comparable>(lhs: T, rhs: T) -> Bool {
-  return !(lhs < rhs)
+	return (lhs <=> rhs) != .ascending
 }
 

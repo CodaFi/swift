@@ -391,30 +391,23 @@ internal var _minASCIICharReprBuiltin: Builtin.Int63 {
   }
 }
 
-public func ==(lhs: Character, rhs: Character) -> Bool {
-  switch (lhs._representation, rhs._representation) {
-  case let (.small(lbits), .small(rbits)) where
-    Bool(Builtin.cmp_uge_Int63(lbits, _minASCIICharReprBuiltin))
-    && Bool(Builtin.cmp_uge_Int63(rbits, _minASCIICharReprBuiltin)):
-    return Bool(Builtin.cmp_eq_Int63(lbits, rbits))
-  default:
-    // FIXME(performance): constructing two temporary strings is extremely
-    // wasteful and inefficient.
-    return String(lhs) == String(rhs)
-  }
-}
-
-public func <(lhs: Character, rhs: Character) -> Bool {
-  switch (lhs._representation, rhs._representation) {
-  case let (.small(lbits), .small(rbits)) where
-    // Note: This is consistent with Foundation but unicode incorrect.
-    // See String._compareASCII.
-    Bool(Builtin.cmp_uge_Int63(lbits, _minASCIICharReprBuiltin))
-    && Bool(Builtin.cmp_uge_Int63(rbits, _minASCIICharReprBuiltin)):
-    return Bool(Builtin.cmp_ult_Int63(lbits, rbits))
-  default:
-    // FIXME(performance): constructing two temporary strings is extremely
-    // wasteful and inefficient.
-    return String(lhs) < String(rhs)
-  }
+public func <=>(lhs: Character, rhs: Character) -> Ordering {
+	switch (lhs._representation, rhs._representation) {
+	case let (.small(lbits), .small(rbits)) where
+		// Note: This is consistent with Foundation but unicode incorrect.
+		// See String._compareASCII.
+		Bool(Builtin.cmp_uge_Int63(lbits, _minASCIICharReprBuiltin))
+			&& Bool(Builtin.cmp_uge_Int63(rbits, _minASCIICharReprBuiltin)):
+		if Bool(Builtin.cmp_ult_Int63(lbits, rbits)) {
+			return .ascending
+		} else if Bool(Builtin.cmp_ugt_Int63(lbits, rbits)) {
+			return .descending
+		} else {
+			return .equivalent
+		}
+	default:
+		// FIXME(performance): constructing two temporary strings is extremely
+		// wasteful and inefficient.
+		return String(lhs) <=> String(rhs)
+	}
 }

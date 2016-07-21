@@ -143,7 +143,7 @@ extension _ArrayBufferProtocol where Index == Int {
     let growth = newCount - eraseCount
     self.count = oldCount + growth
 
-    let elements = self.subscriptBaseAddress
+    var elements = self.subscriptBaseAddress
     let oldTailIndex = subRange.upperBound
     let oldTailStart = elements + oldTailIndex
     let newTailIndex = oldTailIndex + growth

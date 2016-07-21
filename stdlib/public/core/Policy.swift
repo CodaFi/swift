@@ -591,6 +591,7 @@ infix operator ?? { associativity right precedence 131 }
 
 // "Comparative"
 
+infix operator <=> { associativity none precedence 130 }
 infix operator  <  { associativity none precedence 130 }
 infix operator  <= { associativity none precedence 130 }
 infix operator  >  { associativity none precedence 130 }

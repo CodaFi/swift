@@ -152,17 +152,32 @@
 ///     let c = a
 ///     print(a === c, b === c, separator: ", ")
 ///     // Prints "true, false"
-public protocol Equatable {
-  /// Returns a Boolean value indicating whether two values are equal.
-  ///
-  /// Equality is the inverse of inequality. For any values `a` and `b`,
-  /// `a == b` implies that `a != b` is `false`.
-  ///
-  /// - Parameters:
-  ///   - lhs: A value to compare.
-  ///   - rhs: Another value to compare.
-  static func == (lhs: Self, rhs: Self) -> Bool
+public protocol PartialEquatable {
+	/// Returns a Boolean value indicating whether two values are equal.
+	///
+	/// Equality is the inverse of inequality. For any values `a` and `b`,
+	/// `a == b` implies that `a != b` is `false`.
+	///
+	/// - Parameters:
+	///   - lhs: A value to compare.
+	///   - rhs: Another value to compare.
+	static func == (lhs: Self, rhs: Self) -> Bool
+
+	/// Returns a Boolean value indicating whether two values are not equal.
+	///
+	/// Inequality is the inverse of equality. For any values `a` and `b`, `a != b`
+	/// implies that `a == b` is `false`.
+	///
+	/// This is the default implementation of the not-equal-to operator (`!=`)
+	/// for any type that conforms to `Equatable`.
+	///
+	/// - Parameters:
+	///   - lhs: A value to compare.
+	///   - rhs: Another value to compare.
+	static func != (lhs: Self, rhs: Self) -> Bool
 }
+
+public protocol Equatable : PartialEquatable {}
 
 /// Returns a Boolean value indicating whether two values are not equal.
 ///
