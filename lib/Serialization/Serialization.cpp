@@ -3017,11 +3017,12 @@ void Serializer::writeDecl(const Decl *D) {
                                   addDeclBaseNameRef(elem->getName()),
                                   contextID,
                                   addTypeRef(elem->getInterfaceType()),
-                                  elem->hasAssociatedValues(),
                                   elem->isImplicit(),
                                   (unsigned)RawValueKind,
                                   Negative,
                                   RawValueText);
+    if (auto *PL = elem->getParameterList())
+      writeParameterList(PL);
     break;
   }
 

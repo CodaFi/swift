@@ -54,7 +54,7 @@ const uint16_t VERSION_MAJOR = 0;
 /// in source control, you should also update the comment to briefly
 /// describe what change you made. The content of this comment isn't important;
 /// it just ensures a conflict if two people change the module format.
-const uint16_t VERSION_MINOR = 361; // Last change: BCVBR for specialized attributes.
+const uint16_t VERSION_MINOR = 362; // Last change: SE-0155
 
 using DeclID = PointerEmbeddedInt<unsigned, 31>;
 using DeclIDField = BCFixed<31>;
@@ -1007,11 +1007,13 @@ namespace decls_block {
     IdentifierIDField, // name
     DeclContextIDField,// context decl
     TypeIDField, // interface type
-    BCFixed<1>,  // has argument type?
     BCFixed<1>,  // implicit?
     EnumElementRawValueKindField,  // raw value kind
     BCFixed<1>,  // negative raw value?
     BCBlob       // raw value
+
+    // The record is trailed by:
+    // - its argument parameters, if any
   >;
 
   using SubscriptLayout = BCRecordLayout<

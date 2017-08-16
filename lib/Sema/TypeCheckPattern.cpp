@@ -1103,6 +1103,32 @@ recur:
     // Coerce each tuple element to the respective type.
     P->setType(type);
 
+    enum MatchingStrategy_t {
+      NoStrategy,
+      ByTypeLabel,
+      ByVariableName,
+      ByTypeLabelMismatch,
+      ByVariableNameMismatch,
+    };
+
+    auto deriveStrategy = [](const TuplePatternElt &patternElt, const TupleTypeElt &typeElt) {
+      if (!typeElt.getName().empty()) {
+        if (patternElt.getLabel() == typeElt.getName())
+          return ByTypeLabel;
+        else
+          return ByTypeLabelMismatch;
+      }
+
+      if (auto *VP = dyn_cast<VarPattern>(patternElt.getPattern())) {
+        if (VP->getBoundName() == typeElt.getName())
+          return ByVariableName;
+        else
+          return ByVariableNameMismatch;
+      }
+
+      return NoStrategy;
+    };
+
     for (unsigned i = 0, e = TP->getNumElements(); i != e; ++i) {
       TuplePatternElt &elt = TP->getElement(i);
       Pattern *pattern = elt.getPattern();
@@ -1112,10 +1138,10 @@ recur:
         CoercionType = ErrorType::get(Context);
       else
         CoercionType = tupleTy->getElement(i).getType();
-      
+
       // If the tuple pattern had a label for the tuple element, it must match
       // the label for the tuple type being matched.
-      if (!hadError && !elt.getLabel().empty() &&
+      if (!hadError && !tupleTy->getElement(i).getName().empty() &&
           elt.getLabel() != tupleTy->getElement(i).getName()) {
         diagnose(elt.getLabelLoc(), diag::tuple_pattern_label_mismatch,
                  elt.getLabel(), tupleTy->getElement(i).getName());
