@@ -5114,7 +5114,7 @@ Decl *SwiftDeclConverter::importEnumCase(const clang::EnumConstantDecl *decl,
     rawValueExpr->setNegative(SourceLoc());
 
   auto element = Impl.createDeclWithClangNode<EnumElementDecl>(
-      decl, Accessibility::Public, SourceLoc(), name, TypeLoc(), false,
+      decl, Accessibility::Public, SourceLoc(), name, nullptr,
       SourceLoc(), rawValueExpr, theEnum);
 
   // Give the enum element the appropriate type.

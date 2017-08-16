@@ -4499,11 +4499,17 @@ ParamDecl *AbstractFunctionDecl::getImplicitSelfDecl() {
 }
 
 std::pair<DefaultArgumentKind, Type>
-AbstractFunctionDecl::getDefaultArg(unsigned Index) const {
-  auto paramLists = getParameterLists();
+swift::getDefaultArgumentInfo(ValueDecl *source, unsigned Index) {
+  ArrayRef<const ParameterList *> paramLists;
+  if (auto *AFD = dyn_cast<AbstractFunctionDecl>(source)) {
+    paramLists = AFD->getParameterLists();
 
-  if (getImplicitSelfDecl()) // Skip the 'self' parameter; it is not counted.
-    paramLists = paramLists.slice(1);
+    // Skip the 'self' parameter; it is not counted.
+    if (AFD->getImplicitSelfDecl())
+      paramLists = paramLists.slice(1);
+  } else {
+    paramLists = cast<EnumElementDecl>(source)->getParameterList();
+  }
 
   for (auto paramList : paramLists) {
     if (Index < paramList->size()) {
@@ -5033,8 +5039,8 @@ SourceRange FuncDecl::getSourceRange() const {
 SourceRange EnumElementDecl::getSourceRange() const {
   if (RawValueExpr && !RawValueExpr->isImplicit())
     return {getStartLoc(), RawValueExpr->getEndLoc()};
-  if (ArgumentType.hasLocation())
-    return {getStartLoc(), ArgumentType.getSourceRange().End};
+  if (auto *PL = getParameterList())
+    return {getStartLoc(), PL->getSourceRange().End};
   return {getStartLoc(), getNameLoc()};
 }
 
@@ -5051,8 +5057,9 @@ bool EnumElementDecl::computeType() {
   Type selfTy = MetatypeType::get(resultTy);
 
   // The type of the enum element is either (T) -> T or (T) -> ArgType -> T.
-  if (auto inputTy = getArgumentTypeLoc().getType()) {
-    resultTy = FunctionType::get(ED->mapTypeOutOfContext(inputTy), resultTy);
+  if (auto *PL = getParameterList()) {
+    auto paramTy = PL->getType(getASTContext());
+    resultTy = FunctionType::get(ED->mapTypeOutOfContext(paramTy), resultTy);
   }
 
   if (auto *genericSig = ED->getGenericSignatureOfContext())
@@ -5068,7 +5075,7 @@ bool EnumElementDecl::computeType() {
 }
 
 Type EnumElementDecl::getArgumentInterfaceType() const {
-  if (!EnumElementDeclBits.HasArgumentType)
+  if (!hasAssociatedValues())
     return nullptr;
 
   auto interfaceType = getInterfaceType();

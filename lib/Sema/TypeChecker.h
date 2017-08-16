@@ -1276,6 +1276,9 @@ public:
   void computeAccessibility(ValueDecl *D);
   void computeDefaultAccessibility(ExtensionDecl *D);
 
+  /// Check the default arguments that occur within this value decl.
+  void checkDefaultArguments(ParameterList *params, ValueDecl *VD);
+
   virtual void resolveAccessibility(ValueDecl *VD) override {
     validateAccessibility(VD);
   }
@@ -1788,7 +1791,7 @@ public:
   /// expression to the given context.
   ///
   /// \returns true if any closures were found
-  static bool contextualizeInitializer(Initializer *DC, Expr *init);
+  static bool contextualizeInitializer(DeclContext *DC, Expr *init);
   static void contextualizeTopLevelCode(TopLevelContext &TLC,
                                         ArrayRef<Decl*> topLevelDecls);
 

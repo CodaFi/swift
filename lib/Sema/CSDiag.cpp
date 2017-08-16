@@ -933,9 +933,11 @@ namespace {
 
           // The associated data of the case.
           if (level == 1) {
-            auto argTy = enumElt->getArgumentInterfaceType();
-            if (!argTy) return { };
-            gatherArgumentLabels(argTy, scratch);
+            auto *paramList = enumElt->getParameterList();
+            if (!paramList) return { };
+            for (auto param : *paramList) {
+              scratch.push_back(param->getArgumentName());
+            }
             return scratch;
           }
         }
