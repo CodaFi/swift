@@ -1021,6 +1021,8 @@ public:
     Subscript,
     /// A curried argument clause.
     Curried,
+    /// An enum element.
+    EnumElement,
   };
 
   /// Parse a parameter-clause.
