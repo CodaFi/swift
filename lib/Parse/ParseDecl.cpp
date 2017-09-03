@@ -5144,14 +5144,14 @@ Parser::parseDeclEnumCase(ParseDeclOptions Flags,
     }
 
     // See if there's a following argument type.
-    ParserResult<ParameterList> ArgType;
+    ParserResult<ParameterList> ArgParams;
     SmallVector<Identifier, 4> argumentNames;
     if (Tok.isFollowingLParen()) {
       DefaultArgumentInfo DefaultArgs(/*inTypeContext*/true);
-      ArgType = parseSingleParameterClause(ParameterContextKind::EnumElement,
+      ArgParams = parseSingleParameterClause(ParameterContextKind::EnumElement,
                                            &argumentNames, &DefaultArgs);
-      if (ArgType.isNull() || ArgType.hasCodeCompletion())
-        return ParserStatus(ArgType);
+      if (ArgParams.isNull() || ArgParams.hasCodeCompletion())
+        return ParserStatus(ArgParams);
     }
     
     // See if there's a raw value expression.
@@ -5203,9 +5203,16 @@ Parser::parseDeclEnumCase(ParseDeclOptions Flags,
       return Status;
     }
     
+    
     // Create the element.
-    auto *result = new (Context) EnumElementDecl(NameLoc, Name,
-                                                 ArgType.getPtrOrNull(),
+    DeclName FullName;
+    if (ArgParams.isNull()) {
+      FullName = Name;
+    } else {
+      FullName = DeclName(Context, Name, argumentNames);
+    }
+    auto *result = new (Context) EnumElementDecl(NameLoc, FullName,
+                                                 ArgParams.getPtrOrNull(),
                                                  EqualsLoc,
                                                  LiteralRawValueExpr,
                                                  CurDeclContext);

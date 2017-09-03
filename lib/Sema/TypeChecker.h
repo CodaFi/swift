@@ -1280,7 +1280,7 @@ public:
   void checkDefaultArguments(ParameterList *params, ValueDecl *VD);
 
   virtual void resolveAccessControl(ValueDecl *VD) override {
-    validateAccessibility(VD);
+    validateAccessControl(VD);
   }
 
   virtual void resolveDeclSignature(ValueDecl *VD) override {

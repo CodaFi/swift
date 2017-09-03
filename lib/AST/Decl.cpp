@@ -1648,7 +1648,7 @@ OverloadSignature ValueDecl::getOverloadSignature() const {
   signature.InProtocolExtension
     = getDeclContext()->getAsProtocolExtensionContext();
 
-  // Functions, initializers, and de-initializers include their
+  // Functions, initializers, enum elements, and de-initializers include their
   // interface types in their signatures as well as whether they are
   // instance members.
   if (auto afd = dyn_cast<AbstractFunctionDecl>(this)) {
@@ -1701,6 +1701,9 @@ OverloadSignature ValueDecl::getOverloadSignature() const {
               ->getCanonicalType();
       }
     }
+  } else if (isa<EnumElementDecl>(this)) {
+    signature.InterfaceType = getInterfaceType()->getCanonicalType();
+    signature.IsProperty = true;
   }
 
   return signature;
