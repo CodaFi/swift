@@ -36,6 +36,7 @@ void simple_display(
 /// given declaration.
 class InheritedTypeRequest :
     public SimpleRequest<InheritedTypeRequest,
+                         EvaluatorZone::TypeCheckerZone,
                          CacheKind::SeparatelyCached,
                          Type,
                          llvm::PointerUnion<TypeDecl *, ExtensionDecl *>,
@@ -71,6 +72,7 @@ public:
 /// Request the superclass type for the given class.
 class SuperclassTypeRequest :
     public SimpleRequest<SuperclassTypeRequest,
+                         EvaluatorZone::TypeCheckerZone,
                          CacheKind::SeparatelyCached,
                          Type,
                          NominalTypeDecl *> {
@@ -98,6 +100,7 @@ public:
 /// Request the raw type of the given enum.
 class EnumRawTypeRequest :
     public SimpleRequest<EnumRawTypeRequest,
+                         EvaluatorZone::TypeCheckerZone,
                          CacheKind::SeparatelyCached,
                          Type,
                          EnumDecl *> {
@@ -126,6 +129,7 @@ public:
 /// by the given declaration.
 class OverriddenDeclsRequest
   : public SimpleRequest<OverriddenDeclsRequest,
+                         EvaluatorZone::TypeCheckerZone,
                          CacheKind::SeparatelyCached,
                          llvm::TinyPtrVector<ValueDecl *>,
                          ValueDecl *> {
@@ -154,6 +158,7 @@ public:
 /// Determine whether the given declaration is exposed to Objective-C.
 class IsObjCRequest :
     public SimpleRequest<IsObjCRequest,
+                         EvaluatorZone::TypeCheckerZone,
                          CacheKind::SeparatelyCached,
                          bool,
                          ValueDecl *> {
@@ -181,6 +186,7 @@ public:
 /// Determine whether the given declaration is 'dynamic''.
 class IsDynamicRequest :
     public SimpleRequest<IsDynamicRequest,
+                         EvaluatorZone::TypeCheckerZone,
                          CacheKind::SeparatelyCached,
                          bool,
                          ValueDecl *> {

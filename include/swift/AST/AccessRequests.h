@@ -32,6 +32,7 @@ class ValueDecl;
 /// Request the AccessLevel of the given ValueDecl.
 class AccessLevelRequest :
     public SimpleRequest<AccessLevelRequest,
+                         EvaluatorZone::AccessZone,
                          CacheKind::SeparatelyCached,
                          AccessLevel,
                          ValueDecl *> {
@@ -61,6 +62,7 @@ public:
 /// the accessibility of mutating accessors.
 class SetterAccessLevelRequest :
     public SimpleRequest<SetterAccessLevelRequest,
+                         EvaluatorZone::AccessZone,
                          CacheKind::SeparatelyCached,
                          AccessLevel,
                          AbstractStorageDecl *> {
@@ -88,6 +90,7 @@ public:
 /// Request the Default and Max AccessLevels of the given ExtensionDecl.
 class DefaultAndMaxAccessLevelRequest :
     public SimpleRequest<DefaultAndMaxAccessLevelRequest,
+                         EvaluatorZone::AccessZone,
                          CacheKind::SeparatelyCached,
                          std::pair<AccessLevel, AccessLevel>,
                          ExtensionDecl *> {

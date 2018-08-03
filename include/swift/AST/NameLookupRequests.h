@@ -55,6 +55,7 @@ using DirectlyReferencedTypeDecls = llvm::TinyPtrVector<TypeDecl *>;
 /// The inherited declaration of \c D at index 1 is the typealias Alias.
 class InheritedDeclsReferencedRequest :
   public SimpleRequest<InheritedDeclsReferencedRequest,
+                       EvaluatorZone::NameLookupZone,
                        CacheKind::Uncached, // FIXME: Cache these
                        DirectlyReferencedTypeDecls,
                        llvm::PointerUnion<TypeDecl *, ExtensionDecl *>,
@@ -107,6 +108,7 @@ public:
 /// using another instance of this request.
 class UnderlyingTypeDeclsReferencedRequest :
   public SimpleRequest<UnderlyingTypeDeclsReferencedRequest,
+                       EvaluatorZone::NameLookupZone,
                        CacheKind::Uncached, // FIXME: Cache these
                        DirectlyReferencedTypeDecls,
                        TypeAliasDecl *>
@@ -135,6 +137,7 @@ public:
 /// Request the superclass declaration for the given class.
 class SuperclassDeclRequest :
     public SimpleRequest<SuperclassDeclRequest,
+                         EvaluatorZone::NameLookupZone,
                          CacheKind::Uncached, // FIXME: Cache these
                          ClassDecl *,
                          NominalTypeDecl *> {

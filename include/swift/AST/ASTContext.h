@@ -105,6 +105,12 @@ namespace swift {
 
   enum class KnownProtocolKind : uint8_t;
 
+  namespace EvaluatorZone {
+    class AccessZone;
+    class NameLookupZone;
+    class TypeCheckerZone;
+  };
+
 namespace syntax {
   class SyntaxArena;
 }
@@ -221,6 +227,12 @@ public:
 
   /// The request-evaluator that is used to process various requests.
   Evaluator evaluator;
+
+  union {
+    EvaluatorZoneMediator<EvaluatorZone::AccessZone> access;
+    EvaluatorZoneMediator<EvaluatorZone::NameLookupZone> namelookup;
+    EvaluatorZoneMediator<EvaluatorZone::TypeCheckerZone> typechecker;
+  };
 
   /// The set of top-level modules we have loaded.
   /// This map is used for iteration, therefore it's a MapVector and not a

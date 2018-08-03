@@ -38,8 +38,8 @@ class raw_ostream;
 namespace swift {
 
 using llvm::ArrayRef;
-using llvm::Optional;
 using llvm::None;
+using llvm::Optional;
 
 class DiagnosticEngine;
 class Evaluator;
@@ -50,17 +50,17 @@ class UnifiedStatsReporter;
 using AbstractRequestFunction = void(void);
 
 /// Form the specific request function for the given request type.
-template<typename Request>
-using RequestFunction =
-    typename Request::OutputType(const Request &, Evaluator &);
+template <typename Request>
+using RequestFunction = typename Request::OutputType(const Request &,
+                                                     Evaluator &);
 
 /// Pretty stack trace handler for an arbitrary request.
-template<typename Request>
+template <typename Request>
 class PrettyStackTraceRequest : public llvm::PrettyStackTraceEntry {
   const Request &request;
 
 public:
-  PrettyStackTraceRequest(const Request &request) : request(request) { }
+  PrettyStackTraceRequest(const Request &request) : request(request) {}
 
   void print(llvm::raw_ostream &out) const {
     out << "While evaluating request ";
@@ -71,9 +71,9 @@ public:
 
 /// Report that a request of the given kind is being evaluated, so it
 /// can be recorded by the stats reporter.
-template<typename Request>
+template <typename Request>
 void reportEvaluatedRequest(UnifiedStatsReporter &stats,
-                            const Request &request) { }
+                            const Request &request) {}
 
 /// Evaluation engine that evaluates and caches "requests", checking for cyclic
 /// dependencies along the way.
@@ -159,7 +159,7 @@ class Evaluator {
   ///                               Evaluator &evaluator);
   /// and called to satisfy the request.
   std::vector<std::pair<uint8_t, ArrayRef<AbstractRequestFunction *>>>
-    requestFunctionsByZone;
+      requestFunctionsByZone;
 
   /// A vector containing all of the active evaluation requests, which
   /// is treated as a stack and is used to detect cycles.
@@ -184,7 +184,7 @@ class Evaluator {
                                                       uint8_t requestID) const;
 
   /// Retrieve the request function for the given request type.
-  template<typename Request>
+  template <typename Request>
   auto getRequestFunction() const -> RequestFunction<Request> * {
     auto abstractFn = getAbstractRequestFunction(TypeID<Request>::zoneID,
                                                  TypeID<Request>::localID);
@@ -210,7 +210,7 @@ public:
 
   /// Evaluate the given request and produce its result,
   /// consulting/populating the cache as required.
-  template<typename Request>
+  template <typename Request>
   typename Request::OutputType operator()(const Request &request) {
     // Check for a cycle.
     if (checkDependency(request))
@@ -231,9 +231,9 @@ public:
   ///
   /// Use this to describe cases where there are multiple (known)
   /// requests that all need to be satisfied.
-  template<typename ...Requests>
+  template <typename... Requests>
   std::tuple<typename Requests::OutputType...>
-  operator()(const Requests &...requests) {
+  operator()(const Requests &... requests) {
     return std::tuple<typename Requests::OutputType...>((*this)(requests)...);
   }
 
@@ -258,8 +258,8 @@ private:
 
   /// Retrieve the result produced by evaluating a request that can
   /// be cached.
-  template<typename Request,
-           typename std::enable_if<Request::isEverCached>::type * = nullptr>
+  template <typename Request,
+            typename std::enable_if<Request::isEverCached>::type * = nullptr>
   typename Request::OutputType getResult(const Request &request) {
     // The request can be cached, but check a predicate to determine
     // whether this particular instance is cached. This allows more
@@ -272,14 +272,14 @@ private:
 
   /// Retrieve the result produced by evaluating a request that
   /// will never be cached.
-  template<typename Request,
-           typename std::enable_if<!Request::isEverCached>::type * = nullptr>
+  template <typename Request,
+            typename std::enable_if<!Request::isEverCached>::type * = nullptr>
   typename Request::OutputType getResult(const Request &request) {
     return getResultUncached(request);
   }
 
   /// Produce the result of the request without caching.
-  template<typename Request>
+  template <typename Request>
   typename Request::OutputType getResultUncached(const Request &request) {
     // Clear out the dependencies on this request; we're going to recompute
     // them now anyway.
@@ -288,7 +288,8 @@ private:
     PrettyStackTraceRequest<Request> prettyStackTrace(request);
 
     /// Update statistics.
-    if (stats) reportEvaluatedRequest(*stats, request);
+    if (stats)
+      reportEvaluatedRequest(*stats, request);
 
     return getRequestFunction<Request>()(request, *this);
   }
@@ -296,8 +297,8 @@ private:
   /// Get the result of a request, consulting an external cache
   /// provided by the request to retrieve previously-computed results
   /// and detect recursion.
-  template<typename Request,
-           typename std::enable_if<Request::hasExternalCache>::type * = nullptr>
+  template <typename Request, typename std::enable_if<
+                                  Request::hasExternalCache>::type * = nullptr>
   typename Request::OutputType getResultCached(const Request &request) {
     // If there is a cached result, return it.
     if (auto cached = request.getCachedResult())
@@ -315,9 +316,8 @@ private:
 
   /// Get the result of a request, consulting the general cache to
   /// retrieve previously-computed results and detect recursion.
-  template<
-      typename Request,
-      typename std::enable_if<!Request::hasExternalCache>::type * = nullptr>
+  template <typename Request, typename std::enable_if<
+                                  !Request::hasExternalCache>::type * = nullptr>
   typename Request::OutputType getResultCached(const Request &request) {
     AnyRequest anyRequest{request};
 
@@ -340,13 +340,11 @@ public:
   ///
   /// This is the core printing operation; most callers will want to use
   /// the other overload.
-  void printDependencies(const AnyRequest &request,
-                         llvm::raw_ostream &out,
+  void printDependencies(const AnyRequest &request, llvm::raw_ostream &out,
                          llvm::DenseSet<AnyRequest> &visitedAnywhere,
                          llvm::SmallVectorImpl<AnyRequest> &visitedAlongPath,
                          ArrayRef<AnyRequest> highlightPath,
-                         std::string &prefixStr,
-                         bool lastChild) const;
+                         std::string &prefixStr, bool lastChild) const;
 
   /// Print the dependencies of the given request as a tree.
   void printDependencies(const AnyRequest &request,
@@ -367,6 +365,53 @@ public:
     "Only meant for use in the debugger");
 };
 
-} // end namespace evaluator
+template <typename FirstZone, typename... RestZones>
+class EvaluatorZoneMediator final {
+private:
+  Evaluator &impl;
+
+  template <typename...> struct any_equals {
+    static constexpr bool value = false;
+  };
+
+  template <typename FirstNeedle, typename FirstHay, typename... RestHay>
+  struct any_equals<FirstNeedle, FirstHay, RestHay...> {
+    static constexpr bool value = std::is_same<FirstNeedle, FirstHay>::value ||
+                                  any_equals<FirstNeedle, RestHay...>::value;
+  };
+
+  template <class...> struct all_of : std::true_type {};
+  template <class SingleType> struct all_of<SingleType> : SingleType {};
+  template <class FirstType, class... RestTypes>
+  struct all_of<FirstType, RestTypes...>
+      : all_of<typename FirstType::value, all_of<RestTypes...>, FirstType> {};
+
+public:
+  EvaluatorZoneMediator(Evaluator &evaluator) : impl(evaluator) {}
+
+  /// Evaluate the given request and produce its result,
+  /// consulting/populating the cache as required.
+  template <typename Request>
+  typename std::enable_if<
+      any_equals<typename Request::Zone, FirstZone, RestZones...>::value,
+      typename Request::OutputType>::type
+  operator()(const Request &request) {
+    return impl.operator()(request);
+  }
+
+  /// Evaluate a set of requests and return their results as a tuple.
+  ///
+  /// Use this to describe cases where there are multiple (known)
+  /// requests that all need to be satisfied.
+  template <typename... Requests>
+  typename std::enable_if<all_of<any_equals<typename Requests::Zone, FirstZone,
+                                            RestZones...>...>::value,
+                          std::tuple<typename Requests::OutputType...>>::type
+  operator()(const Requests &... requests) {
+    return impl.operator()(requests...);
+  }
+};
+
+} // end namespace swift
 
 #endif // SWIFT_AST_EVALUATOR_H

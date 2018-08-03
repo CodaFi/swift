@@ -41,6 +41,12 @@ enum class CacheKind {
   SeparatelyCached,
 };
 
+namespace EvaluatorZone {
+  class AccessZone {};
+  class NameLookupZone {};
+  class TypeCheckerZone {};
+};
+
 /// CRTP base class that describes a request operation that takes values
 /// with the given input types (\c Inputs...) and produces an output of
 /// the given type.
@@ -89,7 +95,7 @@ enum class CacheKind {
 ///   Optional<Output> getCachedResult() const;
 ///   void cacheResult(Output value) const;
 /// \endcode
-template<typename Derived, CacheKind Caching, typename Output,
+template<typename Derived, typename RZone, CacheKind Caching, typename Output,
          typename ...Inputs>
 class SimpleRequest {
   std::tuple<Inputs...> storage;
@@ -122,6 +128,8 @@ protected:
   const std::tuple<Inputs...> &getStorage() const { return storage; }
 
 public:
+  using Zone = RZone;
+
   static const bool isEverCached = (Caching != CacheKind::Uncached);
   static const bool hasExternalCache = (Caching == CacheKind::SeparatelyCached);
 
