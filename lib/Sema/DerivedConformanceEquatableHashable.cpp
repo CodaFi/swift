@@ -349,13 +349,13 @@ static GuardStmt *returnIfNotEqualGuard(ASTContext &C,
   auto cmpFuncExpr = new (C) UnresolvedDeclRefExpr(
     DeclName(C.getIdentifier("==")), DeclRefKind::BinaryOperator,
     DeclNameLoc());
-  auto cmpArgsTuple = TupleExpr::create(C, SourceLoc(),
+
+  auto *cmpArgs = ArgumentExpr::create(C, SourceLoc(),
                                         { lhsExpr, rhsExpr },
                                         { }, { }, SourceLoc(),
                                         /*HasTrailingClosure*/false,
                                         /*Implicit*/true);
-  auto cmpExpr = new (C) BinaryExpr(cmpFuncExpr, cmpArgsTuple,
-                                    /*Implicit*/true);
+  auto cmpExpr = new (C) BinaryExpr(cmpFuncExpr, cmpArgs, /*Implicit*/true);
   conditions.emplace_back(cmpExpr);
 
   // Build and return the complete guard statement.
@@ -428,7 +428,8 @@ deriveBodyEquatable_enum_noAssociatedValues_eq(AbstractFunctionDecl *eqDecl,
                                     AccessSemantics::Ordinary, fnType);
 
     fnType = fnType->getResult()->castTo<FunctionType>();
-    cmpFuncExpr = new (C) DotSyntaxCallExpr(ref, SourceLoc(), base, fnType);
+    cmpFuncExpr = new (C) DotSyntaxCallExpr(ref, SourceLoc(),
+                                            ArgumentExpr::createSingle(C, base), fnType);
     cmpFuncExpr->setImplicit();
   } else {
     cmpFuncExpr = new (C) DeclRefExpr(cmpFunc, DeclNameLoc(),
@@ -437,12 +438,12 @@ deriveBodyEquatable_enum_noAssociatedValues_eq(AbstractFunctionDecl *eqDecl,
                                       fnType);
   }
 
-  TupleExpr *abTuple = TupleExpr::create(C, SourceLoc(), { aIndex, bIndex },
-                                         { }, { }, SourceLoc(),
-                                         /*HasTrailingClosure*/ false,
-                                         /*Implicit*/ true);
+  auto *abArgs = ArgumentExpr::create(C, SourceLoc(), { aIndex, bIndex },
+                                      { }, { }, SourceLoc(),
+                                      /*HasTrailingClosure*/ false,
+                                      /*Implicit*/ true);
 
-  auto *cmpExpr = new (C) BinaryExpr(cmpFuncExpr, abTuple, /*implicit*/ true);
+  auto *cmpExpr = new (C) BinaryExpr(cmpFuncExpr, abArgs, /*implicit*/ true);
   statements.push_back(new (C) ReturnStmt(SourceLoc(), cmpExpr));
 
   BraceStmt *body = BraceStmt::create(C, SourceLoc(), statements, SourceLoc());
@@ -607,14 +608,14 @@ static void deriveBodyEquatable_struct_eq(AbstractFunctionDecl *eqDecl,
     auto aParamRef = new (C) DeclRefExpr(aParam, DeclNameLoc(),
                                          /*implicit*/ true);
     auto aPropertyExpr = new (C) DotSyntaxCallExpr(aPropertyRef, SourceLoc(),
-                                                   aParamRef);
+                                                   ArgumentExpr::createSingle(C, aParamRef));
 
     auto bPropertyRef = new (C) DeclRefExpr(propertyDecl, DeclNameLoc(),
                                             /*implicit*/ true);
     auto bParamRef = new (C) DeclRefExpr(bParam, DeclNameLoc(),
                                          /*implicit*/ true);
     auto bPropertyExpr = new (C) DotSyntaxCallExpr(bPropertyRef, SourceLoc(),
-                                                   bParamRef);
+                                                   ArgumentExpr::createSingle(C, bParamRef));
 
     auto guardStmt = returnIfNotEqualGuard(C, aPropertyExpr, bPropertyExpr);
     statements.emplace_back(guardStmt);
@@ -1106,7 +1107,7 @@ deriveBodyHashable_struct_hashInto(AbstractFunctionDecl *hashIntoDecl, void *) {
     auto selfRef = new (C) DeclRefExpr(selfDecl, DeclNameLoc(),
                                        /*implicit*/ true);
     auto selfPropertyExpr = new (C) DotSyntaxCallExpr(propertyRef, SourceLoc(),
-                                                      selfRef);
+                                                      ArgumentExpr::createSingle(C, selfRef));
     // Generate: hasher.combine(self.<property>)
     auto combineExpr = createHasherCombineCall(C, hasherParam, selfPropertyExpr);
     statements.emplace_back(ASTNode(combineExpr));

@@ -983,7 +983,8 @@ namespace {
       if (isa<ConstructorDecl>(member)) {
         // FIXME: Provide type annotation.
         ref = forceUnwrapIfExpected(ref, choice, memberLocator);
-        apply = new (context) ConstructorRefCallExpr(ref, base);
+        auto *arg = ArgumentExpr::createSingle(context, base);
+        apply = new (context) ConstructorRefCallExpr(ref, arg);
       } else if (!baseIsInstance && member->isInstanceMember()) {
         // Reference to an unbound instance method.
         Expr *result = new (context) DotSyntaxBaseIgnoredExpr(base, dotLoc,
@@ -996,7 +997,8 @@ namespace {
         assert((!baseIsInstance || member->isInstanceMember()) &&
                "can't call a static method on an instance");
         ref = forceUnwrapIfExpected(ref, choice, memberLocator);
-        apply = new (context) DotSyntaxCallExpr(ref, dotLoc, base);
+        auto *arg = ArgumentExpr::createSingle(context, base);
+        apply = new (context) DotSyntaxCallExpr(ref, dotLoc, arg);
         if (Implicit) {
           apply->setImplicit();
         }
@@ -1130,8 +1132,8 @@ namespace {
     /// \param locator Locator used to describe where in this expression we are.
     ///
     /// \returns the coerced expression, which will have type \c ToType.
-    Expr *
-    coerceCallArguments(Expr *arg, AnyFunctionType *funcType,
+    ArgumentExpr *
+    coerceCallArguments(ArgumentExpr *arg, AnyFunctionType *funcType,
                         ApplyExpr *apply,
                         ArrayRef<Identifier> argLabels,
                         bool hasTrailingClosure,
@@ -1371,7 +1373,8 @@ namespace {
         resultTy = subscriptFnTy->getResult();
 
         // Coerce the index argument.
-        index = coerceCallArguments(index, subscriptFnTy, nullptr,
+        auto *oldIndex = ArgumentExpr::createSingle(cs.TC.Context, index);
+        index = coerceCallArguments(oldIndex, subscriptFnTy, nullptr,
                                     argLabels, hasTrailingClosure,
                                     locator.withPathElement(
                                       ConstraintLocator::ApplyArgument));
@@ -2447,10 +2450,10 @@ namespace {
 
       // If there was an argument, apply it.
       if (auto arg = expr->getArgument()) {
-        ApplyExpr *apply = CallExpr::create(
-            tc.Context, result, arg, expr->getArgumentLabels(),
-            expr->getArgumentLabelLocs(), expr->hasTrailingClosure(),
-            /*implicit=*/expr->isImplicit(), Type(), getType);
+//        auto *arg = ArgumentExpr::create(tc.Context, SourceLoc(), <#ArrayRef<Expr *> SubExprs#>, <#ArrayRef<Identifier> ElementNames#>, <#ArrayRef<SourceLoc> ElementNameLocs#>, <#SourceLoc RParenLoc#>, <#bool HasTrailingClosure#>, <#bool Implicit#>)
+#warning FIXME
+        ApplyExpr *apply = new (tc.Context) CallExpr(result, arg,
+                                                     /*implicit=*/expr->isImplicit(), Type());
         result = finishApply(apply, Type(), cs.getConstraintLocator(expr));
 
         // FIXME: Application could fail, because some of the solutions
@@ -2619,8 +2622,9 @@ namespace {
       // Build a partial application of the delegated initializer.
       Expr *ctorRef = buildOtherConstructorRef(openedType, ctor, base, nameLoc,
                                                ctorLocator, implicit);
+      auto *arg = ArgumentExpr::createSingle(cs.getASTContext(), base);
       auto *call = new (cs.getASTContext()) DotSyntaxCallExpr(ctorRef, dotLoc,
-                                                              base);
+                                                              arg);
 
       return finishApply(call, cs.getType(expr),
                          ConstraintLocatorBuilder(
@@ -2813,6 +2817,10 @@ namespace {
     }
 
   public:
+    Expr *visitArgumentExpr(ArgumentExpr *expr) {
+      return simplifyExprType(expr);
+    }
+
     Expr *visitUnresolvedDotExpr(UnresolvedDotExpr *expr) {
       return applyMemberRefExpr(expr, expr->getBase(), expr->getDotLoc(),
                                 expr->getNameLoc(), expr->isImplicit());
@@ -4527,8 +4535,9 @@ namespace {
       auto ref = ConcreteDeclRef(subscript, subs);
 
       // Coerce the indices to the type the subscript expects.
+      auto *oldIndexArgs = ArgumentExpr::createSingle(cs.TC.Context, indexExpr);
       auto *newIndexExpr =
-          coerceCallArguments(indexExpr, subscriptType,
+          coerceCallArguments(oldIndexArgs, subscriptType,
                               /*applyExpr*/ nullptr, labels,
                               /*hasTrailingClosure*/ false, locator);
 
@@ -5307,8 +5316,8 @@ static bool hasCurriedSelf(ConstraintSystem &cs, ConcreteDeclRef callee,
   return false;
 }
 
-Expr *ExprRewriter::coerceCallArguments(
-    Expr *arg, AnyFunctionType *funcType,
+ArgumentExpr *ExprRewriter::coerceCallArguments(
+    ArgumentExpr *arg, AnyFunctionType *funcType,
     ApplyExpr *apply,
     ArrayRef<Identifier> argLabels,
     bool hasTrailingClosure,
@@ -5581,7 +5590,7 @@ Expr *ExprRewriter::coerceCallArguments(
        params[0].getValueOwnership() == ValueOwnership::InOut)) {
     assert(newArgs.size() == 1);
     assert(!hasTrailingClosure);
-    return newArgs[0];
+    return ArgumentExpr::createSingle(tc.Context, newArgs[0]);
   }
 
   // Rebuild the argument list, sharing as much structure as possible.
@@ -5592,11 +5601,10 @@ Expr *ExprRewriter::coerceCallArguments(
       // We already had a ParenExpr, so replace it's sub-expression.
       argParen->setSubExpr(newArgs[0]);
     } else {
-      arg = new (tc.Context) ParenExpr(lParenLoc,
-                                       newArgs[0],
-                                       rParenLoc,
-                                       hasTrailingClosure);
-      arg->setImplicit();
+      arg = ArgumentExpr::create(tc.Context, lParenLoc,
+                                 newArgs[0], { }, { }, rParenLoc,
+                                 hasTrailingClosure,
+                                 /*Implicit*/ true);
     }
   } else {
     assert(isa<TupleType>(paramType.getPointer()));
@@ -5609,11 +5617,9 @@ Expr *ExprRewriter::coerceCallArguments(
       }
     } else {
       // Build a new TupleExpr, re-using source location information.
-      arg = TupleExpr::create(tc.Context, lParenLoc,
-                              newArgs, newLabels, newLabelLocs,
-                              rParenLoc,
-                              hasTrailingClosure,
-                              /*implicit=*/true);
+      arg = ArgumentExpr::create(tc.Context, lParenLoc,
+                                 newArgs, newLabels, newLabelLocs,
+                                 rParenLoc, hasTrailingClosure, true);
     }
   }
 
@@ -6878,28 +6884,25 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
       switch (cs.TC.getDeclTypeCheckingSemantics(decl)) {
       case DeclTypeCheckingSemantics::TypeOf: {
         // Resolve into a DynamicTypeExpr.
-        auto arg = apply->getArg();
-
         SmallVector<Identifier, 2> argLabelsScratch;
 
         auto fnType = cs.getType(fn)->getAs<FunctionType>();
-        arg = coerceCallArguments(arg, fnType,
-                                  apply,
-                                  apply->getArgumentLabels(argLabelsScratch),
-                                  hasTrailingClosure,
-                                  locator.withPathElement(
-                                    ConstraintLocator::ApplyArgument));
+        auto arg = coerceCallArguments(apply->getArg(), fnType,
+                                       apply,
+                                       apply->getArgumentLabels(argLabelsScratch),
+                                       hasTrailingClosure,
+                                       locator.withPathElement(
+                                         ConstraintLocator::ApplyArgument));
         if (!arg) {
           return nullptr;
         }
 
-        if (auto tuple = dyn_cast<TupleExpr>(arg))
-          arg = tuple->getElements()[0];
-
+        assert(arg->getNumElements() == 1
+               && "Called type(of:) with more than one argument?");
         auto replacement = new (tc.Context)
           DynamicTypeExpr(apply->getFn()->getLoc(),
                           apply->getArg()->getStartLoc(),
-                          arg,
+                          arg->getElement(0),
                           apply->getArg()->getEndLoc(),
                           Type());
         cs.setType(replacement, simplifyType(openedType));
@@ -7060,7 +7063,7 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
   SmallVector<Identifier, 2> argLabelsScratch;
   if (auto fnType = cs.getType(fn)->getAs<FunctionType>()) {
     auto origArg = apply->getArg();
-    Expr *arg = coerceCallArguments(origArg, fnType,
+    auto *arg = coerceCallArguments(origArg, fnType,
                                     apply,
                                     apply->getArgumentLabels(argLabelsScratch),
                                     hasTrailingClosure,
@@ -7705,9 +7708,14 @@ Expr *TypeChecker::callWitness(Expr *base, DeclContext *dc,
   if (arguments.size() == 1 &&
       (isVariadicWitness(witnessFn) ||
        argumentNamesMatch(cs.getType(arguments[0]), argLabels))) {
-    call = CallExpr::create(Context, unresolvedDot, arguments[0], {}, {},
-                            /*hasTrailingClosure=*/false,
-                            /*implicit=*/true, Type(), getType);
+    auto *arg = ArgumentExpr::create(Context,
+                                     SourceLoc(),
+                                     arguments[0], {}, {},
+                                     SourceLoc(),
+                                     /*hasTrailingClosure=*/false,
+                                     /*implicit=*/true);
+    call = new (Context) CallExpr(unresolvedDot, arg,
+                                  /*implicit=*/true, Type());
   } else {
     // The tuple should have the source range enclosing its arguments unless
     // they are invalid or there are no arguments.

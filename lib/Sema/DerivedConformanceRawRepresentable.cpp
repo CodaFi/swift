@@ -350,7 +350,8 @@ deriveBodyRawRepresentable_init(AbstractFunctionDecl *initDecl, void *) {
     // valueExpr = "\(enumType).\(elt)"
     auto eltRef = new (C) DeclRefExpr(elt, DeclNameLoc(), /*implicit*/true);
     auto metaTyRef = TypeExpr::createImplicit(enumType, C);
-    auto valueExpr = new (C) DotSyntaxCallExpr(eltRef, SourceLoc(), metaTyRef);
+    auto *arg = ArgumentExpr::createSingle(C, metaTyRef);
+    auto valueExpr = new (C) DotSyntaxCallExpr(eltRef, SourceLoc(), arg);
     
     // assignment = "self = \(valueExpr)"
     auto selfRef = new (C) DeclRefExpr(selfDecl, DeclNameLoc(),
@@ -395,10 +396,8 @@ deriveBodyRawRepresentable_init(AbstractFunctionDecl *initDecl, void *) {
                                        SourceLoc());;
     Identifier tableId = C.getIdentifier("cases");
     Identifier strId = C.getIdentifier("string");
-    auto *Args = TupleExpr::createImplicit(C, {strArray, rawRef},
-                                              {tableId, strId});
-    auto *CallExpr = CallExpr::create(C, Fun, Args, {}, {}, false, false);
-    switchArg = CallExpr;
+    auto *Args = ArgumentExpr::create(C, SourceLoc(), {strArray, rawRef}, {tableId, strId}, { }, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true);
+    switchArg = new (C) CallExpr(Fun, Args, false, Type());
   }
   auto switchStmt = SwitchStmt::create(LabeledStmtInfo(), SourceLoc(), switchArg,
                                        SourceLoc(), cases, SourceLoc(), C);

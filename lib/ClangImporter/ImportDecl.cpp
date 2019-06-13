@@ -5518,8 +5518,13 @@ Decl *SwiftDeclConverter::importEnumCaseAlias(
   Type importedEnumTy = importedEnum->getDeclaredInterfaceType();
 
   auto typeRef = TypeExpr::createImplicit(importedEnumTy, Impl.SwiftContext);
+  auto *args = ArgumentExpr::create(Impl.SwiftContext,
+                                    SourceLoc(), { typeRef }, { }, { },
+                                    SourceLoc(),
+                                    /*HasTrailingClosure*/ false,
+                                    /*Implicit*/ true);
   auto instantiate = new (Impl.SwiftContext)
-      DotSyntaxCallExpr(constantRef, SourceLoc(), typeRef);
+    DotSyntaxCallExpr(constantRef, SourceLoc(), args);
   instantiate->setType(importedEnumTy);
   instantiate->setThrows(false);
 
@@ -8287,8 +8292,12 @@ ClangImporter::Implementation::createConstant(Identifier name, DeclContext *dc,
 
       // (Self) -> ...
       initTy = initTy->castTo<FunctionType>()->getResult();
+      auto *args = ArgumentExpr::create(C, SourceLoc(), { typeRef }, { }, { },
+                                        SourceLoc(),
+                                        /*HasTrailingClosure*/ false,
+                                        /*Implicit*/ true);
       auto initRef = new (C) DotSyntaxCallExpr(declRef, SourceLoc(),
-                                               typeRef, initTy);
+                                               args, initTy);
       initRef->setThrows(false);
 
       // (rawValue: T) -> ...

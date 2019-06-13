@@ -141,10 +141,10 @@ class ValidateIfConfigCondition :
 
       // Apply the operator with left-associativity by folding the first two
       // operands.
-      TupleExpr *Arg = TupleExpr::create(Ctx, SourceLoc(), { LHS, RHS },
-                                         { }, { }, SourceLoc(),
-                                         /*HasTrailingClosure=*/false,
-                                         /*Implicit=*/true);
+      auto *Arg = ArgumentExpr::create(Ctx, SourceLoc(),
+                                       { LHS, RHS }, { }, { }, SourceLoc(),
+                                       /*HasTrailingClosure=*/false,
+                                       /*Implicit=*/true);
       LHS = new (Ctx) BinaryExpr(Op, Arg, /*implicit*/false);
 
       // If we don't have the next operator, we're done.
@@ -316,7 +316,7 @@ public:
                  diag::unsupported_conditional_compilation_unary_expression);
       return nullptr;
     }
-    E->setArg(validate(E->getArg()));
+    E->setArg(validateArguments(E->getArg()));
     return E;
   }
 
@@ -333,6 +333,19 @@ public:
   // Other expression types are unsupported.
   Expr *visitExpr(Expr *E) {
     return diagnoseUnsupportedExpr(E);
+  }
+
+  ArgumentExpr *validateArguments(ArgumentExpr *E) {
+    for (unsigned i = 0, e = E->getNumElements(); i != e; ++i)
+      if (E->getElement(i)) {
+        if (Expr *Elt = visit(E->getElement(i))) {
+          E->setElement(i, Elt);
+        } else {
+          HasError |= true;
+          return E;
+        }
+      }
+    return E;
   }
 
   Expr *validate(Expr *E) {

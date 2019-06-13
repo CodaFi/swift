@@ -1005,14 +1005,14 @@ namespace {
                 newArg = args;
               }
               else if(call->getNumArguments() == 1 &&
-                      call->getArgumentLabels().front() != Identifier()) {
+                      call->getArg()->getElementNames().front() != Identifier()) {
                 auto *args = cast<TupleExpr>(call->getArg());
                 newArg = args->getElement(0);
 
                 lParen = args->getLParenLoc();
                 rParen = args->getRParenLoc();
 
-                SourceLoc argLabelLoc = call->getArgumentLabelLoc(0),
+                SourceLoc argLabelLoc = call->getArg()->getElementNameLoc(0),
                           argLoc = newArg->getStartLoc();
 
                 TC.diagnose(argLabelLoc,
@@ -1020,7 +1020,7 @@ namespace {
                   .highlightChars(argLabelLoc, argLoc);
                 TC.diagnose(argLabelLoc,
                             diag::string_interpolation_remove_label,
-                            call->getArgumentLabels().front())
+                            call->getArg()->getElementNames().front())
                   .fixItRemoveChars(argLabelLoc, argLoc);
               }
 
@@ -1089,10 +1089,12 @@ namespace {
             LE->setBase(IOE->getSubExpr());
         }
 
+#warning FIXME
+        /*
         if (auto *DSCE = dyn_cast<DotSyntaxCallExpr>(expr)) {
           if (auto *IOE = dyn_cast<InOutExpr>(DSCE->getBase()))
             DSCE->setBase(IOE->getSubExpr());
-        }
+        }*/
       }
 
       // Local function used to finish up processing before returning. Every
@@ -2534,9 +2536,8 @@ TypeChecker::getTypeOfCompletionOperator(DeclContext *DC, Expr *LHS,
     //   (declref_expr name=<opName>)
     //   (paren_expr
     //     (<LHS>)))
-    ParenExpr Args(SourceLoc(), LHS, SourceLoc(),
-                   /*hasTrailingClosure=*/false);
-    PostfixUnaryExpr postfixExpr(opExpr, &Args);
+    auto *Args = ArgumentExpr::createSingle(DC->getASTContext(), LHS);
+    PostfixUnaryExpr postfixExpr(opExpr, Args);
     return getTypeOfCompletionOperatorImpl(*this, DC, &postfixExpr,
                                            referencedDecl);
   }
@@ -2548,7 +2549,7 @@ TypeChecker::getTypeOfCompletionOperator(DeclContext *DC, Expr *LHS,
     //     (<LHS>)
     //     (code_completion_expr)))
     CodeCompletionExpr dummyRHS(Loc);
-    auto Args = TupleExpr::create(
+    auto *Args = ArgumentExpr::create(
         Context, SourceLoc(), {LHS, &dummyRHS}, {}, {}, SourceLoc(),
         /*hasTrailingClosure=*/false, /*isImplicit=*/true);
     BinaryExpr binaryExpr(opExpr, Args, /*isImplicit=*/true);
@@ -3110,7 +3111,7 @@ bool TypeChecker::typeCheckExprPattern(ExprPattern *EP, DeclContext *DC,
   
   Expr *matchArgElts[] = {EP->getSubExpr(), matchVarRef};
   auto *matchArgs
-    = TupleExpr::create(Context, EP->getSubExpr()->getSourceRange().Start,
+    = ArgumentExpr::create(Context, EP->getSubExpr()->getSourceRange().Start,
                         matchArgElts, { }, { },
                         EP->getSubExpr()->getSourceRange().End,
                         /*HasTrailingClosure=*/false, /*Implicit=*/true);

@@ -377,8 +377,8 @@ private:
       }
       Labels = MemberwiseInit->getFullName().getArgumentNames();
     } else if (auto *CallParent = dyn_cast_or_null<CallExpr>(getParentExpr())) {
-      LabelLocs = CallParent->getArgumentLabelLocs();
-      Labels = CallParent->getArgumentLabels();
+      LabelLocs = CallParent->getArg()->getElementNameLocs();
+      Labels = CallParent->getArg()->getElementNames();
     }
 
     if (LabelLocs.empty())

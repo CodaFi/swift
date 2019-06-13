@@ -1189,9 +1189,9 @@ CustomAttr *CustomAttr::create(ASTContext &ctx, SourceLoc atLoc, TypeLoc type,
   SmallVector<SourceLoc, 2> argLabelLocsScratch;
   Expr *arg = nullptr;
   if (hasInitializer) {
-    arg = packSingleArgument(ctx, lParenLoc, args, argLabels, argLabelLocs,
-                             rParenLoc, nullptr, implicit, argLabelsScratch,
-                             argLabelLocsScratch);
+    arg = ArgumentExpr::packSingleArgument(ctx, lParenLoc, args, argLabels, argLabelLocs,
+                                           rParenLoc, nullptr, implicit, argLabelsScratch,
+                                           argLabelLocsScratch);
   }
 
   SourceRange range(atLoc, type.getSourceRange().End);

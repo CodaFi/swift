@@ -2482,6 +2482,24 @@ namespace {
       llvm_unreachable("Already type checked");
     }
 
+    Type visitArgumentExpr(ArgumentExpr *expr) {
+      // The type of a tuple expression is simply a tuple of the types of
+      // its subexpressions.
+      SmallVector<TupleTypeElt, 4> elements;
+      elements.reserve(expr->getNumElements());
+      for (unsigned i = 0, n = expr->getNumElements(); i != n; ++i) {
+        auto *elt = expr->getElement(i);
+        auto ty = CS.getType(elt);
+        auto flags = ParameterTypeFlags()
+          .withInOut(elt->isSemanticallyInOutExpr())
+          .withVariadic(isa<VarargExpansionExpr>(elt));
+        elements.push_back(TupleTypeElt(ty->getInOutObjectType(),
+                                        expr->getElementName(i), flags));
+      }
+
+      return TupleType::get(elements, CS.getASTContext());
+    }
+
     Type visitApplyExpr(ApplyExpr *expr) {
       auto fnExpr = expr->getFn();
 
@@ -3668,7 +3686,7 @@ namespace {
     std::pair<bool, Expr *> walkToExprPre(Expr *expr) override {
       if (auto call = dyn_cast<CallExpr>(expr)) {
         associateArgumentLabels(call->getFn(),
-                                { call->getArgumentLabels(),
+                                { call->getArg()->getElementNames(),
                                   call->hasTrailingClosure() },
                                 /*labelsArePermanent=*/true);
         return { true, expr };
@@ -3684,7 +3702,7 @@ namespace {
 
       if (auto unresolvedMember = dyn_cast<UnresolvedMemberExpr>(expr)) {
         associateArgumentLabels(unresolvedMember,
-                                { unresolvedMember->getArgumentLabels(),
+                                { unresolvedMember->getArgument()->getElementNames(),
                                   unresolvedMember->hasTrailingClosure() },
                                 /*labelsArePermanent=*/true);
         return { true, expr };

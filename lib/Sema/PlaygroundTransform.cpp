@@ -644,54 +644,43 @@ public:
 
   std::pair<PatternBindingDecl *, VarDecl *>
   maybeFixupPrintArgument(ApplyExpr *Print) {
-    Expr *ArgTuple = Print->getArg();
-    if (auto *PE = dyn_cast<ParenExpr>(ArgTuple)) {
-      std::pair<PatternBindingDecl *, VarDecl *> PV =
-          buildPatternAndVariable(PE->getSubExpr());
-      PE->setSubExpr(new (Context) DeclRefExpr(
-          ConcreteDeclRef(PV.second), DeclNameLoc(),
-          true, // implicit
-          AccessSemantics::Ordinary, PE->getSubExpr()->getType()));
-      return PV;
-    } else if (auto *TE = dyn_cast<TupleExpr>(ArgTuple)) {
-      if (TE->getNumElements() == 0) {
-        return std::make_pair(nullptr, nullptr);
+    ArgumentExpr *Args = Print->getArg();
+    if (Args->getNumElements() == 0) {
+      return std::make_pair(nullptr, nullptr);
+    } else {
+      // Are we using print() specialized to handle a single argument,
+      // or is actually only the first argument of interest and the rest are
+      // extra information for print()?
+      bool useJustFirst = false;
+      if (Args->hasElementNames()) {
+        useJustFirst = true;
       } else {
-        // Are we using print() specialized to handle a single argument,
-        // or is actually only the first argument of interest and the rest are
-        // extra information for print()?
-        bool useJustFirst = false;
-        if (TE->hasElementNames()) {
-          useJustFirst = true;
-        } else {
-          for (Expr *Arg : TE->getElements()) {
-            if (Arg->isSemanticallyInOutExpr()) {
-              useJustFirst = true;
-              break;
-            }
+        for (Expr *Arg : Args->getElements()) {
+          if (Arg->isSemanticallyInOutExpr()) {
+            useJustFirst = true;
+            break;
           }
         }
-        if (useJustFirst) {
-          std::pair<PatternBindingDecl *, VarDecl *> PV =
-              buildPatternAndVariable(TE->getElement(0));
-          TE->setElement(0, new (Context) DeclRefExpr(
-                                ConcreteDeclRef(PV.second), DeclNameLoc(),
-                                true, // implicit
-                                AccessSemantics::Ordinary,
-                                TE->getElement(0)->getType()));
-          return PV;
-        } else {
-          std::pair<PatternBindingDecl *, VarDecl *> PV =
-              buildPatternAndVariable(TE);
-          Print->setArg(new (Context) DeclRefExpr(
-              ConcreteDeclRef(PV.second), DeclNameLoc(),
-              true, // implicit
-              AccessSemantics::Ordinary, TE->getType()));
-          return PV;
-        }
       }
-    } else {
-      return std::make_pair(nullptr, nullptr);
+      if (useJustFirst) {
+        std::pair<PatternBindingDecl *, VarDecl *> PV =
+            buildPatternAndVariable(Args->getElement(0));
+        Args->setElement(0, new (Context) DeclRefExpr(
+                              ConcreteDeclRef(PV.second), DeclNameLoc(),
+                              true, // implicit
+                              AccessSemantics::Ordinary,
+                              Args->getElement(0)->getType()));
+        return PV;
+      } else {
+        std::pair<PatternBindingDecl *, VarDecl *> PV =
+            buildPatternAndVariable(Args);
+        Print->setArg(ArgumentExpr::createSingle(Context,
+                                                 new (Context) DeclRefExpr(
+            ConcreteDeclRef(PV.second), DeclNameLoc(),
+            true, // implicit
+            AccessSemantics::Ordinary, Args->getType())));
+        return PV;
+      }
     }
   }
 

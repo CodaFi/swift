@@ -459,15 +459,11 @@ ParserResult<Expr> Parser::parseExprSequenceElement(Diag<> message,
   return sub;
 }
 
-static Expr *formUnaryArgument(ASTContext &context, Expr *argument) {
-  if (isa<ParenExpr>(argument))
-    return argument;
-
-  auto *arg = new (context)
-      ParenExpr(argument->getStartLoc(), argument, argument->getEndLoc(),
-                /*hasTrailingClosure*/ false);
-  arg->setImplicit();
-  return arg;
+static ArgumentExpr *formUnaryArgument(ASTContext &context, Expr *argument) {
+  return ArgumentExpr::create(context,
+                              SourceLoc(), {argument}, {}, {}, SourceLoc(),
+                              /*hasTrailingClosure*/ false,
+                              /*implicit*/ true);
 }
 
 /// parseExprUnary
@@ -1591,13 +1587,12 @@ ParserResult<Expr> Parser::parseExprPrimary(Diag<> ID, bool isExprBasic) {
                                           trailingClosure,
                                           SyntaxKind::FunctionCallArgumentList);
       SyntaxContext->createNodeInPlace(SyntaxKind::FunctionCallExpr);
-      return makeParserResult(
-                 status,
-                 UnresolvedMemberExpr::create(Context, DotLoc, NameLoc, Name,
-                                              lParenLoc, args, argLabels,
-                                              argLabelLocs, rParenLoc,
-                                              trailingClosure,
-                                              /*implicit=*/false));
+      auto *arg = ArgumentExpr::create(Context, lParenLoc, args, argLabels,
+                                       argLabelLocs, rParenLoc,
+                                       trailingClosure, /*implicit=*/false);
+      auto *UME = new (Context) UnresolvedMemberExpr(DotLoc, NameLoc, Name, arg,
+                                                     /*implicit=*/false);
+      return makeParserResult(status, UME);
     }
 
     // Check for a trailing closure, if allowed.
@@ -1615,18 +1610,25 @@ ParserResult<Expr> Parser::parseExprPrimary(Diag<> ID, bool isExprBasic) {
 
       SyntaxContext->createNodeInPlace(SyntaxKind::FunctionCallExpr);
       // Handle .foo by just making an AST node.
-      return makeParserResult(
-                 ParserStatus(closure),
-                 UnresolvedMemberExpr::create(Context, DotLoc, NameLoc, Name,
-                                              SourceLoc(), { }, { }, { },
-                                              SourceLoc(), closure.get(),
-                                              /*implicit=*/false));
+      auto *arg = ArgumentExpr::create(Context,
+                                       SourceLoc(),
+                                       { }, { }, { },
+                                       SourceLoc(),
+                                       closure.get(), /*implicit=*/false);
+      auto *UME = new (Context) UnresolvedMemberExpr(DotLoc, NameLoc, Name, arg,
+                                                     /*implicit=*/false);
+      return makeParserResult(ParserStatus(closure), UME);
     }
 
     // Handle .foo by just making an AST node.
-    return makeParserResult(
-               UnresolvedMemberExpr::create(Context, DotLoc, NameLoc, Name,
-                                            /*implicit=*/false));
+    auto *arg = ArgumentExpr::create(Context,
+                                     SourceLoc(),
+                                     { }, { }, { },
+                                     SourceLoc(),
+                                     false, /*implicit=*/false);
+    auto *UME = new (Context) UnresolvedMemberExpr(DotLoc, NameLoc, Name, arg,
+                                                   /*implicit=*/false);
+    return makeParserResult(UME);
   }
       
   case tok::kw_super: // 'super'

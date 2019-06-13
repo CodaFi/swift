@@ -2078,7 +2078,7 @@ public:
   void visitUnresolvedMemberExpr(UnresolvedMemberExpr *E) {
     printCommon(E, "unresolved_member_expr")
       << " name='" << E->getName() << "'";
-    printArgumentLabels(E->getArgumentLabels());
+    printArgumentLabels(E->getArgument()->getElementNames());
     if (E->getArgument()) {
       OS << '\n';
       printRec(E->getArgument());
@@ -2502,6 +2502,32 @@ public:
     }
   }
 
+  void visitArgumentExpr(ArgumentExpr *E) {
+    printCommon(E, "argument_expr");
+    if (E->hasTrailingClosure())
+      OS << " trailing-closure";
+
+    if (E->hasElementNames()) {
+      PrintWithColorRAII(OS, IdentifierColor) << " names=";
+
+      interleave(E->getElementNames(),
+                 [&](Identifier name) {
+                   PrintWithColorRAII(OS, IdentifierColor)
+                     << (name.empty()?"''":name.str());
+                 },
+                 [&] { PrintWithColorRAII(OS, IdentifierColor) << ","; });
+    }
+
+    for (unsigned i = 0, e = E->getNumElements(); i != e; ++i) {
+      OS << '\n';
+      if (E->getElement(i))
+        printRec(E->getElement(i));
+      else
+        OS.indent(Indent+2) << "<<tuple element default value>>";
+    }
+    PrintWithColorRAII(OS, ParenthesisColor) << ')';
+  }
+
   void printApplyExpr(ApplyExpr *E, const char *NodeName) {
     printCommon(E, NodeName);
     if (E->isSuper())
@@ -2511,7 +2537,7 @@ public:
         << (E->throws() ? " throws" : " nothrow");
     }
     if (auto call = dyn_cast<CallExpr>(E))
-      printArgumentLabels(call->getArgumentLabels());
+      printArgumentLabels(call->getArg()->getElementNames());
 
     OS << '\n';
     printRec(E->getFn());

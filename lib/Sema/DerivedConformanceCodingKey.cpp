@@ -296,7 +296,8 @@ deriveBodyCodingKey_init_stringValue(AbstractFunctionDecl *initDecl, void *) {
 
     auto *eltRef = new (C) DeclRefExpr(elt, DeclNameLoc(), /*Implicit=*/true);
     auto *metaTyRef = TypeExpr::createImplicit(enumType, C);
-    auto *valueExpr = new (C) DotSyntaxCallExpr(eltRef, SourceLoc(), metaTyRef);
+    auto *arg = ArgumentExpr::createSingle(C, metaTyRef);
+    auto *valueExpr = new (C) DotSyntaxCallExpr(eltRef, SourceLoc(), arg);
 
     auto *assignment = new (C) AssignExpr(selfRef, SourceLoc(), valueExpr,
                                           /*Implicit=*/true);

@@ -390,11 +390,11 @@ static Expr *makeBinOp(TypeChecker &TC, Expr *Op, Expr *LHS, Expr *RHS,
   // Build the argument to the operation.
   Expr *ArgElts[] = { LHS, RHS };
   auto ArgElts2 = TC.Context.AllocateCopy(MutableArrayRef<Expr*>(ArgElts));
-  TupleExpr *Arg = TupleExpr::create(TC.Context,
-                                     SourceLoc(), 
-                                     ArgElts2, { }, { }, SourceLoc(),
-                                     /*HasTrailingClosure=*/false,
-                                     /*Implicit=*/true);
+  auto *Arg = ArgumentExpr::create(TC.Context,
+                                   SourceLoc(),
+                                   ArgElts2, { }, { }, SourceLoc(),
+                                   /*HasTrailingClosure=*/false,
+                                   /*Implicit=*/true);
 
   
   

@@ -500,8 +500,8 @@ createModifyCoroutinePrototype(AbstractStorageDecl *storage,
 
 /// Build an expression that evaluates the specified parameter list as a tuple
 /// or paren expr, suitable for use in an apply expr.
-static Expr *buildArgumentForwardingExpr(ArrayRef<ParamDecl*> params,
-                                         ASTContext &ctx) {
+static ArgumentExpr *buildArgumentForwardingExpr(ArrayRef<ParamDecl*> params,
+                                                 ASTContext &ctx) {
   SmallVector<Identifier, 4> labels;
   SmallVector<SourceLoc, 4> labelLocs;
   SmallVector<Expr *, 4> args;
@@ -527,29 +527,17 @@ static Expr *buildArgumentForwardingExpr(ArrayRef<ParamDecl*> params,
     labelLocs.push_back(SourceLoc());
   }
 
-  Expr *argExpr;
-  if (args.size() == 1 &&
-      labels[0].empty() &&
-      !isa<VarargExpansionExpr>(args[0])) {
-    argExpr = new (ctx) ParenExpr(SourceLoc(), args[0], SourceLoc(),
-                                  /*hasTrailingClosure=*/false);
-    argExpr->setImplicit();
-  } else {
-    argExpr = TupleExpr::create(ctx, SourceLoc(), args, labels, labelLocs,
-                                SourceLoc(), false, IsImplicit);
-  }
-
+  auto *argExpr = ArgumentExpr::create(ctx,SourceLoc(), args, labels, labelLocs, SourceLoc(), /*HasTrailingClosure*/false, /*IsImplicit*/true);
   auto argTy = AnyFunctionType::composeInput(ctx, elts, /*canonical*/false);
   argExpr->setType(argTy);
-
   return argExpr;
 }
 
 
 /// Build a reference to the subscript index variables for this subscript
 /// accessor.
-static Expr *buildSubscriptIndexReference(ASTContext &ctx,
-                                          AccessorDecl *accessor) {
+static ArgumentExpr *buildSubscriptIndexReference(ASTContext &ctx,
+                                                  AccessorDecl *accessor) {
   // Pull out the body parameters, which we should have cloned
   // previously to be forwardable.  Drop the initial buffer/value
   // parameter in accessors that have one.
@@ -1022,7 +1010,8 @@ static Expr *synthesizeCopyWithZoneCall(Expr *Val, VarDecl *VD,
   // Drop the self type
   copyMethodType = copyMethodType->getResult()->castTo<FunctionType>();
 
-  auto DSCE = new (Ctx) DotSyntaxCallExpr(DRE, SourceLoc(), Val);
+  auto Args = ArgumentExpr::createSingle(Ctx, Val);
+  auto DSCE = new (Ctx) DotSyntaxCallExpr(DRE, SourceLoc(), Args);
   DSCE->setImplicit();
   DSCE->setType(copyMethodType);
   DSCE->setThrows(false);
@@ -1469,7 +1458,8 @@ static void synthesizeObservedSetterBody(AccessorDecl *Set,
       auto *SelfDRE = buildSelfReference(SelfDecl, SelfAccessorKind::Peer,
                                          IsSelfLValue, Ctx);
       SelfDRE = maybeWrapInOutExpr(SelfDRE, Ctx);
-      auto *DSCE = new (Ctx) DotSyntaxCallExpr(Callee, SourceLoc(), SelfDRE);
+      auto Args = ArgumentExpr::createSingle(Ctx, SelfDRE);
+      auto *DSCE = new (Ctx) DotSyntaxCallExpr(Callee, SourceLoc(), Args);
 
       if (auto funcType = type->getAs<FunctionType>())
         type = funcType->getResult();
@@ -2773,17 +2763,15 @@ static void synthesizeDesignatedInitOverride(AbstractFunctionDecl *fn,
 
   if (auto *funcTy = type->getAs<FunctionType>())
     type = funcTy->getResult();
+  auto Args = ArgumentExpr::createSingle(ctx, superRef);
   auto *superclassCtorRefExpr =
-      new (ctx) DotSyntaxCallExpr(ctorRefExpr, SourceLoc(), superRef, type);
+      new (ctx) DotSyntaxCallExpr(ctorRefExpr, SourceLoc(), Args, type);
   superclassCtorRefExpr->setIsSuper(true);
   superclassCtorRefExpr->setThrows(false);
 
   auto *bodyParams = ctor->getParameters();
   auto ctorArgs = buildArgumentForwardingExpr(bodyParams->getArray(), ctx);
-  auto *superclassCallExpr =
-    CallExpr::create(ctx, superclassCtorRefExpr, ctorArgs,
-                     superclassCtor->getFullName().getArgumentNames(), { },
-                     /*hasTrailingClosure=*/false, /*implicit=*/true);
+  auto *superclassCallExpr = new (ctx) CallExpr(superclassCtorRefExpr, ctorArgs, /*implicit=*/true, Type());
 
   if (auto *funcTy = type->getAs<FunctionType>())
     type = funcTy->getResult();

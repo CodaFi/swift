@@ -383,7 +383,8 @@ namespace {
       return RValue(SGF, E, SGF.emitAddressOfLValue(E->getSubExpr(),
                                                     std::move(lv)));
     }
-    
+
+    RValue visitArgumentExpr(ArgumentExpr *E, SGFContext C);
     RValue visitApplyExpr(ApplyExpr *E, SGFContext C);
     
     RValue visitDiscardAssignmentExpr(DiscardAssignmentExpr *E, SGFContext C) {
@@ -660,6 +661,64 @@ tryEmitAsBridgingConversion(SILGenFunction &SGF, Expr *E, bool isExplicit,
 
   return SGF.emitConvertedRValue(subExpr, conversion, C);
 }
+
+RValue RValueEmitter::visitArgumentExpr(ArgumentExpr *E, SGFContext C) {
+  llvm_unreachable("Don't codegen these things; do this in apply lowering");
+  /*
+  auto type = cast<TupleType>(E->getType()->getCanonicalType());
+
+  // If we have an Initialization, emit the tuple elements into its elements.
+  if (Initialization *I = C.getEmitInto()) {
+
+    bool implodeTuple = false;
+
+    if (I->canPerformInPlaceInitialization() &&
+        I->isInPlaceInitializationOfGlobal() &&
+        SGF.getLoweredType(type).isTrivial(SGF.F)) {
+      // Implode tuples in initialization of globals if they are
+      // of trivial types.
+      implodeTuple = true;
+    }
+
+    if (!implodeTuple && I->canSplitIntoTupleElements()) {
+      SmallVector<InitializationPtr, 4> subInitializationBuf;
+      auto subInitializations =
+      I->splitIntoTupleElements(SGF, RegularLocation(E), type,
+                                subInitializationBuf);
+      assert(subInitializations.size() == E->getElements().size() &&
+             "initialization for tuple has wrong number of elements");
+      for (unsigned i = 0, size = subInitializations.size(); i < size; ++i)
+        SGF.emitExprInto(E->getElement(i), subInitializations[i].get());
+      I->finishInitialization(SGF);
+      return RValue::forInContext();
+    }
+  }
+
+  llvm::SmallVector<RValue, 8> tupleElts;
+  bool hasAtleastOnePlusOneValue = false;
+  for (Expr *elt : E->getElements()) {
+    RValue RV = SGF.emitRValue(elt);
+    hasAtleastOnePlusOneValue |= RV.isPlusOne(SGF);
+    tupleElts.emplace_back(std::move(RV));
+  }
+
+  // Once we have found if we have any plus one arguments, add each element of
+  // tuple elts into result, making sure each value is at plus 1.
+  RValue result(type);
+  if (hasAtleastOnePlusOneValue) {
+    for (unsigned i : indices(tupleElts)) {
+      result.addElement(std::move(tupleElts[i]).ensurePlusOne(SGF, E));
+    }
+  } else {
+    for (unsigned i : indices(tupleElts)) {
+      result.addElement(std::move(tupleElts[i]));
+    }
+  }
+
+  return result;
+  */
+}
+
 
 RValue RValueEmitter::visitApplyExpr(ApplyExpr *E, SGFContext C) {
   return SGF.emitApplyExpr(E, C);

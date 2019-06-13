@@ -6434,7 +6434,7 @@ bool FailureDiagnosis::visitUnresolvedMemberExpr(UnresolvedMemberExpr *E) {
 
       assert(argExpr && candidateArgTy && "Exact match without an argument?");
       return diagnoseSingleCandidateFailures(candidateInfo, E, argExpr,
-                                             E->getArgumentLabels());
+                                             E->getArgument()->getElementNames());
     }
 
     case CC_GeneralMismatch: { // Something else is wrong.

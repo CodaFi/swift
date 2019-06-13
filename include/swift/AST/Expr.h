@@ -38,6 +38,7 @@ namespace llvm {
 namespace swift {
   enum class AccessKind : unsigned char;
   class ArchetypeType;
+  class ArgumentExpr;
   class ASTContext;
   class AvailabilitySpec;
   class Type;
@@ -324,19 +325,23 @@ protected:
     NumCaptures : 32
   );
 
+  SWIFT_INLINE_BITFIELD_FULL(ArgumentExpr, Expr, 1+1+1+32,
+    /// Whether this tuple has a trailing closure.
+    HasTrailingClosure : 1,
+
+    /// Whether this tuple has any labels.
+    HasElementNames : 1,
+
+    /// Whether this tuple has label locations.
+    HasElementNameLocations : 1,
+
+    : NumPadBits,
+    NumElements : 32
+  );
+
   SWIFT_INLINE_BITFIELD(ApplyExpr, Expr, 1+1,
     ThrowsIsSet : 1,
     Throws : 1
-  );
-
-  SWIFT_INLINE_BITFIELD_FULL(CallExpr, ApplyExpr, 1+1+16,
-    /// Whether the CallExpr also has source locations for the argument label.
-    HasArgLabelLocs : 1,
-    /// Whether the last argument is a trailing closure.
-    HasTrailingClosure : 1,
-    : NumPadBits,
-    /// # of argument labels stored after the CallExpr.
-    NumArgLabels : 16
   );
 
   enum { NumCheckedCastKindBits = 4 };
@@ -1750,46 +1755,152 @@ public:
   }
 };
 
+///
+class ArgumentExpr final : public Expr,
+    private llvm::TrailingObjects<ArgumentExpr, Expr *, Identifier, SourceLoc> {
+  friend TrailingObjects;
+
+  SourceLoc LParenLoc;
+  SourceLoc RParenLoc;
+
+  size_t numTrailingObjects(OverloadToken<Expr *>) const {
+    return getNumElements();
+  }
+  size_t numTrailingObjects(OverloadToken<Identifier>) const {
+    return hasElementNames() ? getNumElements() : 0;
+  }
+  size_t numTrailingObjects(OverloadToken<SourceLoc>) const {
+    return hasElementNames() ? getNumElements() : 0;
+  }
+
+  /// Retrieve the buffer containing the element names.
+  MutableArrayRef<Identifier> getElementNamesBuffer() {
+    if (!hasElementNames())
+      return { };
+
+    return { getTrailingObjects<Identifier>(), getNumElements() };
+  }
+
+  /// Retrieve the buffer containing the element name locations.
+  MutableArrayRef<SourceLoc> getElementNameLocsBuffer() {
+    if (!hasElementNameLocs())
+      return { };
+
+    return { getTrailingObjects<SourceLoc>(), getNumElements() };
+  }
+
+  ArgumentExpr(SourceLoc LParenLoc, ArrayRef<Expr *> SubExprs,
+               ArrayRef<Identifier> ElementNames,
+               ArrayRef<SourceLoc> ElementNameLocs,
+               SourceLoc RParenLoc, bool HasTrailingClosure, bool Implicit,
+               Type Ty);
+
+public:
+  static ArgumentExpr *createSingle(ASTContext &ctx, Expr *Expr);
+
+  /// Create a tuple.
+  static ArgumentExpr *create(ASTContext &ctx,
+                              SourceLoc LParenLoc,
+                              ArrayRef<Expr *> SubExprs,
+                              ArrayRef<Identifier> ElementNames,
+                              ArrayRef<SourceLoc> ElementNameLocs,
+                              SourceLoc RParenLoc, bool HasTrailingClosure,
+                              bool Implicit, Type Ty = Type());
+
+  static ArgumentExpr *packSingleArgument(ASTContext &ctx, SourceLoc lParenLoc,
+                                          ArrayRef<Expr *> args,
+                                          ArrayRef<Identifier> &argLabels,
+                                          ArrayRef<SourceLoc> &argLabelLocs,
+                                          SourceLoc rParenLoc,
+                                          Expr *trailingClosure, bool implicit,
+                                          SmallVectorImpl<Identifier> &argLabelsScratch,
+                                          SmallVectorImpl<SourceLoc> &argLabelLocsScratch,
+                                          llvm::function_ref<Type(const Expr *)> getType);
+
+  SourceLoc getLParenLoc() const { return LParenLoc; }
+  SourceLoc getRParenLoc() const { return RParenLoc; }
+
+  SourceRange getSourceRange() const;
+
+  /// Whether this expression has a trailing closure as its argument.
+  bool hasTrailingClosure() const { return Bits.ArgumentExpr.HasTrailingClosure; }
+
+  /// Retrieve the elements of this tuple.
+  MutableArrayRef<Expr*> getElements() {
+    return { getTrailingObjects<Expr *>(), getNumElements() };
+  }
+
+  /// Retrieve the elements of this tuple.
+  ArrayRef<Expr*> getElements() const {
+    return { getTrailingObjects<Expr *>(), getNumElements() };
+  }
+
+  unsigned getNumElements() const { return Bits.ArgumentExpr.NumElements; }
+
+  Expr *getElement(unsigned i) const {
+    return getElements()[i];
+  }
+  void setElement(unsigned i, Expr *e) {
+    getElements()[i] = e;
+  }
+
+  /// Whether this tuple has element names.
+  bool hasElementNames() const {
+    return Bits.ArgumentExpr.HasElementNames;
+  }
+
+  /// Retrieve the element names for a tuple.
+  ArrayRef<Identifier> getElementNames() const {
+    return const_cast<ArgumentExpr *>(this)->getElementNamesBuffer();
+  }
+
+  /// Retrieve the ith element name.
+  Identifier getElementName(unsigned i) const {
+    return hasElementNames() ? getElementNames()[i] : Identifier();
+  }
+
+  /// Whether this tuple has element name locations.
+  bool hasElementNameLocs() const {
+    return Bits.ArgumentExpr.HasElementNameLocations;
+  }
+
+  /// Retrieve the locations of the element names for a tuple.
+  ArrayRef<SourceLoc> getElementNameLocs() const {
+    return const_cast<ArgumentExpr *>(this)->getElementNameLocsBuffer();
+  }
+
+  /// Retrieve the location of the ith label, if known.
+  SourceLoc getElementNameLoc(unsigned i) const {
+    if (hasElementNameLocs())
+      return getElementNameLocs()[i];
+
+    return SourceLoc();
+  }
+
+  static bool classof(const Expr *E) {
+    return E->getKind() == ExprKind::Argument;
+  }
+};
+
 /// UnresolvedMemberExpr - This represents '.foo', an unresolved reference to a
 /// member, which is to be resolved with context sensitive type information into
 /// bar.foo.  These always have unresolved type.
-class UnresolvedMemberExpr final
-    : public Expr,
-      public TrailingCallArguments<UnresolvedMemberExpr> {
+class UnresolvedMemberExpr final : public Expr {
   SourceLoc DotLoc;
   DeclNameLoc NameLoc;
   DeclName Name;
-  Expr *Argument;
-
-  UnresolvedMemberExpr(SourceLoc dotLoc, DeclNameLoc nameLoc,
-                       DeclName name, Expr *argument,
-                       ArrayRef<Identifier> argLabels,
-                       ArrayRef<SourceLoc> argLabelLocs,
-                       bool hasTrailingClosure,
-                       bool implicit);
+  ArgumentExpr *Argument;
 
 public:
-  /// Create a new unresolved member expression with no arguments.
-  static UnresolvedMemberExpr *create(ASTContext &ctx, SourceLoc dotLoc,
-                                      DeclNameLoc nameLoc, DeclName name,
-                                      bool implicit);
-
-  /// Create a new unresolved member expression.
-  static UnresolvedMemberExpr *create(ASTContext &ctx, SourceLoc dotLoc,
-                                      DeclNameLoc nameLoc, DeclName name,
-                                      SourceLoc lParenLoc,
-                                      ArrayRef<Expr *> args,
-                                      ArrayRef<Identifier> argLabels,
-                                      ArrayRef<SourceLoc> argLabelLocs,
-                                      SourceLoc rParenLoc,
-                                      Expr *trailingClosure,
-                                      bool implicit);
+  UnresolvedMemberExpr(SourceLoc dotLoc, DeclNameLoc nameLoc,
+                       DeclName name, ArgumentExpr *args,
+                       bool implicit);
 
   DeclName getName() const { return Name; }
   DeclNameLoc getNameLoc() const { return NameLoc; }
   SourceLoc getDotLoc() const { return DotLoc; }
-  Expr *getArgument() const { return Argument; }
-  void setArgument(Expr *argument) { Argument = argument; }
+  ArgumentExpr *getArgument() const { return Argument; }
+  void setArgument(ArgumentExpr *argument) { Argument = argument; }
 
   /// Whether this reference has arguments.
   bool hasArguments() const {
@@ -3918,17 +4029,13 @@ class ApplyExpr : public Expr {
   Expr *Fn;
 
   /// The argument being passed to it, and whether it's a 'super' argument.
-  llvm::PointerIntPair<Expr *, 1, bool> ArgAndIsSuper;
-  
-  /// Returns true if \c e could be used as the call's argument. For most \c ApplyExpr
-  /// subclasses, this means it is a \c ParenExpr or \c TupleExpr.
-  bool validateArg(Expr *e) const;
+  llvm::PointerIntPair<ArgumentExpr *, 1, bool> ArgAndIsSuper;
 
 protected:
-  ApplyExpr(ExprKind Kind, Expr *Fn, Expr *Arg, bool Implicit, Type Ty = Type())
+  ApplyExpr(ExprKind Kind, Expr *Fn, ArgumentExpr *Arg,
+            bool Implicit, Type Ty = Type())
     : Expr(Kind, Implicit, Ty), Fn(Fn), ArgAndIsSuper(Arg, false) {
     assert(classof((Expr*)this) && "ApplyExpr::classof out of date");
-    assert(validateArg(Arg) && "Arg is not a permitted expr kind");
     Bits.ApplyExpr.ThrowsIsSet = false;
   }
 
@@ -3937,9 +4044,8 @@ public:
   void setFn(Expr *e) { Fn = e; }
   Expr *getSemanticFn() const { return Fn->getSemanticsProvidingExpr(); }
   
-  Expr *getArg() const { return ArgAndIsSuper.getPointer(); }
-  void setArg(Expr *e) {
-    assert(validateArg(e) && "Arg is not a permitted expr kind");
+  ArgumentExpr *getArg() const { return ArgAndIsSuper.getPointer(); }
+  void setArg(ArgumentExpr *e) {
     ArgAndIsSuper = {e, ArgAndIsSuper.getInt()};
   }
   
@@ -3989,23 +4095,15 @@ public:
 /// CallExpr - Application of an argument to a function, which occurs
 /// syntactically through juxtaposition with a TupleExpr whose
 /// leading '(' is unspaced.
-class CallExpr final : public ApplyExpr,
-                       public TrailingCallArguments<CallExpr> {
-  friend TrailingCallArguments;
-
-  CallExpr(Expr *fn, Expr *arg, bool Implicit,
-           ArrayRef<Identifier> argLabels,
-           ArrayRef<SourceLoc> argLabelLocs,
-           bool hasTrailingClosure,
-           Type ty);
-
+class CallExpr final : public ApplyExpr {
 public:
+  CallExpr(Expr *fn, ArgumentExpr *arg, bool Implicit, Type ty);
+
   /// Create a new call expression.
   ///
   /// Note: prefer to use the entry points that separate out the arguments.
   static CallExpr *
-  create(ASTContext &ctx, Expr *fn, Expr *arg, ArrayRef<Identifier> argLabels,
-         ArrayRef<SourceLoc> argLabelLocs, bool hasTrailingClosure,
+  create(ASTContext &ctx, Expr *fn, ArgumentExpr *arg,
          bool implicit, Type type = Type(),
          llvm::function_ref<Type(const Expr *)> getType =
              [](const Expr *E) -> Type { return E->getType(); });
@@ -4056,13 +4154,11 @@ public:
     return FnLoc.isValid() ? FnLoc : getArg()->getLoc();
   }
 
-  unsigned getNumArguments() const { return Bits.CallExpr.NumArgLabels; }
-  bool hasArgumentLabelLocs() const { return Bits.CallExpr.HasArgLabelLocs; }
+  unsigned getNumArguments() const { return getArg()->getNumElements(); }
+  bool hasArgumentLabelLocs() const { return getArg()->hasElementNameLocs(); }
 
   /// Whether this call with written with a trailing closure.
-  bool hasTrailingClosure() const { return Bits.CallExpr.HasTrailingClosure; }
-
-  using TrailingCallArguments::getArgumentLabels;
+  bool hasTrailingClosure() const { return getArg()->hasTrailingClosure(); }
 
   /// Retrieve the expression that directly represents the callee.
   ///
@@ -4078,7 +4174,7 @@ public:
 /// PrefixUnaryExpr - Prefix unary expressions like '!y'.
 class PrefixUnaryExpr : public ApplyExpr {
 public:
-  PrefixUnaryExpr(Expr *Fn, Expr *Arg, Type Ty = Type())
+  PrefixUnaryExpr(Expr *Fn, ArgumentExpr *Arg, Type Ty = Type())
     : ApplyExpr(ExprKind::PrefixUnary, Fn, Arg, /*Implicit=*/false, Ty) {}
 
   SourceLoc getLoc() const { return getFn()->getStartLoc(); }
@@ -4098,7 +4194,7 @@ public:
 /// PostfixUnaryExpr - Postfix unary expressions like 'y!'.
 class PostfixUnaryExpr : public ApplyExpr {
 public:
-  PostfixUnaryExpr(Expr *Fn, Expr *Arg, Type Ty = Type())
+  PostfixUnaryExpr(Expr *Fn, ArgumentExpr *Arg, Type Ty = Type())
     : ApplyExpr(ExprKind::PostfixUnary, Fn, Arg, /*Implicit=*/false, Ty) {}
 
   SourceLoc getLoc() const { return getFn()->getStartLoc(); }
@@ -4119,7 +4215,7 @@ public:
 /// an implicit tuple expression of the type expected by the function.
 class BinaryExpr : public ApplyExpr {
 public:
-  BinaryExpr(Expr *Fn, TupleExpr *Arg, bool Implicit, Type Ty = Type())
+  BinaryExpr(Expr *Fn, ArgumentExpr *Arg, bool Implicit, Type Ty = Type())
     : ApplyExpr(ExprKind::Binary, Fn, Arg, Implicit, Ty) {}
 
   SourceLoc getLoc() const { return getFn()->getLoc(); }
@@ -4127,8 +4223,6 @@ public:
   SourceRange getSourceRange() const { return getArg()->getSourceRange(); }
   SourceLoc getStartLoc() const { return getArg()->getStartLoc(); }
   SourceLoc getEndLoc() const { return getArg()->getEndLoc(); }
-
-  TupleExpr *getArg() const { return cast<TupleExpr>(ApplyExpr::getArg()); }
 
   static bool classof(const Expr *E) { return E->getKind() == ExprKind::Binary;}
 };
@@ -4141,12 +4235,12 @@ public:
 /// materialized from an rvalue.
 class SelfApplyExpr : public ApplyExpr {
 protected:
-  SelfApplyExpr(ExprKind K, Expr *FnExpr, Expr *BaseExpr, Type Ty)
-    : ApplyExpr(K, FnExpr, BaseExpr, FnExpr->isImplicit(), Ty) { }
+  SelfApplyExpr(ExprKind K, Expr *FnExpr, ArgumentExpr *Arg, Type Ty)
+    : ApplyExpr(K, FnExpr, Arg, FnExpr->isImplicit(), Ty) { }
   
 public:
-  Expr *getBase() const { return getArg(); }
-  void setBase(Expr *E) { setArg(E); }
+  ArgumentExpr *getBase() const { return getArg(); }
+  void setBase(ArgumentExpr *E) { setArg(E); }
 
   static bool classof(const Expr *E) {
     return E->getKind() >= ExprKind::First_SelfApplyExpr &&
@@ -4160,7 +4254,7 @@ class DotSyntaxCallExpr : public SelfApplyExpr {
   SourceLoc DotLoc;
   
 public:
-  DotSyntaxCallExpr(Expr *FnExpr, SourceLoc DotLoc, Expr *BaseExpr,
+  DotSyntaxCallExpr(Expr *FnExpr, SourceLoc DotLoc, ArgumentExpr *BaseExpr,
                     Type Ty = Type())
     : SelfApplyExpr(ExprKind::DotSyntaxCall, FnExpr, BaseExpr, Ty),
       DotLoc(DotLoc) {
@@ -4189,7 +4283,7 @@ public:
 /// as a DeclRefExpr.
 class ConstructorRefCallExpr : public SelfApplyExpr {
 public:
-  ConstructorRefCallExpr(Expr *FnExpr, Expr *BaseExpr, Type Ty = Type())
+  ConstructorRefCallExpr(Expr *FnExpr, ArgumentExpr *BaseExpr, Type Ty = Type())
     : SelfApplyExpr(ExprKind::ConstructorRefCall, FnExpr, BaseExpr, Ty) {}
 
   SourceLoc getLoc() const { return getFn()->getLoc(); }
@@ -5297,15 +5391,6 @@ inline bool Expr::isInfixOperator() const {
   return isa<BinaryExpr>(this) || isa<IfExpr>(this) ||
          isa<AssignExpr>(this) || isa<ExplicitCastExpr>(this);
 }
-  
-inline bool ApplyExpr::validateArg(Expr *e) const {
-  if (isa<SelfApplyExpr>(this))
-    return true;
-  else if (isa<BinaryExpr>(this))
-    return isa<TupleExpr>(e);
-  else
-    return isa<ParenExpr>(e) || isa<TupleExpr>(e);
-}
 
 inline Expr *const *CollectionExpr::getTrailingObjectsPointer() const {
   if (auto ty = dyn_cast<ArrayExpr>(this))
@@ -5325,26 +5410,7 @@ inline const SourceLoc *CollectionExpr::getTrailingSourceLocs() const {
 
 #undef SWIFT_FORWARD_SOURCE_LOCS_TO
 
-/// Pack the argument information into a single argument, to match the
-/// representation expected by the AST.
-///
-/// \param argLabels The argument labels, which might be updated by this
-/// function.
-///
-/// \param argLabelLocs The argument label locations, which might be updated by
-/// this function.
-Expr *packSingleArgument(ASTContext &ctx, SourceLoc lParenLoc,
-                         ArrayRef<Expr *> args,
-                         ArrayRef<Identifier> &argLabels,
-                         ArrayRef<SourceLoc> &argLabelLocs,
-                         SourceLoc rParenLoc,
-                         Expr *trailingClosure, bool implicit,
-                         SmallVectorImpl<Identifier> &argLabelsScratch,
-                         SmallVectorImpl<SourceLoc> &argLabelLocsScratch,
-                         llvm::function_ref<Type(const Expr *)> getType =
-                              [](const Expr *E) -> Type {
-                                return E->getType();
-                              });
+
 } // end namespace swift
 
 #endif

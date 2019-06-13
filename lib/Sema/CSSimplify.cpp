@@ -752,11 +752,11 @@ getCalleeDeclAndArgs(ConstraintSystem &cs,
   ConstraintLocator *targetLocator;
   if (auto call = dyn_cast<CallExpr>(callExpr)) {
     targetLocator = cs.getConstraintLocator(call->getDirectCallee());
-    argLabels = call->getArgumentLabels();
+    argLabels = call->getArg()->getElementNames();
     hasTrailingClosure = call->hasTrailingClosure();
   } else if (auto unresolved = dyn_cast<UnresolvedMemberExpr>(callExpr)) {
     targetLocator = cs.getConstraintLocator(callExpr);
-    argLabels = unresolved->getArgumentLabels();
+    argLabels = unresolved->getArgument()->getElementNames();
     hasTrailingClosure = unresolved->hasTrailingClosure();
   } else if (auto subscript = dyn_cast<SubscriptExpr>(callExpr)) {
     targetLocator = cs.getConstraintLocator(callExpr);

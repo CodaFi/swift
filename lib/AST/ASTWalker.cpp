@@ -449,7 +449,7 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
   Expr *visitUnresolvedMemberExpr(UnresolvedMemberExpr *E) { 
     if (E->getArgument()) {
       if (auto arg = doIt(E->getArgument())) {
-        E->setArgument(arg);
+        E->setArgument(dyn_cast<ArgumentExpr>(arg));
         return E;
       }
 
@@ -788,7 +788,18 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
     }
     return nullptr;
   }
-  
+
+  Expr *visitArgumentExpr(ArgumentExpr *E) {
+    for (unsigned i = 0, e = E->getNumElements(); i != e; ++i)
+      if (E->getElement(i)) {
+        if (Expr *Elt = doIt(E->getElement(i)))
+          E->setElement(i, Elt);
+        else
+          return nullptr;
+      }
+    return E;
+  }
+
   Expr *visitApplyExpr(ApplyExpr *E) {
     if (E->getFn()) {
       Expr *E2 = doIt(E->getFn());
@@ -799,12 +810,7 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
     if (E->getArg()) {
       Expr *E2 = doIt(E->getArg());
       if (E2 == nullptr) return nullptr;
-      
-      // Protect against setting a non-tuple argument expression for a binop,
-      // which may occur as a result of error recovery.
-      // E.g., "print(Array<Int)"
-      if (!isa<BinaryExpr>(E) || isa<TupleExpr>(E2))
-        E->setArg(E2);
+      E->setArg(dyn_cast<ArgumentExpr>(E2));
     }
 
     return E;
@@ -814,7 +820,7 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
     if (E->getBase()) {
       Expr *E2 = doIt(E->getBase());
       if (E2 == nullptr) return nullptr;
-      E->setBase(E2);
+      E->setBase(dyn_cast<ArgumentExpr>(E2));
     }
 
     if (E->getFn()) {

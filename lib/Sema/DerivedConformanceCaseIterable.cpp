@@ -49,7 +49,8 @@ void deriveCaseIterable_enum_getter(AbstractFunctionDecl *funcDecl, void *) {
   for (EnumElementDecl *elt : parentEnum->getAllElements()) {
     auto *ref = new (C) DeclRefExpr(elt, DeclNameLoc(), /*implicit*/true);
     auto *base = TypeExpr::createImplicit(enumTy, C);
-    auto *apply = new (C) DotSyntaxCallExpr(ref, SourceLoc(), base);
+    auto *args = ArgumentExpr::createSingle(C, base);
+    auto *apply = new (C) DotSyntaxCallExpr(ref, SourceLoc(), args);
     elExprs.push_back(apply);
   }
   auto *arrayExpr = ArrayExpr::create(C, SourceLoc(), elExprs, {}, SourceLoc());
