@@ -760,11 +760,11 @@ getCalleeDeclAndArgs(ConstraintSystem &cs,
     hasTrailingClosure = unresolved->hasTrailingClosure();
   } else if (auto subscript = dyn_cast<SubscriptExpr>(callExpr)) {
     targetLocator = cs.getConstraintLocator(callExpr);
-    argLabels = subscript->getArgumentLabels();
+    argLabels = subscript->getIndex()->getElementNames();
     hasTrailingClosure = subscript->hasTrailingClosure();
   } else if (auto dynSubscript = dyn_cast<DynamicSubscriptExpr>(callExpr)) {
     targetLocator = cs.getConstraintLocator(callExpr);
-    argLabels = dynSubscript->getArgumentLabels();
+    argLabels = dynSubscript->getIndex()->getElementNames();
     hasTrailingClosure = dynSubscript->hasTrailingClosure();
   } else if (auto keyPath = dyn_cast<KeyPathExpr>(callExpr)) {
     if (path.size() != 2 ||
@@ -804,7 +804,7 @@ getCalleeDeclAndArgs(ConstraintSystem &cs,
       argLabels = apply->getArgumentLabels(argLabelsScratch);
       assert(!apply->hasTrailingClosure());
     } else if (auto objectLiteral = dyn_cast<ObjectLiteralExpr>(callExpr)) {
-      argLabels = objectLiteral->getArgumentLabels();
+      argLabels = objectLiteral->getArg()->getElementNames();
       hasTrailingClosure = objectLiteral->hasTrailingClosure();
     }
     return std::make_tuple(nullptr, /*hasAppliedSelf=*/false, argLabels,

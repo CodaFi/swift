@@ -1923,10 +1923,9 @@ static bool tryIntegerCastFixIts(InFlightDiagnostic &diag, ConstraintSystem &CS,
       return nullptr;
     if (!isa<ConstructorRefCallExpr>(CE->getFn()))
       return nullptr;
-    auto *parenE = dyn_cast<ParenExpr>(CE->getArg());
-    if (!parenE)
+    if (!CE->getArg() || CE->getArg()->getNumElements() != 1)
       return nullptr;
-    return parenE->getSubExpr();
+    return CE->getArg()->getElement(0);
   };
 
   if (Expr *innerE = getInnerCastedExpr()) {
@@ -3749,7 +3748,7 @@ bool FailureDiagnosis::diagnoseSubscriptErrors(SubscriptExpr *SE,
     for (unsigned i = 0, e = calleeInfo.size(); i != e; ++i)
       calleeInfo.candidates[i].skipCurriedSelf = false;
 
-    ArrayRef<Identifier> argLabels = SE->getArgumentLabels();
+    ArrayRef<Identifier> argLabels = SE->getIndex()->getElementNames();
     if (diagnoseParameterErrors(calleeInfo, SE, indexExpr, argLabels))
       return true;
 

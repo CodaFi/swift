@@ -840,9 +840,10 @@ shallowCloneImpl(const MagicIdentifierLiteralExpr *E, ASTContext &Ctx,
 static LiteralExpr *
 shallowCloneImpl(const ObjectLiteralExpr *E, ASTContext &Ctx,
                  llvm::function_ref<Type(const Expr *)> getType) {
-  auto res =
-      ObjectLiteralExpr::create(Ctx, E->getStartLoc(), E->getLiteralKind(),
-                                E->getArg(), E->isImplicit(), getType);
+  auto *res = new (Ctx) ObjectLiteralExpr(E->getStartLoc(),
+                                          E->getLiteralKind(),
+                                          E->getArg(),
+                                          E->isImplicit());
   res->setSemanticExpr(E->getSemanticExpr());
   return res;
 }
@@ -1136,6 +1137,13 @@ ArgumentExpr::ArgumentExpr(SourceLoc LParenLoc, ArrayRef<Expr *> SubExprs,
   }
 }
 
+ArgumentExpr *ArgumentExpr::createEmpty(ASTContext &ctx, SourceLoc LParenLoc,
+                                        SourceLoc RParenLoc, bool Implicit) {
+  return create(ctx, LParenLoc, { }, { }, { }, RParenLoc,
+                /*HasTrailingClosure=*/false, Implicit,
+                TupleType::getEmpty(ctx));
+}
+
 ArgumentExpr *ArgumentExpr::create(ASTContext &ctx,
                                    SourceLoc LParenLoc,
                                    ArrayRef<Expr *> SubExprs,
@@ -1306,66 +1314,12 @@ SourceRange ArgumentExpr::getSourceRange() const {
 }
 
 ObjectLiteralExpr::ObjectLiteralExpr(SourceLoc PoundLoc, LiteralKind LitKind,
-                                     Expr *Arg,
-                                     ArrayRef<Identifier> argLabels,
-                                     ArrayRef<SourceLoc> argLabelLocs,
-                                     bool hasTrailingClosure,
+                                     ArgumentExpr *Arg,
                                      bool implicit)
     : LiteralExpr(ExprKind::ObjectLiteral, implicit), 
       Arg(Arg), SemanticExpr(nullptr), PoundLoc(PoundLoc) {
   Bits.ObjectLiteralExpr.LitKind = static_cast<unsigned>(LitKind);
   assert(getLiteralKind() == LitKind);
-  Bits.ObjectLiteralExpr.NumArgLabels = argLabels.size();
-  Bits.ObjectLiteralExpr.HasArgLabelLocs = !argLabelLocs.empty();
-  Bits.ObjectLiteralExpr.HasTrailingClosure = hasTrailingClosure;
-  initializeCallArguments(argLabels, argLabelLocs, hasTrailingClosure);  
-}
-
-ObjectLiteralExpr *
-ObjectLiteralExpr::create(ASTContext &ctx, SourceLoc poundLoc, LiteralKind kind,
-                          Expr *arg, bool implicit,
-                          llvm::function_ref<Type(const Expr *)> getType) {
-  // Inspect the argument to dig out the argument labels, their location, and
-  // whether there is a trailing closure.
-  SmallVector<Identifier, 4> argLabelsScratch;
-  SmallVector<SourceLoc, 4> argLabelLocs;
-  bool hasTrailingClosure = false;
-  auto argLabels = getArgumentLabelsFromArgument(arg, argLabelsScratch,
-                                                 &argLabelLocs,
-                                                 &hasTrailingClosure,
-                                                 getType);
-
-  size_t size = totalSizeToAlloc(argLabels, argLabelLocs, hasTrailingClosure);
-
-  void *memory = ctx.Allocate(size, alignof(ObjectLiteralExpr));
-  return new (memory) ObjectLiteralExpr(poundLoc, kind, arg, argLabels,
-                                        argLabelLocs, hasTrailingClosure,
-                                        implicit);
-}
-
-ObjectLiteralExpr *ObjectLiteralExpr::create(ASTContext &ctx,
-                                             SourceLoc poundLoc,
-                                             LiteralKind kind,
-                                             SourceLoc lParenLoc,
-                                             ArrayRef<Expr *> args,
-                                             ArrayRef<Identifier> argLabels,
-                                             ArrayRef<SourceLoc> argLabelLocs,
-                                             SourceLoc rParenLoc,
-                                             Expr *trailingClosure,
-                                             bool implicit) {
-  SmallVector<Identifier, 4> argLabelsScratch;
-  SmallVector<SourceLoc, 4> argLabelLocsScratch;
-  auto *arg = ArgumentExpr::packSingleArgument(ctx, lParenLoc, args, argLabels, argLabelLocs,
-                                 rParenLoc, trailingClosure, implicit,
-                                 argLabelsScratch, argLabelLocsScratch);
-
-  size_t size = totalSizeToAlloc(argLabels, argLabelLocs,
-                                 trailingClosure != nullptr);
-
-  void *memory = ctx.Allocate(size, alignof(ObjectLiteralExpr));
-  return new (memory) ObjectLiteralExpr(poundLoc, kind, arg, argLabels,
-                                        argLabelLocs,
-                                        trailingClosure != nullptr, implicit);
 }
 
 StringRef ObjectLiteralExpr::getLiteralKindRawName() const {
@@ -1648,133 +1602,20 @@ ValueDecl *ApplyExpr::getCalledValue() const {
   return ::getCalledValue(Fn);
 }
 
-SubscriptExpr::SubscriptExpr(Expr *base, Expr *index,
-                             ArrayRef<Identifier> argLabels,
-                             ArrayRef<SourceLoc> argLabelLocs,
-                             bool hasTrailingClosure,
+SubscriptExpr::SubscriptExpr(Expr *base, ArgumentExpr *index,
                              ConcreteDeclRef decl,
                              bool implicit, AccessSemantics semantics)
     : LookupExpr(ExprKind::Subscript, base, decl, implicit),
       Index(index) {
   Bits.SubscriptExpr.Semantics = (unsigned) semantics;
-  Bits.SubscriptExpr.NumArgLabels = argLabels.size();
-  Bits.SubscriptExpr.HasArgLabelLocs = !argLabelLocs.empty();
-  Bits.SubscriptExpr.HasTrailingClosure = hasTrailingClosure;
-  initializeCallArguments(argLabels, argLabelLocs, hasTrailingClosure);
 }
 
-SubscriptExpr *
-SubscriptExpr::create(ASTContext &ctx, Expr *base, Expr *index,
-                      ConcreteDeclRef decl, bool implicit,
-                      AccessSemantics semantics,
-                      llvm::function_ref<Type(const Expr *)> getType) {
-  // Inspect the argument to dig out the argument labels, their location, and
-  // whether there is a trailing closure.
-  SmallVector<Identifier, 4> argLabelsScratch;
-  SmallVector<SourceLoc, 4> argLabelLocs;
-  bool hasTrailingClosure = false;
-  auto argLabels = getArgumentLabelsFromArgument(index, argLabelsScratch,
-                                                 &argLabelLocs,
-                                                 &hasTrailingClosure,
-                                                 getType);
-
-  size_t size = totalSizeToAlloc(argLabels, argLabelLocs, hasTrailingClosure);
-
-  void *memory = ctx.Allocate(size, alignof(SubscriptExpr));
-  return new (memory) SubscriptExpr(base, index, argLabels, argLabelLocs,
-                                    hasTrailingClosure, decl, implicit,
-                                    semantics);
-}
-
-SubscriptExpr *SubscriptExpr::create(ASTContext &ctx, Expr *base,
-                                     SourceLoc lSquareLoc,
-                                     ArrayRef<Expr *> indexArgs,
-                                     ArrayRef<Identifier> indexArgLabels,
-                                     ArrayRef<SourceLoc> indexArgLabelLocs,
-                                     SourceLoc rSquareLoc,
-                                     Expr *trailingClosure,
-                                     ConcreteDeclRef decl,
-                                     bool implicit,
-                                     AccessSemantics semantics) {
-  SmallVector<Identifier, 4> indexArgLabelsScratch;
-  SmallVector<SourceLoc, 4> indexArgLabelLocsScratch;
-  auto *index = ArgumentExpr::packSingleArgument(ctx, lSquareLoc, indexArgs, indexArgLabels,
-                                   indexArgLabelLocs, rSquareLoc,
-                                   trailingClosure, implicit,
-                                   indexArgLabelsScratch,
-                                   indexArgLabelLocsScratch);
-
-  size_t size = totalSizeToAlloc(indexArgLabels, indexArgLabelLocs,
-                                 trailingClosure != nullptr);
-
-  void *memory = ctx.Allocate(size, alignof(SubscriptExpr));
-  return new (memory) SubscriptExpr(base, index, indexArgLabels,
-                                    indexArgLabelLocs,
-                                    trailingClosure != nullptr,
-                                    decl, implicit, semantics);
-}
-
-DynamicSubscriptExpr::DynamicSubscriptExpr(Expr *base, Expr *index,
-                                           ArrayRef<Identifier> argLabels,
-                                           ArrayRef<SourceLoc> argLabelLocs,
-                                           bool hasTrailingClosure,
+DynamicSubscriptExpr::DynamicSubscriptExpr(Expr *base, ArgumentExpr *index,
                                            ConcreteDeclRef member,
                                            bool implicit)
     : DynamicLookupExpr(ExprKind::DynamicSubscript, member, base),
       Index(index) {
-  Bits.DynamicSubscriptExpr.NumArgLabels = argLabels.size();
-  Bits.DynamicSubscriptExpr.HasArgLabelLocs = !argLabelLocs.empty();
-  Bits.DynamicSubscriptExpr.HasTrailingClosure = hasTrailingClosure;
-  initializeCallArguments(argLabels, argLabelLocs, hasTrailingClosure);
   if (implicit) setImplicit(implicit);
-}
-
-DynamicSubscriptExpr *
-DynamicSubscriptExpr::create(ASTContext &ctx, Expr *base, Expr *index,
-                             ConcreteDeclRef decl, bool implicit,
-                             llvm::function_ref<Type(const Expr *)> getType) {
-  // Inspect the argument to dig out the argument labels, their location, and
-  // whether there is a trailing closure.
-  SmallVector<Identifier, 4> argLabelsScratch;
-  SmallVector<SourceLoc, 4> argLabelLocs;
-  bool hasTrailingClosure = false;
-  auto argLabels = getArgumentLabelsFromArgument(index, argLabelsScratch,
-                                                 &argLabelLocs,
-                                                 &hasTrailingClosure,
-                                                 getType);
-
-  size_t size = totalSizeToAlloc(argLabels, argLabelLocs, hasTrailingClosure);
-
-  void *memory = ctx.Allocate(size, alignof(DynamicSubscriptExpr));
-  return new (memory) DynamicSubscriptExpr(base, index, argLabels, argLabelLocs,
-                                           hasTrailingClosure, decl, implicit);
-}
-
-DynamicSubscriptExpr *
-DynamicSubscriptExpr::create(ASTContext &ctx, Expr *base, SourceLoc lSquareLoc,
-                             ArrayRef<Expr *> indexArgs,
-                             ArrayRef<Identifier> indexArgLabels,
-                             ArrayRef<SourceLoc> indexArgLabelLocs,
-                             SourceLoc rSquareLoc,
-                             Expr *trailingClosure,
-                             ConcreteDeclRef decl,
-                             bool implicit) {
-  SmallVector<Identifier, 4> indexArgLabelsScratch;
-  SmallVector<SourceLoc, 4> indexArgLabelLocsScratch;
-  auto *index = ArgumentExpr::packSingleArgument(ctx, lSquareLoc, indexArgs, indexArgLabels,
-                                   indexArgLabelLocs, rSquareLoc,
-                                   trailingClosure, implicit,
-                                   indexArgLabelsScratch,
-                                   indexArgLabelLocsScratch);
-
-  size_t size = totalSizeToAlloc(indexArgLabels, indexArgLabelLocs,
-                                 trailingClosure != nullptr);
-
-  void *memory = ctx.Allocate(size, alignof(DynamicSubscriptExpr));
-  return new (memory) DynamicSubscriptExpr(base, index, indexArgLabels,
-                                           indexArgLabelLocs,
-                                           trailingClosure != nullptr,
-                                           decl, implicit);
 }
 
 UnresolvedMemberExpr::UnresolvedMemberExpr(SourceLoc dotLoc,
@@ -1819,16 +1660,6 @@ bool ApplyExpr::hasTrailingClosure() const {
 CallExpr::CallExpr(Expr *fn, ArgumentExpr *arg, bool Implicit, Type ty)
     : ApplyExpr(ExprKind::Call, fn, arg, Implicit, ty)
 { }
-
-CallExpr *CallExpr::create(ASTContext &ctx, Expr *fn, SourceLoc lParenLoc,
-                           ArrayRef<Expr *> args,
-                           ArrayRef<Identifier> argLabels,
-                           ArrayRef<SourceLoc> argLabelLocs,
-                           SourceLoc rParenLoc, Expr *trailingClosure,
-                           bool implicit,
-                           llvm::function_ref<Type(const Expr *)> getType) {
-  llvm_unreachable("Don't call this");
-}
 
 Expr *CallExpr::getDirectCallee() const {
   auto fn = getFn();
@@ -2247,7 +2078,7 @@ KeyPathExpr::Component::forUnresolvedSubscript(ASTContext &ctx,
 
 KeyPathExpr::Component::Component(ASTContext *ctxForCopyingLabels,
                      DeclNameOrRef decl,
-                     Expr *indexExpr,
+                     ArgumentExpr *indexExpr,
                      ArrayRef<Identifier> subscriptLabels,
                      ArrayRef<ProtocolConformanceRef> indexHashables,
                      Kind kind,
@@ -2267,7 +2098,7 @@ KeyPathExpr::Component::Component(ASTContext *ctxForCopyingLabels,
 
 KeyPathExpr::Component
 KeyPathExpr::Component::forSubscriptWithPrebuiltIndexExpr(
-       ConcreteDeclRef subscript, Expr *index, ArrayRef<Identifier> labels,
+       ConcreteDeclRef subscript, ArgumentExpr *index, ArrayRef<Identifier> labels,
        Type elementType, SourceLoc loc,
        ArrayRef<ProtocolConformanceRef> indexHashables) {
   return Component(&elementType->getASTContext(),

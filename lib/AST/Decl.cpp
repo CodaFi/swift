@@ -5893,7 +5893,7 @@ Expr *swift::findOriginalPropertyWrapperInitialValue(VarDecl *var,
   if (!innermostNominal)
     return nullptr;
 
-      // Walker
+  // Walker
   class Walker : public ASTWalker {
   public:
     NominalTypeDecl *innermostNominal;

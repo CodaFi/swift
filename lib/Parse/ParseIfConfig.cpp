@@ -201,12 +201,11 @@ public:
       return nullptr;
     }
 
-    auto *ArgP = dyn_cast<ParenExpr>(E->getArg());
-    if (!ArgP) {
+    if (E->getArg()->getNumElements() != 1) {
       D.diagnose(E->getLoc(), diag::platform_condition_expected_one_argument);
       return nullptr;
     }
-    Expr *Arg = ArgP->getSubExpr();
+    Expr *Arg = E->getArg()->getElement(0);
 
     // '_compiler_version' '(' string-literal ')'
     if (*KindName == "_compiler_version") {
@@ -399,8 +398,9 @@ public:
   }
 
   bool visitCallExpr(CallExpr *E) {
+    assert(E->getNumArguments() == 1);
     auto KindName = getDeclRefStr(E->getFn());
-    auto *Arg = cast<ParenExpr>(E->getArg())->getSubExpr();
+    auto *Arg = E->getArg()->getElement(0);
 
     if (KindName == "_compiler_version") {
       auto Str = cast<StringLiteralExpr>(Arg)->getValue();
@@ -436,6 +436,11 @@ public:
 
   bool visitPrefixUnaryExpr(PrefixUnaryExpr *E) {
     return !visit(E->getArg());
+  }
+
+  bool visitArgumentExpr(ArgumentExpr *E) {
+    assert(E->getNumElements() == 1);
+    return visit(E->getElement(0));
   }
 
   bool visitParenExpr(ParenExpr *E) {
@@ -518,8 +523,8 @@ static bool isPlatformConditionDisjunction(Expr *E, PlatformConditionKind Kind,
   } else if (auto *C = dyn_cast<CallExpr>(E)) {
     if (getPlatformConditionKind(getDeclRefStr(C->getFn())) != Kind)
       return false;
-    if (auto *ArgP = dyn_cast<ParenExpr>(C->getArg())) {
-      if (auto *Arg = ArgP->getSubExpr()) {
+    if (C->getArg() && C->getArg()->getNumElements() == 1) {
+      if (auto *Arg = C->getArg()->getElement(0)) {
         auto ArgStr = getDeclRefStr(Arg);
         for (auto V : Vals) {
           if (ArgStr == V)

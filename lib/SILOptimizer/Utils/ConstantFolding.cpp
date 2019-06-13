@@ -872,11 +872,11 @@ static bool tryExtractLiteralText(FloatLiteralInst *flitInst,
          !dyn_cast<ConstructorRefCallExpr>(callExpr->getFn()))
       break;
 
-    auto *tupleExpr = dyn_cast<TupleExpr>(callExpr->getArg());
-    if (!tupleExpr)
+    auto *callArgs = callExpr->getArg();
+    if (!callArgs || callArgs->getNumElements() == 0)
       break;
 
-    expr = tupleExpr->getElement(0);
+    expr = callArgs->getElement(0);
   }
 
   auto *flitExpr = dyn_cast<FloatLiteralExpr>(expr);
@@ -1063,11 +1063,11 @@ bool isHexLiteralInSource(FloatLiteralInst *flitInst) {
         !dyn_cast<ConstructorRefCallExpr>(callExpr->getFn()))
       break;
 
-    auto *tupleExpr = dyn_cast<TupleExpr>(callExpr->getArg());
-    if (!tupleExpr)
+    auto *callArgs = callExpr->getArg();
+    if (!callArgs || callArgs->getNumElements() == 0)
       break;
 
-    expr = tupleExpr->getElement(0);
+    expr = callArgs->getElement(0);
   }
   auto *flitExpr = dyn_cast<FloatLiteralExpr>(expr);
   if (!flitExpr)

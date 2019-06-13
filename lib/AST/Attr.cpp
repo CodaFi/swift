@@ -1163,18 +1163,11 @@ TypeLoc &ImplementsAttr::getProtocolType() {
 }
 
 CustomAttr::CustomAttr(SourceLoc atLoc, SourceRange range, TypeLoc type,
-                       PatternBindingInitializer *initContext, Expr *arg,
-                       ArrayRef<Identifier> argLabels,
-                       ArrayRef<SourceLoc> argLabelLocs, bool implicit)
+                       PatternBindingInitializer *initContext, ArgumentExpr *arg,
+                       bool implicit)
     : DeclAttribute(DAK_Custom, atLoc, range, implicit),
-      type(type),
-      arg(arg),
-      initContext(initContext) {
-  hasArgLabelLocs = !argLabelLocs.empty();
-  numArgLabels = argLabels.size();
-  initializeCallArguments(argLabels, argLabelLocs,
-                          /*hasTrailingClosure=*/false);
-}
+      type(type), arg(arg),  initContext(initContext)
+  { }
 
 CustomAttr *CustomAttr::create(ASTContext &ctx, SourceLoc atLoc, TypeLoc type,
                                bool hasInitializer,
@@ -1187,7 +1180,7 @@ CustomAttr *CustomAttr::create(ASTContext &ctx, SourceLoc atLoc, TypeLoc type,
                                bool implicit) {
   SmallVector<Identifier, 2> argLabelsScratch;
   SmallVector<SourceLoc, 2> argLabelLocsScratch;
-  Expr *arg = nullptr;
+  ArgumentExpr *arg = nullptr;
   if (hasInitializer) {
     arg = ArgumentExpr::packSingleArgument(ctx, lParenLoc, args, argLabels, argLabelLocs,
                                            rParenLoc, nullptr, implicit, argLabelsScratch,
@@ -1198,11 +1191,7 @@ CustomAttr *CustomAttr::create(ASTContext &ctx, SourceLoc atLoc, TypeLoc type,
   if (arg)
     range.End = arg->getEndLoc();
 
-  size_t size = totalSizeToAlloc(argLabels, argLabelLocs,
-                                 /*hasTrailingClosure=*/false);
-  void *mem = ctx.Allocate(size, alignof(CustomAttr));
-  return new (mem) CustomAttr(atLoc, range, type, initContext, arg, argLabels,
-                              argLabelLocs, implicit);
+  return new (ctx) CustomAttr(atLoc, range, type, initContext, arg, implicit);
 }
 
 void swift::simple_display(llvm::raw_ostream &out, const DeclAttribute *attr) {

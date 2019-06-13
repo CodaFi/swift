@@ -428,8 +428,7 @@ deriveBodyEquatable_enum_noAssociatedValues_eq(AbstractFunctionDecl *eqDecl,
                                     AccessSemantics::Ordinary, fnType);
 
     fnType = fnType->getResult()->castTo<FunctionType>();
-    cmpFuncExpr = new (C) DotSyntaxCallExpr(ref, SourceLoc(),
-                                            ArgumentExpr::createSingle(C, base), fnType);
+    cmpFuncExpr = new (C) DotSyntaxCallExpr(ref, SourceLoc(), base, fnType);
     cmpFuncExpr->setImplicit();
   } else {
     cmpFuncExpr = new (C) DeclRefExpr(cmpFunc, DeclNameLoc(),
@@ -608,14 +607,14 @@ static void deriveBodyEquatable_struct_eq(AbstractFunctionDecl *eqDecl,
     auto aParamRef = new (C) DeclRefExpr(aParam, DeclNameLoc(),
                                          /*implicit*/ true);
     auto aPropertyExpr = new (C) DotSyntaxCallExpr(aPropertyRef, SourceLoc(),
-                                                   ArgumentExpr::createSingle(C, aParamRef));
+                                                   aParamRef);
 
     auto bPropertyRef = new (C) DeclRefExpr(propertyDecl, DeclNameLoc(),
                                             /*implicit*/ true);
     auto bParamRef = new (C) DeclRefExpr(bParam, DeclNameLoc(),
                                          /*implicit*/ true);
     auto bPropertyExpr = new (C) DotSyntaxCallExpr(bPropertyRef, SourceLoc(),
-                                                   ArgumentExpr::createSingle(C, bParamRef));
+                                                   bParamRef);
 
     auto guardStmt = returnIfNotEqualGuard(C, aPropertyExpr, bPropertyExpr);
     statements.emplace_back(guardStmt);
@@ -814,7 +813,8 @@ static CallExpr *createHasherCombineCall(ASTContext &C,
                                                 /*implicit*/ true);
   
   // hasher.combine(hashable)
-  return CallExpr::createImplicit(C, combineCall, {hashable}, {Identifier()});
+  auto *args = ArgumentExpr::create(C, SourceLoc(), {hashable}, {Identifier()}, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+  return new (C) CallExpr(combineCall, args, /*Implicit=*/true, Type());
 }
 
 static FuncDecl *
@@ -1107,7 +1107,7 @@ deriveBodyHashable_struct_hashInto(AbstractFunctionDecl *hashIntoDecl, void *) {
     auto selfRef = new (C) DeclRefExpr(selfDecl, DeclNameLoc(),
                                        /*implicit*/ true);
     auto selfPropertyExpr = new (C) DotSyntaxCallExpr(propertyRef, SourceLoc(),
-                                                      ArgumentExpr::createSingle(C, selfRef));
+                                                      selfRef);
     // Generate: hasher.combine(self.<property>)
     auto combineExpr = createHasherCombineCall(C, hasherParam, selfPropertyExpr);
     statements.emplace_back(ASTNode(combineExpr));
@@ -1131,8 +1131,8 @@ deriveBodyHashable_hashValue(AbstractFunctionDecl *hashValueDecl, void *) {
   auto selfDecl = hashValueDecl->getImplicitSelfDecl();
   auto selfRef = new (C) DeclRefExpr(selfDecl, DeclNameLoc(),
                                      /*implicit*/ true);
-  auto callExpr = CallExpr::createImplicit(C, hashExpr,
-                                           { selfRef }, { C.Id_for });
+  auto *args = ArgumentExpr::create(C, SourceLoc(), { selfRef }, { C.Id_for }, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+  auto *callExpr = new (C) CallExpr(hashExpr, args, /*Implicit=*/true, Type());
   auto returnStmt = new (C) ReturnStmt(SourceLoc(), callExpr);
 
   auto body = BraceStmt::create(C, SourceLoc(), {returnStmt}, SourceLoc(),

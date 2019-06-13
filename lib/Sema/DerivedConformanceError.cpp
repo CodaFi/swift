@@ -43,9 +43,10 @@ static void deriveBodyBridgedNSError_enum_nsErrorDomain(
   auto selfRef = new (C) DeclRefExpr(self, DeclNameLoc(), /*implicit*/ true);
   auto stringType = TypeExpr::createForDecl(SourceLoc(), C.getStringDecl(),
                                             domainDecl, /*implicit*/ true);
-  auto initReflectingCall =
-    CallExpr::createImplicit(C, stringType,
-                             { selfRef }, { C.getIdentifier("reflecting") });
+
+  auto *args = ArgumentExpr::create(C, SourceLoc(), {selfRef}, {C.getIdentifier("reflecting")}, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+  auto *initReflectingCall = new (C) CallExpr(stringType, args, /*Implicit=*/true, Type());
+
   auto ret =
     new (C) ReturnStmt(SourceLoc(), initReflectingCall, /*implicit*/ true);
 

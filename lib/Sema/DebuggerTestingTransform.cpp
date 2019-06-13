@@ -199,19 +199,16 @@ private:
     auto *PODeclRef = new (Ctx)
         UnresolvedDeclRefExpr(Ctx.getIdentifier("_stringForPrintObject"),
                               DeclRefKind::Ordinary, DeclNameLoc());
-    Expr *POArgs[] = {DstRef};
-    Identifier POLabels[] = {Identifier()};
-    auto *POCall = CallExpr::createImplicit(Ctx, PODeclRef, POArgs, POLabels);
+    auto *POArgs = ArgumentExpr::create(Ctx, SourceLoc(), {DstRef}, {Identifier()}, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+    auto *POCall = new (Ctx) CallExpr(PODeclRef, POArgs, /*Implicit*/ true, Type());
     POCall->setThrows(false);
 
     // Create the call to checkExpect.
-    Identifier CheckExpectLabels[] = {Identifier(), Identifier()};
-    Expr *CheckExpectArgs[] = {Varname, POCall};
     UnresolvedDeclRefExpr *CheckExpectDRE = new (Ctx)
         UnresolvedDeclRefExpr(Ctx.getIdentifier("_debuggerTestingCheckExpect"),
                               DeclRefKind::Ordinary, DeclNameLoc());
-    auto *CheckExpectExpr = CallExpr::createImplicit(
-        Ctx, CheckExpectDRE, CheckExpectArgs, CheckExpectLabels);
+    auto *CheckExpectArgs = ArgumentExpr::create(Ctx, SourceLoc(), {Varname, POCall}, {Identifier(), Identifier()}, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+    auto *CheckExpectExpr = new (Ctx) CallExpr(CheckExpectDRE, CheckExpectArgs, /*Implicit*/ true, Type());
     CheckExpectExpr->setThrows(false);
 
     // Create the closure.
@@ -229,7 +226,8 @@ private:
     Closure->setBody(ClosureBody, /*isSingleExpression=*/false);
 
     // Call the closure.
-    auto *ClosureCall = CallExpr::createImplicit(Ctx, Closure, {}, {});
+    auto *ClosureArgs = ArgumentExpr::createEmpty(Ctx, SourceLoc(), SourceLoc(), /*Implicit*/ true);
+    auto *ClosureCall = new (Ctx) CallExpr(Closure, ClosureArgs, /*Implicit*/ true, Type());
     ClosureCall->setThrows(false);
 
     // TODO: typeCheckExpression() seems to assign types to everything here,

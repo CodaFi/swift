@@ -793,7 +793,7 @@ namespace {
     // Find the argument types.
     auto argTy = CS.getType(expr->getArg());
     auto argTupleTy = argTy->castTo<TupleType>();
-    auto argTupleExpr = dyn_cast<TupleExpr>(expr->getArg());
+    auto argTupleExpr = expr->getArg();
 
     Type firstArgTy = argTupleTy->getElement(0).getType()->getWithoutParens();
     Type secondArgTy = argTupleTy->getElement(1).getType()->getWithoutParens();
@@ -3694,7 +3694,7 @@ namespace {
 
       if (auto subscript = dyn_cast<SubscriptExpr>(expr)) {
         associateArgumentLabels(subscript,
-                                { subscript->getArgumentLabels(),
+                                { subscript->getIndex()->getElementNames(),
                                   subscript->hasTrailingClosure() },
                                 /*labelsArePermanent=*/true);
         return { true, expr };

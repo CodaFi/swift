@@ -988,7 +988,7 @@ namespace {
               SourceLoc lParen, rParen;
 
               if (call->getNumArguments() > 1) {
-                auto *args = cast<TupleExpr>(call->getArg());
+                auto *args = call->getArg();
 
                 lParen = args->getLParenLoc();
                 rParen = args->getRParenLoc();
@@ -1006,7 +1006,7 @@ namespace {
               }
               else if(call->getNumArguments() == 1 &&
                       call->getArg()->getElementNames().front() != Identifier()) {
-                auto *args = cast<TupleExpr>(call->getArg());
+                auto *args = call->getArg();
                 newArg = args->getElement(0);
 
                 lParen = args->getLParenLoc();
@@ -1033,9 +1033,10 @@ namespace {
                     DeclName(TC.Context.Id_appendInterpolation),
                     /*nameloc=*/DeclNameLoc(), /*Implicit=*/true);
 
-                E = CallExpr::create(TC.Context, newCallee, lParen,
-                    { newArg }, { Identifier() }, { SourceLoc() },
-                    rParen, /*trailingClosure=*/nullptr, /*implicit=*/false);
+                auto *args = ArgumentExpr::create(TC.Context, lParen,
+                                                  { newArg }, { Identifier() }, { SourceLoc() },
+                                                  rParen, /*trailingClosure=*/false, /*implicit=*/false);
+                E = new (TC.Context) CallExpr(newCallee, args, /*Implicit=*/true, Type());
               }
             }
           }
@@ -1863,7 +1864,7 @@ void PreCheckExpression::resolveKeyPathExpr(KeyPathExpr *KPE) {
         components.push_back(
             KeyPathExpr::Component::forUnresolvedSubscriptWithPrebuiltIndexExpr(
                 TC.Context,
-                SE->getIndex(), SE->getArgumentLabels(), SE->getLoc()));
+                SE->getIndex(), SE->getIndex()->getElementNames(), SE->getLoc()));
 
         expr = SE->getBase();
       } else if (auto BOE = dyn_cast<BindOptionalExpr>(expr)) {
@@ -3364,6 +3365,35 @@ Expr *TypeChecker::coerceToRValue(Expr *expr,
     return tuple;
   }
 
+  // Walk into argument lists to update the argument expressions.
+  if (auto args = dyn_cast<ArgumentExpr>(expr)) {
+    bool anyChanged = false;
+    for (auto &elt : args->getElements()) {
+      // Materialize the element.
+      auto oldType = getType(elt);
+      elt = coerceToRValue(elt, getType, setType);
+
+      // If the type changed at all, make a note of it.
+      if (getType(elt).getPointer() != oldType.getPointer()) {
+        anyChanged = true;
+      }
+    }
+
+    // If any of the types changed, rebuild the tuple type.
+    if (anyChanged) {
+      SmallVector<TupleTypeElt, 4> elements;
+      elements.reserve(args->getElements().size());
+      for (unsigned i = 0, n = args->getNumElements(); i != n; ++i) {
+        Type type = getType(args->getElement(i));
+        Identifier name = args->getElementName(i);
+        elements.push_back(TupleTypeElt(type, name));
+      }
+      setType(args, TupleType::get(elements, Context));
+    }
+
+    return args;
+  }
+
   // Load lvalues.
   if (exprTy->is<LValueType>())
     return addImplicitLoadExpr(expr, getType, setType);
@@ -4431,7 +4461,7 @@ static Expr *lookThroughBridgeFromObjCCall(ASTContext &ctx, Expr *expr) {
 
   if (callee == ctx.getForceBridgeFromObjectiveC() ||
       callee == ctx.getConditionallyBridgeFromObjectiveC())
-    return cast<TupleExpr>(call->getArg())->getElement(0);
+    return call->getArg()->getElement(0);
 
   return nullptr;
 }

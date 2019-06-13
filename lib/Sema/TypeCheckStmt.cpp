@@ -269,10 +269,10 @@ static void tryDiagnoseUnnecessaryCastOverOptionSet(ASTContext &Ctx,
     return;
   if (!isa<ConstructorRefCallExpr>(CE->getFn()))
     return;
-  auto *ParenE = dyn_cast<ParenExpr>(CE->getArg());
-  if (!ParenE)
+  auto *CEArgs = CE->getArg();
+  if (!CEArgs || CEArgs->getNumElements() != 1)
     return;
-  auto *ME = dyn_cast<MemberRefExpr>(ParenE->getSubExpr());
+  auto *ME = dyn_cast<MemberRefExpr>(CEArgs->getElement(0));
   if (!ME)
     return;
   ValueDecl *VD = ME->getMember().getDecl();
@@ -2003,7 +2003,8 @@ Expr* TypeChecker::constructCallToSuperInit(ConstructorDecl *ctor,
                                             DeclBaseName::createConstructor(),
                                             DeclNameLoc(),
                                             /*Implicit=*/true);
-  r = CallExpr::createImplicit(Context, r, { }, { });
+  auto *args = ArgumentExpr::createEmpty(Context, SourceLoc(), SourceLoc(), /*Implicit*/ true);
+  r = new (Context) CallExpr(r, args, /*Implicit*/ true, Type());
 
   if (ctor->hasThrows())
     r = new (Context) TryExpr(SourceLoc(), r, Type(), /*implicit=*/true);

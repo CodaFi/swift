@@ -41,6 +41,7 @@
 #include "llvm/Support/VersionTuple.h"
 
 namespace swift {
+class ArgumentExpr;
 class ASTPrinter;
 class ASTContext;
 struct PrintOptions;
@@ -1423,19 +1424,14 @@ public:
 };
 
 /// Defines a custom attribute.
-class CustomAttr final : public DeclAttribute,
-                         public TrailingCallArguments<CustomAttr> {
+class CustomAttr final : public DeclAttribute {
   TypeLoc type;
-  Expr *arg;
+  ArgumentExpr *arg;
   PatternBindingInitializer *initContext;
   Expr *semanticInit = nullptr;
 
-  unsigned hasArgLabelLocs : 1;
-  unsigned numArgLabels : 16;
-
   CustomAttr(SourceLoc atLoc, SourceRange range, TypeLoc type,
-             PatternBindingInitializer *initContext, Expr *arg,
-             ArrayRef<Identifier> argLabels, ArrayRef<SourceLoc> argLabelLocs,
+             PatternBindingInitializer *initContext, ArgumentExpr *arg,
              bool implicit);
 
 public:
@@ -1455,14 +1451,11 @@ public:
                             SourceLoc rParenLoc,
                             bool implicit = false);
 
-  unsigned getNumArguments() const { return numArgLabels; }
-  bool hasArgumentLabelLocs() const { return hasArgLabelLocs; }
-
   TypeLoc &getTypeLoc() { return type; }
   const TypeLoc &getTypeLoc() const { return type; }
 
-  Expr *getArg() const { return arg; }
-  void setArg(Expr *newArg) { arg = newArg; }
+  ArgumentExpr *getArg() const { return arg; }
+  void setArg(ArgumentExpr *newArg) { arg = newArg; }
 
   Expr *getSemanticInit() const { return semanticInit; }
   void setSemanticInit(Expr *expr) { semanticInit = expr; }

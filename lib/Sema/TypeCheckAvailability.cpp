@@ -2719,8 +2719,8 @@ AvailabilityWalker::diagnoseMemoryLayoutMigration(const ValueDecl *D,
   if (Property.empty())
     return false;
 
-  auto args = dyn_cast<ParenExpr>(call->getArg());
-  if (!args)
+  auto args = call->getArg();
+  if (!args || args->getNumElements() != 1)
     return false;
 
   DeclName Name;
@@ -2733,7 +2733,7 @@ AvailabilityWalker::diagnoseMemoryLayoutMigration(const ValueDecl *D,
                           EncodedMessage.Message);
   diag.highlight(R);
 
-  auto subject = args->getSubExpr();
+  auto subject = args->getElement(0);
 
   StringRef Prefix = "MemoryLayout<";
   StringRef Suffix = ">.";

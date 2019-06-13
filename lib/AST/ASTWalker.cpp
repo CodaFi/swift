@@ -123,6 +123,31 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
   }
 
   //===--------------------------------------------------------------------===//
+  //                               Attributes
+  //===--------------------------------------------------------------------===//
+  bool visitCustomAttributes(Decl *D) {
+    for (auto *customAttr : D->getAttrs().getAttributes<CustomAttr, true>()) {
+      CustomAttr *mutableCustomAttr = const_cast<CustomAttr *>(customAttr);
+      if (doIt(mutableCustomAttr->getTypeLoc()))
+        return true;
+
+      if (auto semanticInit = customAttr->getSemanticInit()) {
+        if (auto newSemanticInit = doIt(semanticInit))
+          mutableCustomAttr->setSemanticInit(newSemanticInit);
+        else
+          return true;
+      } else if (auto arg = customAttr->getArg()) {
+        if (auto newArg = doIt(arg))
+          mutableCustomAttr->setArg(cast<ArgumentExpr>(newArg));
+        else
+          return true;
+      }
+    }
+
+    return false;
+  }
+
+  //===--------------------------------------------------------------------===//
   //                                 Decls
   //===--------------------------------------------------------------------===//
 
@@ -488,7 +513,7 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
 
     if (Expr *arg = E->getArg()) {
       if (Expr *arg2 = doIt(arg)) {
-        E->setArg(arg2);
+        E->setArg(dyn_cast<ArgumentExpr>(arg2));
       } else {
         return nullptr;
       }
@@ -558,7 +583,7 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
       return nullptr;
     
     if (Expr *Index = doIt(E->getIndex()))
-      E->setIndex(Index);
+      E->setIndex(cast<ArgumentExpr>(Index));
     else
       return nullptr;
     
@@ -584,7 +609,7 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
       return nullptr;
     
     if (Expr *Index = doIt(E->getIndex()))
-      E->setIndex(Index);
+      E->setIndex(cast<ArgumentExpr>(Index));
     else
       return nullptr;
     
@@ -810,7 +835,7 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
     if (E->getArg()) {
       Expr *E2 = doIt(E->getArg());
       if (E2 == nullptr) return nullptr;
-      E->setArg(dyn_cast<ArgumentExpr>(E2));
+      E->setArg(cast<ArgumentExpr>(E2));
     }
 
     return E;
@@ -820,7 +845,7 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
     if (E->getBase()) {
       Expr *E2 = doIt(E->getBase());
       if (E2 == nullptr) return nullptr;
-      E->setBase(dyn_cast<ArgumentExpr>(E2));
+      E->setBase(E2);
     }
 
     if (E->getFn()) {
@@ -1040,8 +1065,8 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
       switch (auto kind = component.getKind()) {
       case KeyPathExpr::Component::Kind::Subscript:
       case KeyPathExpr::Component::Kind::UnresolvedSubscript: {
-        Expr *origIndex = component.getIndexExpr();
-        Expr *newIndex = doIt(origIndex);
+        ArgumentExpr *origIndex = component.getIndexExpr();
+        ArgumentExpr *newIndex = cast<ArgumentExpr>(doIt(origIndex));
         if (!newIndex) return nullptr;
         if (newIndex != origIndex) {
           didChangeComponents = true;

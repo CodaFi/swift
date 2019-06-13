@@ -882,7 +882,6 @@ static Expr *buildStorageReference(AccessorDecl *accessor,
       cast<LookupExpr>(lookupExpr)->setIsSuper(true);
 
     lookupExpr->setType(type);
-
   } else {
     lookupExpr = new (ctx) MemberRefExpr(selfDRE, SourceLoc(), memberRef,
                                          DeclNameLoc(), IsImplicit, semantics);
@@ -1010,8 +1009,7 @@ static Expr *synthesizeCopyWithZoneCall(Expr *Val, VarDecl *VD,
   // Drop the self type
   copyMethodType = copyMethodType->getResult()->castTo<FunctionType>();
 
-  auto Args = ArgumentExpr::createSingle(Ctx, Val);
-  auto DSCE = new (Ctx) DotSyntaxCallExpr(DRE, SourceLoc(), Args);
+  auto DSCE = new (Ctx) DotSyntaxCallExpr(DRE, SourceLoc(), Val);
   DSCE->setImplicit();
   DSCE->setType(copyMethodType);
   DSCE->setThrows(false);
@@ -1019,7 +1017,8 @@ static Expr *synthesizeCopyWithZoneCall(Expr *Val, VarDecl *VD,
   Expr *Nil = new (Ctx) NilLiteralExpr(SourceLoc(), /*implicit*/true);
   Nil->setType(copyMethodType->getParams()[0].getParameterType());
 
-  auto *Call = CallExpr::createImplicit(Ctx, DSCE, { Nil }, { Ctx.Id_with });
+  auto *Args = ArgumentExpr::create(Ctx, SourceLoc(), { Nil }, { Ctx.Id_with }, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+  auto *Call = new (Ctx) CallExpr(DSCE, Args, /*Implicit*/ true, Type());
   Call->setType(copyMethodType->getResult());
   Call->setThrows(false);
 
@@ -1458,8 +1457,7 @@ static void synthesizeObservedSetterBody(AccessorDecl *Set,
       auto *SelfDRE = buildSelfReference(SelfDecl, SelfAccessorKind::Peer,
                                          IsSelfLValue, Ctx);
       SelfDRE = maybeWrapInOutExpr(SelfDRE, Ctx);
-      auto Args = ArgumentExpr::createSingle(Ctx, SelfDRE);
-      auto *DSCE = new (Ctx) DotSyntaxCallExpr(Callee, SourceLoc(), Args);
+      auto *DSCE = new (Ctx) DotSyntaxCallExpr(Callee, SourceLoc(), SelfDRE);
 
       if (auto funcType = type->getAs<FunctionType>())
         type = funcType->getResult();
@@ -1468,8 +1466,8 @@ static void synthesizeObservedSetterBody(AccessorDecl *Set,
       Callee = DSCE;
     }
 
-    auto *Call = CallExpr::createImplicit(Ctx, Callee, { ValueDRE },
-                                          { Identifier() });
+    auto *Args = ArgumentExpr::create(Ctx, SourceLoc(), { ValueDRE }, { Identifier() }, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+    auto *Call = new (Ctx) CallExpr(Callee, Args, /*Implicit*/ true, Type());
     if (auto funcType = type->getAs<FunctionType>())
       type = funcType->getResult();
     Call->setType(type);
@@ -1934,7 +1932,8 @@ PropertyWrapperBackingPropertyInfoRequest::evaluate(Evaluator &evaluator,
     // FIXME: Record this expression somewhere so that DI can perform the
     // initialization itself.
     auto typeExpr = TypeExpr::createImplicit(storageType, ctx);
-    Expr *initializer = CallExpr::createImplicit(ctx, typeExpr, {}, { });
+    auto *Args = ArgumentExpr::createEmpty(ctx, SourceLoc(), SourceLoc(), /*Implicit*/ true);
+    Expr *initializer = new (ctx) CallExpr(typeExpr, Args, /*Implicit*/ true, Type());
     typeCheckSynthesizedWrapperInitializer(pbd, backingVar, parentPBD,
                                            initializer);
     pbd->setInit(0, initializer);
@@ -1966,7 +1965,6 @@ PropertyWrapperBackingPropertyInfoRequest::evaluate(Evaluator &evaluator,
       /*ignoreAttributeArgs=*/!originalInitialValue);
   typeCheckSynthesizedWrapperInitializer(
       pbd, backingVar, parentPBD, initializer);
-
   return PropertyWrapperBackingPropertyInfo(
       backingVar, storageVar, originalInitialValue, initializer, origValue);
 }
@@ -2550,8 +2548,8 @@ static void synthesizeStubBody(AbstractFunctionDecl *fn, void *) {
   column->setType(uintType);
   column->setBuiltinInitializer(uintInit);
 
-  auto *call = CallExpr::createImplicit(
-      ctx, ref, { className, initName, file, line, column }, {});
+  auto *Args = ArgumentExpr::create(ctx, SourceLoc(), { className, initName, file, line, column }, { }, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+  auto *call = new (ctx) CallExpr(ref, Args, /*Implicit*/ true, Type());
   call->setType(ctx.getNeverType());
   call->setThrows(false);
 
@@ -2763,9 +2761,8 @@ static void synthesizeDesignatedInitOverride(AbstractFunctionDecl *fn,
 
   if (auto *funcTy = type->getAs<FunctionType>())
     type = funcTy->getResult();
-  auto Args = ArgumentExpr::createSingle(ctx, superRef);
   auto *superclassCtorRefExpr =
-      new (ctx) DotSyntaxCallExpr(ctorRefExpr, SourceLoc(), Args, type);
+      new (ctx) DotSyntaxCallExpr(ctorRefExpr, SourceLoc(), superRef, type);
   superclassCtorRefExpr->setIsSuper(true);
   superclassCtorRefExpr->setThrows(false);
 

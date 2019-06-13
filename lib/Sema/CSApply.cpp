@@ -983,8 +983,7 @@ namespace {
       if (isa<ConstructorDecl>(member)) {
         // FIXME: Provide type annotation.
         ref = forceUnwrapIfExpected(ref, choice, memberLocator);
-        auto *arg = ArgumentExpr::createSingle(context, base);
-        apply = new (context) ConstructorRefCallExpr(ref, arg);
+        apply = new (context) ConstructorRefCallExpr(ref, base);
       } else if (!baseIsInstance && member->isInstanceMember()) {
         // Reference to an unbound instance method.
         Expr *result = new (context) DotSyntaxBaseIgnoredExpr(base, dotLoc,
@@ -997,8 +996,7 @@ namespace {
         assert((!baseIsInstance || member->isInstanceMember()) &&
                "can't call a static method on an instance");
         ref = forceUnwrapIfExpected(ref, choice, memberLocator);
-        auto *arg = ArgumentExpr::createSingle(context, base);
-        apply = new (context) DotSyntaxCallExpr(ref, dotLoc, arg);
+        apply = new (context) DotSyntaxCallExpr(ref, dotLoc, base);
         if (Implicit) {
           apply->setImplicit();
         }
@@ -1163,7 +1161,7 @@ namespace {
     /// \param index The index of the subscript.
     /// \param locator The locator used to refer to the subscript.
     /// \param isImplicit Whether this is an implicit subscript.
-    Expr *buildSubscript(Expr *base, Expr *index,
+    Expr *buildSubscript(Expr *base, ArgumentExpr *index,
                          ArrayRef<Identifier> argLabels,
                          bool hasTrailingClosure,
                          ConstraintLocatorBuilder locator, bool isImplicit,
@@ -1236,7 +1234,7 @@ namespace {
       return newSubscript;
     }
 
-    Expr *buildSubscriptHelper(Expr *base, Expr *index,
+    Expr *buildSubscriptHelper(Expr *base, ArgumentExpr *index,
                                ArrayRef<Identifier> argLabels,
                                SelectedOverload &selected,
                                bool hasTrailingClosure,
@@ -1249,7 +1247,7 @@ namespace {
         auto applicationTy =
             simplifyType(selected.openedType)->castTo<FunctionType>();
 
-        index = cs.coerceToRValue(index);
+        index = cast<ArgumentExpr>(cs.coerceToRValue(index));
         // The index argument should be (keyPath: KeyPath<Root, Value>).
         // Dig the key path expression out of the arguments.
         auto indexKP = cast<TupleExpr>(index)->getElement(0);
@@ -1411,9 +1409,9 @@ namespace {
           return nullptr;
 
         // TODO: diagnose if semantics != AccessSemantics::Ordinary?
-        auto subscriptExpr = DynamicSubscriptExpr::create(tc.Context, base,
-                                                          index, subscriptRef,
-                                                          isImplicit, getType);
+        auto subscriptExpr = new (tc.Context) DynamicSubscriptExpr(base,
+                                                                   index, subscriptRef,
+                                                                   isImplicit);
         cs.setType(subscriptExpr, resultTy);
         Expr *result = subscriptExpr;
         closeExistential(result, locator);
@@ -1445,8 +1443,8 @@ namespace {
         return nullptr;
 
       // Form the subscript expression.
-      auto subscriptExpr = SubscriptExpr::create(
-        tc.Context, base, index, subscriptRef, isImplicit, semantics, getType);
+      auto subscriptExpr = new (tc.Context) SubscriptExpr(
+        base, index, subscriptRef, isImplicit, semantics);
       cs.setType(subscriptExpr, resultTy);
       subscriptExpr->setIsSuper(isSuper);
 
@@ -1592,10 +1590,9 @@ namespace {
               /*Implicit=*/true);
         } else if (origComponent.getKind() ==
                    ComponentKind::UnresolvedSubscript) {
-          anchor = SubscriptExpr::create(
-              ctx, dotExpr, origComponent.getIndexExpr(), ConcreteDeclRef(),
-              /*implicit=*/true, AccessSemantics::Ordinary,
-              [&](const Expr *expr) { return simplifyType(cs.getType(expr)); });
+          anchor = new (ctx) SubscriptExpr(
+              dotExpr, origComponent.getIndexExpr(), ConcreteDeclRef(),
+              /*implicit=*/true, AccessSemantics::Ordinary);
         } else {
           return nullptr;
         }
@@ -1634,16 +1631,19 @@ namespace {
           if (SE->hasTrailingClosure())
             trailingClosure = arguments.back();
 
-          componentExpr = SubscriptExpr::create(
-              ctx, dotExpr, SE->getStartLoc(), arguments,
-              SE->getArgumentLabels(), SE->getArgumentLabelLocs(),
-              SE->getEndLoc(), trailingClosure,
+          auto *args = ArgumentExpr::create(ctx, SE->getStartLoc(), arguments,
+                                            SE->getIndex()->getElementNames(),
+                                            SE->getIndex()->getElementNameLocs(),
+                                            SE->getEndLoc(), trailingClosure,
+                                            /*implicit=*/true);
+          componentExpr = new (ctx) SubscriptExpr(
+              dotExpr, args,
               SE->hasDecl() ? SE->getDecl() : ConcreteDeclRef(),
               /*implicit=*/true, SE->getAccessSemantics());
         }
 
         component = buildKeyPathSubscriptComponent(
-            overload, SE->getLoc(), SE->getIndex(), SE->getArgumentLabels(),
+            overload, SE->getLoc(), SE->getIndex(), SE->getIndex()->getElementNames(),
             componentLoc);
       } else {
         return nullptr;
@@ -2450,10 +2450,8 @@ namespace {
 
       // If there was an argument, apply it.
       if (auto arg = expr->getArgument()) {
-//        auto *arg = ArgumentExpr::create(tc.Context, SourceLoc(), <#ArrayRef<Expr *> SubExprs#>, <#ArrayRef<Identifier> ElementNames#>, <#ArrayRef<SourceLoc> ElementNameLocs#>, <#SourceLoc RParenLoc#>, <#bool HasTrailingClosure#>, <#bool Implicit#>)
-#warning FIXME
         ApplyExpr *apply = new (tc.Context) CallExpr(result, arg,
-                                                     /*implicit=*/expr->isImplicit(), Type());
+                                            /*implicit=*/expr->isImplicit(), Type());
         result = finishApply(apply, Type(), cs.getConstraintLocator(expr));
 
         // FIXME: Application could fail, because some of the solutions
@@ -2622,9 +2620,8 @@ namespace {
       // Build a partial application of the delegated initializer.
       Expr *ctorRef = buildOtherConstructorRef(openedType, ctor, base, nameLoc,
                                                ctorLocator, implicit);
-      auto *arg = ArgumentExpr::createSingle(cs.getASTContext(), base);
       auto *call = new (cs.getASTContext()) DotSyntaxCallExpr(ctorRef, dotLoc,
-                                                              arg);
+                                                              base);
 
       return finishApply(call, cs.getType(expr),
                          ConstraintLocatorBuilder(
@@ -2790,8 +2787,11 @@ namespace {
       auto tupleTy =
           TupleType::get(TupleTypeElt(paramTy, ctx.Id_dynamicMember), ctx);
 
-      Expr *index =
-          TupleExpr::createImplicit(ctx, argExpr, ctx.Id_dynamicMember);
+      auto *index =
+          ArgumentExpr::create(ctx, SourceLoc(),
+                               argExpr, ctx.Id_dynamicMember, { },
+                               SourceLoc(), /*HasTrailingClosure*/ false,
+                                /*Implicit*/ false);
       index->setType(tupleTy);
       cs.cacheType(index);
 
@@ -2891,7 +2891,7 @@ namespace {
       }
 
       return buildSubscript(
-          expr->getBase(), expr->getIndex(), expr->getArgumentLabels(),
+          expr->getBase(), expr->getIndex(), expr->getIndex()->getElementNames(),
           expr->hasTrailingClosure(), cs.getConstraintLocator(expr),
           expr->isImplicit(), expr->getAccessSemantics(), overload);
     }
@@ -2990,7 +2990,7 @@ namespace {
 
     Expr *visitDynamicSubscriptExpr(DynamicSubscriptExpr *expr) {
       return buildSubscript(expr->getBase(), expr->getIndex(),
-                            expr->getArgumentLabels(),
+                            expr->getIndex()->getElementNames(),
                             expr->hasTrailingClosure(),
                             cs.getConstraintLocator(expr),
                             expr->isImplicit(), AccessSemantics::Ordinary);
@@ -3911,8 +3911,8 @@ namespace {
       Expr *argExpr = new (ctx) StringLiteralExpr(msg, E->getLoc(),
                                                   /*implicit*/true);
 
-      Expr *callExpr = CallExpr::createImplicit(ctx, fnRef, { argExpr },
-                                                { Identifier() });
+      auto *args = ArgumentExpr::createSingle(ctx, argExpr);
+      Expr *callExpr = new (ctx) CallExpr(fnRef, args, /*Implicit*/ true, Type());
 
       auto resultTy = tc.typeCheckExpression(
           callExpr, cs.DC, TypeLoc::withoutLoc(valueType), CTP_CannotFail);
@@ -5368,42 +5368,6 @@ ArgumentExpr *ExprRewriter::coerceCallArguments(
   (void)failed;
   (void)matchCanFail;
 
-  // We should either have parentheses or a tuple.
-  auto *argTuple = dyn_cast<TupleExpr>(arg);
-  auto *argParen = dyn_cast<ParenExpr>(arg);
-  // FIXME: Eventually, we want to enforce that we have either argTuple or
-  // argParen here.
-
-  SourceLoc lParenLoc, rParenLoc;
-  if (argTuple) {
-    lParenLoc = argTuple->getLParenLoc();
-    rParenLoc = argTuple->getRParenLoc();
-  } else if (argParen) {
-    lParenLoc = argParen->getLParenLoc();
-    rParenLoc = argParen->getRParenLoc();
-  }
-
-  // Local function to extract the ith argument expression, which papers
-  // over some of the weirdness with tuples vs. parentheses.
-  auto getArg = [&](unsigned i) -> Expr * {
-    if (argTuple)
-      return argTuple->getElement(i);
-    assert(i == 0 && "Scalar only has a single argument");
-
-    if (argParen)
-      return argParen->getSubExpr();
-
-    return arg;
-  };
-
-  auto getLabelLoc = [&](unsigned i) -> SourceLoc {
-    if (argTuple)
-      return argTuple->getElementNameLoc(i);
-
-    assert(i == 0 && "Scalar only has a single argument");
-    return SourceLoc();
-  };
-
   SmallVector<Expr *, 4> newArgs;
   SmallVector<Identifier, 4> newLabels;
   SmallVector<SourceLoc, 4> newLabelLocs;
@@ -5425,23 +5389,23 @@ ArgumentExpr *ExprRewriter::coerceCallArguments(
       // save its location.
       auto &varargIndices = parameterBindings[paramIdx];
       if (!varargIndices.empty())
-        newLabelLocs.push_back(getLabelLoc(varargIndices[0]));
+        newLabelLocs.push_back(arg->getElementNameLoc(varargIndices[0]));
       else
         newLabelLocs.push_back(SourceLoc());
 
       // Convert the arguments.
       for (auto argIdx : varargIndices) {
-        auto arg = getArg(argIdx);
-        auto argType = cs.getType(arg);
+        auto argExpr = arg->getElement(argIdx);
+        auto argType = cs.getType(argExpr);
 
         // If the argument type exactly matches, this just works.
         if (argType->isEqual(param.getPlainType())) {
-          variadicArgs.push_back(arg);
+          variadicArgs.push_back(argExpr);
           continue;
         }
 
         // Convert the argument.
-        auto convertedArg = coerceToType(arg, param.getPlainType(),
+        auto convertedArg = coerceToType(argExpr, param.getPlainType(),
                                          getArgLocator(argIdx, paramIdx));
         if (!convertedArg)
           return nullptr;
@@ -5512,16 +5476,16 @@ ArgumentExpr *ExprRewriter::coerceCallArguments(
     // Extract the argument used to initialize this parameter.
     assert(parameterBindings[paramIdx].size() == 1);
     unsigned argIdx = parameterBindings[paramIdx].front();
-    auto arg = getArg(argIdx);
-    auto argType = cs.getType(arg);
+    auto argExpr = arg->getElement(argIdx);
+    auto argType = cs.getType(argExpr);
 
     // Save the original label location.
-    newLabelLocs.push_back(getLabelLoc(argIdx));
+    newLabelLocs.push_back(arg->getElementNameLoc(argIdx));
 
     // If the types exactly match, this is easy.
     auto paramType = param.getOldType();
     if (argType->isEqual(paramType)) {
-      newArgs.push_back(arg);
+      newArgs.push_back(argExpr);
       newParams.push_back(param);
       continue;
     }
@@ -5535,7 +5499,7 @@ ArgumentExpr *ExprRewriter::coerceCallArguments(
       // Since it was allowed to pass function types to @autoclosure
       // parameters in Swift versions < 5, it has to be handled as
       // a regular function coversion by `coerceToType`.
-      if (isAutoClosureArgument(arg)) {
+      if (isAutoClosureArgument(argExpr)) {
         // In Swift >= 5 mode we only allow `@autoclosure` arguments
         // to be used by value if parameter would return a function
         // type (it just needs to get wrapped into autoclosure expr),
@@ -5555,15 +5519,15 @@ ArgumentExpr *ExprRewriter::coerceCallArguments(
       //   - new types are propagated to constraint system
       auto *closureType = param.getPlainType()->castTo<FunctionType>();
 
-      arg = coerceToType(
-          arg, closureType->getResult(),
+      argExpr = coerceToType(
+          argExpr, closureType->getResult(),
           locator.withPathElement(ConstraintLocator::AutoclosureResult));
 
-      convertedArg = cs.TC.buildAutoClosureExpr(dc, arg, closureType);
+      convertedArg = cs.TC.buildAutoClosureExpr(dc, argExpr, closureType);
       cs.cacheExprTypes(convertedArg);
     } else {
       convertedArg =
-          coerceToType(arg, paramType, getArgLocator(argIdx, paramIdx));
+          coerceToType(argExpr, paramType, getArgLocator(argIdx, paramIdx));
     }
 
     if (!convertedArg)
@@ -5583,44 +5547,20 @@ ArgumentExpr *ExprRewriter::coerceCallArguments(
   assert(newArgs.size() == newLabels.size());
   assert(newArgs.size() == newLabelLocs.size());
 
-  // This is silly. SILGen gets confused if a 'self' parameter is wrapped
-  // in a ParenExpr sometimes.
-  if (!argTuple && !argParen &&
-      (params[0].getValueOwnership() == ValueOwnership::Default ||
-       params[0].getValueOwnership() == ValueOwnership::InOut)) {
-    assert(newArgs.size() == 1);
-    assert(!hasTrailingClosure);
-    return ArgumentExpr::createSingle(tc.Context, newArgs[0]);
-  }
-
   // Rebuild the argument list, sharing as much structure as possible.
   auto paramType = AnyFunctionType::composeInput(tc.Context, newParams,
                                                  /*canonicalVararg=*/false);
-  if (isa<ParenType>(paramType.getPointer())) {
-    if (argParen) {
-      // We already had a ParenExpr, so replace it's sub-expression.
-      argParen->setSubExpr(newArgs[0]);
-    } else {
-      arg = ArgumentExpr::create(tc.Context, lParenLoc,
-                                 newArgs[0], { }, { }, rParenLoc,
-                                 hasTrailingClosure,
-                                 /*Implicit*/ true);
+  if (arg && newArgs.size() == arg->getNumElements()) {
+    // The existing TupleExpr has the right number of elements,
+    // replace them.
+    for (unsigned i = 0, e = newArgs.size(); i != e; ++i) {
+      arg->setElement(i, newArgs[i]);
     }
   } else {
-    assert(isa<TupleType>(paramType.getPointer()));
-
-    if (argTuple && newArgs.size() == argTuple->getNumElements()) {
-      // The existing TupleExpr has the right number of elements,
-      // replace them.
-      for (unsigned i = 0, e = newArgs.size(); i != e; ++i) {
-        argTuple->setElement(i, newArgs[i]);
-      }
-    } else {
-      // Build a new TupleExpr, re-using source location information.
-      arg = ArgumentExpr::create(tc.Context, lParenLoc,
-                                 newArgs, newLabels, newLabelLocs,
-                                 rParenLoc, hasTrailingClosure, true);
-    }
+    // Build a new TupleExpr, re-using source location information.
+    arg = ArgumentExpr::create(tc.Context, arg->getLParenLoc(),
+                               newArgs, newLabels, newLabelLocs,
+                               arg->getRParenLoc(), hasTrailingClosure, true);
   }
 
   arg->setType(paramType);
@@ -6808,10 +6748,6 @@ static Expr *finishApplyDynamicCallable(ConstraintSystem &cs,
   auto &ctx = cs.getASTContext();
   auto *fn = apply->getFn();
 
-  TupleExpr *arg = dyn_cast<TupleExpr>(apply->getArg());
-  if (auto parenExpr = dyn_cast<ParenExpr>(apply->getArg()))
-    arg = TupleExpr::createImplicit(ctx, parenExpr->getSubExpr(), {});
-
   // Get resolved `dynamicallyCall` method and verify it.
   auto loc = locator.withPathElement(ConstraintLocator::ApplyFunction);
   auto selected = solution.getOverloadChoice(cs.getConstraintLocator(loc));
@@ -6839,20 +6775,21 @@ static Expr *finishApplyDynamicCallable(ConstraintSystem &cs,
 
   // Construct argument to the method (either an array or dictionary
   // expression).
+  auto *applyArgs = apply->getArg();
   Expr *argument = nullptr;
   if (!useKwargsMethod) {
-    argument = ArrayExpr::create(ctx, SourceLoc(), arg->getElements(),
+    argument = ArrayExpr::create(ctx, SourceLoc(), applyArgs->getElements(),
                                  {}, SourceLoc());
   } else {
     SmallVector<Identifier, 4> names;
     SmallVector<Expr *, 4> dictElements;
-    for (unsigned i = 0, n = arg->getNumElements(); i < n; i++) {
+    for (unsigned i = 0, n = applyArgs->getNumElements(); i < n; i++) {
       Expr *labelExpr =
-        new (ctx) StringLiteralExpr(arg->getElementName(i).get(),
-                                    arg->getElementNameLoc(i),
+        new (ctx) StringLiteralExpr(applyArgs->getElementName(i).get(),
+                                    applyArgs->getElementNameLoc(i),
                                     /*Implicit*/ true);
       Expr *pair =
-        TupleExpr::createImplicit(ctx, { labelExpr, arg->getElement(i) }, {});
+        TupleExpr::createImplicit(ctx, { labelExpr, applyArgs->getElement(i) }, {});
       dictElements.push_back(pair);
     }
     argument = DictionaryExpr::create(ctx, SourceLoc(), dictElements, {},
@@ -6861,8 +6798,11 @@ static Expr *finishApplyDynamicCallable(ConstraintSystem &cs,
   argument->setImplicit();
 
   // Construct call to the `dynamicallyCall` method.
-  Expr *result = CallExpr::createImplicit(ctx, member, argument,
-                                          { argumentLabel });
+  auto *args = ArgumentExpr::create(ctx, SourceLoc(), argument,
+                                    { argumentLabel }, {}, SourceLoc(),
+                                    /*HasTrailingClosure*/ false,
+                                    /*Implicit*/ true);
+  Expr *result = new (ctx) CallExpr(member, args, /*Implicit*/ true, Type());
   cs.TC.typeCheckExpression(result, cs.DC);
   cs.cacheExprTypes(result);
   return result;
@@ -6911,7 +6851,7 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
       
       case DeclTypeCheckingSemantics::WithoutActuallyEscaping: {
         // Resolve into a MakeTemporarilyEscapableExpr.
-        auto arg = cast<TupleExpr>(apply->getArg());
+        auto arg = apply->getArg();
         assert(arg->getNumElements() == 2 && "should have two arguments");
         auto nonescaping = arg->getElements()[0];
         auto body = arg->getElements()[1];
@@ -6934,8 +6874,11 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
           return cs.getType(E);
         };
 
-        auto callSubExpr = CallExpr::createImplicit(tc.Context, body,
-                                                    {escapable}, {}, getType);
+        auto *args = ArgumentExpr::create(tc.Context, SourceLoc(),
+                                          { escapable }, {}, {}, SourceLoc(),
+                                          /*HasTrailingClosure*/ false,
+                                          /*Implicit*/ true);
+        auto callSubExpr = new (tc.Context) CallExpr(body, args, /*Implicit*/ true, Type());
         cs.cacheSubExprTypes(callSubExpr);
         cs.setType(callSubExpr->getArg(),
                    AnyFunctionType::composeInput(tc.Context,
@@ -6956,7 +6899,7 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
       
       case DeclTypeCheckingSemantics::OpenExistential: {
         // Resolve into an OpenExistentialExpr.
-        auto arg = cast<TupleExpr>(apply->getArg());
+        auto arg = apply->getArg();
         assert(arg->getNumElements() == 2 && "should have two arguments");
 
         auto existential = cs.coerceToRValue(arg->getElements()[0]);
@@ -6992,7 +6935,8 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
           return cs.getType(E);
         };
 
-        auto callSubExpr = CallExpr::createImplicit(tc.Context, body, {opaqueValue}, {}, getType);
+        auto *args = ArgumentExpr::createSingle(tc.Context, opaqueValue);
+        auto callSubExpr = new (tc.Context) CallExpr(body, args, /*Implicit*/ true, Type());
         cs.cacheSubExprTypes(callSubExpr);
         cs.setType(callSubExpr, resultTy);
         
@@ -7056,13 +7000,13 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
   apply->setFn(fn);
 
   // Check whether the argument is 'super'.
-  bool isSuper = apply->getArg()->isSuperExpr();
+  bool isSuper = (isa<SelfApplyExpr>(apply) ? cast<SelfApplyExpr>(apply)->getBase() : apply->getArg())->isSuperExpr();
 
   // For function application, convert the argument to the input type of
   // the function.
   SmallVector<Identifier, 2> argLabelsScratch;
   if (auto fnType = cs.getType(fn)->getAs<FunctionType>()) {
-    auto origArg = apply->getArg();
+    auto origArg = isa<SelfApplyExpr>(apply) ? cast<SelfApplyExpr>(apply)->getBase() : apply->getArg();
     auto *arg = coerceCallArguments(origArg, fnType,
                                     apply,
                                     apply->getArgumentLabels(argLabelsScratch),
@@ -7730,10 +7674,12 @@ Expr *TypeChecker::callWitness(Expr *base, DeclContext *dc,
       }
     }
 
-    call = CallExpr::create(Context, unresolvedDot, TupleStartLoc, arguments,
-                            argLabels, {}, TupleEndLoc,
-                            /*trailingClosure=*/nullptr,
-                            /*implicit=*/true, getType);
+    auto *args = ArgumentExpr::create(Context, TupleStartLoc, arguments,
+                                      argLabels, {}, TupleEndLoc,
+                                      /*trailingClosure=*/false,
+                                      /*implicit=*/true);
+    call = new (Context) CallExpr(unresolvedDot, args,
+                                  /*implicit=*/true, Type());
   }
 
   cs.cacheSubExprTypes(call);

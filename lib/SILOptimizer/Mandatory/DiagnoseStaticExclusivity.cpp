@@ -401,7 +401,7 @@ canReplaceWithCallToCollectionSwapAt(const BeginAccessInst *Access1,
 
     assert(isCallToStandardLibrarySwap(CE, Ctx));
     // swap() takes two arguments.
-    auto *ArgTuple = cast<TupleExpr>(CE->getArg());
+    auto *ArgTuple = CE->getArg();
     const Expr *Arg1 = ArgTuple->getElement(0);
     const Expr *Arg2 = ArgTuple->getElement(1);
     if ((Arg1 == InOut1 && Arg2 == InOut2)) {

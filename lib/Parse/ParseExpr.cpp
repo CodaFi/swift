@@ -1174,12 +1174,15 @@ Parser::parseExprPostfixSuffix(ParserResult<Expr> Result, bool isExprBasic,
           /*isPostfix=*/true, isExprBasic, lSquareLoc, indexArgs,
           indexArgLabels, indexArgLabelLocs, rSquareLoc, trailingClosure,
           SyntaxKind::FunctionCallArgumentList);
+      auto *args = ArgumentExpr::create(Context, lSquareLoc, indexArgs,
+                                        indexArgLabels, indexArgLabelLocs,
+                                        rSquareLoc, trailingClosure,
+                                        /*implicit=*/false);
       Result = makeParserResult(
           status | Result,
-          SubscriptExpr::create(Context, Result.get(), lSquareLoc, indexArgs,
-                                indexArgLabels, indexArgLabelLocs, rSquareLoc,
-                                trailingClosure, ConcreteDeclRef(),
-                                /*implicit=*/false));
+          new (Context) SubscriptExpr(Result.get(), args, ConcreteDeclRef(),
+                                      /*implicit=*/false,
+                                      AccessSemantics::Ordinary));
       SyntaxContext->createNodeInPlace(SyntaxKind::SubscriptExpr);
       continue;
     }
@@ -1207,10 +1210,11 @@ Parser::parseExprPostfixSuffix(ParserResult<Expr> Result, bool isExprBasic,
         return nullptr;
 
       // Trailing closure implicitly forms a call.
+      auto *args = ArgumentExpr::create(Context, SourceLoc(), {}, {}, {},
+                                        SourceLoc(), closure.get(), /*implicit=*/false);
       Result = makeParserResult(
           ParserStatus(closure) | ParserStatus(Result),
-          CallExpr::create(Context, Result.get(), SourceLoc(), {}, {}, {},
-                           SourceLoc(), closure.get(), /*implicit=*/false));
+          new (Context) CallExpr(Result.get(), args, /*implicit=*/false, Type()));
       SyntaxContext->createNodeInPlace(SyntaxKind::FunctionCallExpr);
 
       // We only allow a single trailing closure on a call.  This could be
@@ -1769,8 +1773,9 @@ parseStringSegments(SmallVectorImpl<Lexer::StringSegment> &Segments,
                                         appendLiteral,
                                         /*nameloc=*/DeclNameLoc(), 
                                         /*Implicit=*/true);
+      auto *Args = ArgumentExpr::createSingle(Context, Literal);
       auto AppendLiteralCall =
-        CallExpr::createImplicit(Context, AppendLiteralRef, {Literal}, {});
+        new (Context) CallExpr(AppendLiteralRef, Args, /*Implicit*/ true, Type());
       Stmts.push_back(AppendLiteralCall);
 
       // Since the string is already parsed, Tok already points to the first
@@ -3140,10 +3145,12 @@ Parser::parseExprObjectLiteral(ObjectLiteralExpr::LiteralKind LitKind,
   if (status.isError())
     return makeParserError();
 
-  return makeParserResult(
-    ObjectLiteralExpr::create(Context, PoundLoc, LitKind, lParenLoc, args,
-                              argLabels, argLabelLocs, rParenLoc,
-                              trailingClosure, /*implicit=*/false));
+  auto *arg = ArgumentExpr::create(Context, lParenLoc, args, argLabels,
+                                   argLabelLocs, rParenLoc,
+                                   trailingClosure, /*implicit=*/false);
+  return makeParserResult(new (Context) ObjectLiteralExpr(PoundLoc, LitKind,
+                                                          arg,
+                                                          /*implicit=*/false));
 }
 
 /// Parse and diagnose unknown pound expression
@@ -3263,14 +3270,15 @@ Parser::parseExprCallSuffix(ParserResult<Expr> fn, bool isExprBasic) {
   if (peekToken().is(tok::code_complete) && CodeCompletion) {
     consumeToken(tok::l_paren);
     auto CCE = new (Context) CodeCompletionExpr(Tok.getLoc());
+    auto *Args = ArgumentExpr::create(Context, SourceLoc(),
+                                      { CCE },
+                                      { Identifier() },
+                                      { },
+                                      SourceLoc(),
+                                      /*trailingClosure=*/false,
+                                      /*implicit=*/false);
     auto Result = makeParserResult(fn,
-      CallExpr::create(Context, fn.get(), SourceLoc(),
-                       { CCE },
-                       { Identifier() },
-                       { },
-                       SourceLoc(),
-                       /*trailingClosure=*/nullptr,
-                       /*implicit=*/false));
+      new (Context) CallExpr(fn.get(), Args, /*implicit=*/false, Type()));
     CodeCompletion->completePostfixExprParen(fn.get(), CCE);
     // Eat the code completion token because we handled it.
     consumeToken(tok::code_complete);
@@ -3293,11 +3301,12 @@ Parser::parseExprCallSuffix(ParserResult<Expr> fn, bool isExprBasic) {
                                       trailingClosure,
                                       SyntaxKind::FunctionCallArgumentList);
 
+  auto *arg = ArgumentExpr::create(Context, lParenLoc, args,
+                                   argLabels, argLabelLocs, rParenLoc,
+                                   trailingClosure, /*implicit=*/false);
   // Form the call.
   return makeParserResult(
-      status | fn, CallExpr::create(Context, fn.get(), lParenLoc, args,
-                                    argLabels, argLabelLocs, rParenLoc,
-                                    trailingClosure, /*implicit=*/false));
+      status | fn, new (Context) CallExpr(fn.get(), arg, /*implicit=*/false, Type()));
 }
 
 /// parseExprCollection - Parse a collection literal expression.

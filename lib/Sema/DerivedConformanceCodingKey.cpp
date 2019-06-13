@@ -89,11 +89,8 @@ static void deriveRawValueInit(AbstractFunctionDecl *initDecl, void *) {
                                              DeclNameLoc(), /*Implicit=*/true);
 
   // Bind the value param in self.init(rawValue: {string,int}Value).
-  Expr *args[1] = {valueParamExpr};
-  Identifier argLabels[1] = {C.Id_rawValue};
-  auto *callExpr = CallExpr::createImplicit(C, initExpr, C.AllocateCopy(args),
-                                            C.AllocateCopy(argLabels));
-
+  auto *args = ArgumentExpr::create(C, SourceLoc(), {valueParamExpr}, {C.Id_rawValue}, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+  auto *callExpr = new (C) CallExpr(initExpr, args, /*Implicit=*/true, Type());
   auto *body = BraceStmt::create(C, SourceLoc(), ASTNode(callExpr),
                                  SourceLoc());
   initDecl->setBody(body);
@@ -296,8 +293,7 @@ deriveBodyCodingKey_init_stringValue(AbstractFunctionDecl *initDecl, void *) {
 
     auto *eltRef = new (C) DeclRefExpr(elt, DeclNameLoc(), /*Implicit=*/true);
     auto *metaTyRef = TypeExpr::createImplicit(enumType, C);
-    auto *arg = ArgumentExpr::createSingle(C, metaTyRef);
-    auto *valueExpr = new (C) DotSyntaxCallExpr(eltRef, SourceLoc(), arg);
+    auto *valueExpr = new (C) DotSyntaxCallExpr(eltRef, SourceLoc(), metaTyRef);
 
     auto *assignment = new (C) AssignExpr(selfRef, SourceLoc(), valueExpr,
                                           /*Implicit=*/true);

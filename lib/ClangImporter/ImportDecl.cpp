@@ -520,8 +520,9 @@ makeEnumRawValueConstructor(ClangImporter::Implementation &Impl,
   reinterpretCastRef->setType(FunctionType::get({FunctionType::Param(rawTy)},
                                                 enumTy));
 
-  auto reinterpreted = CallExpr::createImplicit(C, reinterpretCastRef,
-                                                { paramRef }, { Identifier() });
+  auto *args = ArgumentExpr::createSingle(C, paramRef);
+  auto reinterpreted = new (C) CallExpr(reinterpretCastRef, args,
+                                        /*implicit*/ true, Type());
   reinterpreted->setType(enumTy);
   reinterpreted->setThrows(false);
 
@@ -603,8 +604,9 @@ static AccessorDecl *makeEnumRawValueGetter(ClangImporter::Implementation &Impl,
   reinterpretCastRef->setType(FunctionType::get({FunctionType::Param(enumTy)},
                                                 rawTy));
 
-  auto reinterpreted = CallExpr::createImplicit(C, reinterpretCastRef,
-                                                { selfRef }, { Identifier() });
+  auto *args = ArgumentExpr::createSingle(C, selfRef);
+  auto reinterpreted = new (C) CallExpr(reinterpretCastRef, args,
+                                        /*implicit*/ true, Type());
   reinterpreted->setType(rawTy);
   reinterpreted->setThrows(false);
 
@@ -947,10 +949,10 @@ makeUnionFieldAccessors(ClangImporter::Implementation &Impl,
       FunctionType::get(
         AnyFunctionType::Param(selfDecl->getInterfaceType()),
         importedFieldDecl->getInterfaceType()));
-  
-    auto reinterpreted = CallExpr::createImplicit(C, reinterpretCastRefExpr,
-                                                  { selfRef },
-                                                  { Identifier() });
+
+    auto *args = ArgumentExpr::createSingle(C, selfRef);
+    auto reinterpreted = new (C) CallExpr(reinterpretCastRefExpr, args,
+                                          /*implicit*/ true, Type());
     reinterpreted->setType(importedFieldDecl->getInterfaceType());
     reinterpreted->setThrows(false);
     auto ret = new (C) ReturnStmt(SourceLoc(), reinterpreted);
@@ -991,9 +993,9 @@ makeUnionFieldAccessors(ClangImporter::Implementation &Impl,
                                                Identifier(),
                                                ParameterTypeFlags().withInOut(true)),
                         C.TheRawPointerType));
-    auto selfPointer = CallExpr::createImplicit(C, addressofFnRefExpr,
-                                                { inoutSelf },
-                                                { Identifier() });
+    auto *addrOfArgs = ArgumentExpr::createSingle(C, inoutSelf);
+    auto selfPointer = new (C) CallExpr(addressofFnRefExpr, addrOfArgs,
+                                        /*implicit*/ true, Type());
     selfPointer->setType(C.TheRawPointerType);
     selfPointer->setThrows(false);
 
@@ -1009,9 +1011,14 @@ makeUnionFieldAccessors(ClangImporter::Implementation &Impl,
         FunctionType::get({AnyFunctionType::Param(newValueDecl->getInterfaceType()),
                            AnyFunctionType::Param(C.TheRawPointerType)},
                           TupleType::getEmpty(C)));
-    auto initialize = CallExpr::createImplicit(C, initializeFnRefExpr,
-                                               { newValueRef, selfPointer },
-                                               { Identifier(), Identifier() });
+    auto *args = ArgumentExpr::create(C, SourceLoc(),
+                                      { newValueRef, selfPointer },
+                                      { Identifier(), Identifier() }, { },
+                                      SourceLoc(),
+                                      /*HasTrailingClosure*/ false,
+                                      /*Implicit*/ true);
+    auto initialize = new (C) CallExpr(initializeFnRefExpr, args,
+                                        /*implicit*/ true, Type());
     initialize->setType(TupleType::getEmpty(C));
     initialize->setThrows(false);
 
@@ -1265,7 +1272,11 @@ createDefaultConstructor(ClangImporter::Implementation &Impl,
                               /*implicit*/ true);
   zeroInitializerRef->setType(FunctionType::get({}, selfType));
 
-  auto call = CallExpr::createImplicit(context, zeroInitializerRef, {}, {});
+  auto *args = ArgumentExpr::createEmpty(context,
+                                         SourceLoc(), SourceLoc(),
+                                         /*Implicit*/ true);
+  auto call = new (context) CallExpr(zeroInitializerRef, args,
+                                     /*Implicit*/ true, Type());
   call->setType(selfType);
   call->setThrows(false);
 
@@ -8292,19 +8303,19 @@ ClangImporter::Implementation::createConstant(Identifier name, DeclContext *dc,
 
       // (Self) -> ...
       initTy = initTy->castTo<FunctionType>()->getResult();
-      auto *args = ArgumentExpr::create(C, SourceLoc(), { typeRef }, { }, { },
-                                        SourceLoc(),
-                                        /*HasTrailingClosure*/ false,
-                                        /*Implicit*/ true);
       auto initRef = new (C) DotSyntaxCallExpr(declRef, SourceLoc(),
-                                               args, initTy);
+                                               typeRef, initTy);
       initRef->setThrows(false);
 
       // (rawValue: T) -> ...
       initTy = initTy->castTo<FunctionType>()->getResult();
 
-      auto initCall = CallExpr::createImplicit(C, initRef, { expr },
-                                               { C.Id_rawValue });
+      auto *initArgs = ArgumentExpr::create(C, SourceLoc(),
+                                            { expr }, { C.Id_rawValue }, { },
+                                            SourceLoc(),
+                                            /*HasTrailingClosure*/ false,
+                                            /*Implicit*/ true);
+      auto initCall = new (C) CallExpr(initRef, initArgs, /*Implicit*/ true, Type());
       initCall->setType(initTy);
       initCall->setThrows(false);
 

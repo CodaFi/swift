@@ -250,7 +250,7 @@ Expr *TypeChecker::findLHS(DeclContext *DC, Expr *E, Identifier name) {
     } else if (auto *ifExpr = dyn_cast<IfExpr>(E)) {
       E = ifExpr->getElseExpr();
     } else if (auto *binaryExpr = dyn_cast<BinaryExpr>(E)) {
-      auto *Args = dyn_cast<TupleExpr>(binaryExpr->getArg());
+      auto *Args = binaryExpr->getArg();
       if (!Args || Args->getNumElements() != 2)
         return nullptr;
       E = Args->getElement(1);

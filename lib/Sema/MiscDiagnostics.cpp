@@ -642,7 +642,7 @@ static void diagSyntacticUseRestrictions(TypeChecker &TC, const Expr *E,
       Expr *subExpr = nullptr;
       CharSourceRange removeBeforeRange, removeAfterRange;
       if (auto apply = dyn_cast_or_null<ApplyExpr>(Parent)) {
-        if (auto args = dyn_cast<TupleExpr>(apply->getArg())) {
+        if (auto args = apply->getArg()) {
           subExpr = args->getElement(0);
           // Determine the fixit range from the start of the application to
           // the first argument, `unsafeBitCast(`
@@ -1126,13 +1126,13 @@ static void diagSyntacticUseRestrictions(TypeChecker &TC, const Expr *E,
         fnExpr = dotSyntax->getSemanticFn();
 
       auto DRE = dyn_cast<DeclRefExpr>(fnExpr);
-      auto args = dyn_cast<TupleExpr>(call->getArg());
+      auto callArgs = call->getArg();
       if (!DRE || !DRE->getDecl()->isOperator() ||
-          !args || args->getNumElements() != 2)
+          !callArgs || callArgs->getNumElements() != 2)
         return;
       
-      auto lhs = args->getElement(0);
-      auto rhs = args->getElement(1);
+      auto lhs = callArgs->getElement(0);
+      auto rhs = callArgs->getElement(1);
       auto calleeName = DRE->getDecl()->getBaseName();
 
       Expr *subExpr = nullptr;

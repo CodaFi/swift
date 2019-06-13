@@ -823,8 +823,8 @@ public:
 
     SmallVector<Identifier, 6> ArgLabels(ArgsWithSourceRange.size(),
                                          Identifier());
-    ApplyExpr *LoggerCall = CallExpr::createImplicit(
-        Context, LoggerRef, ArgsWithSourceRange, ArgLabels);
+    auto *LoggerCallArgs = ArgumentExpr::create(Context, SourceLoc(), ArgsWithSourceRange, ArgLabels, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+    auto *LoggerCall = new (Context) CallExpr(LoggerRef, LoggerCallArgs, /*Implicit=*/true, Type());
     Added<ApplyExpr *> AddedLogger(LoggerCall);
 
     if (!doTypeCheck(Context, TypeCheckDC, AddedLogger)) {
@@ -851,8 +851,8 @@ public:
 
     SendDataRef->setImplicit(true);
 
-    Expr *SendDataCall =
-        CallExpr::createImplicit(Context, SendDataRef, {DRE}, {Identifier()});
+    auto *args = ArgumentExpr::createSingle(Context, DRE);
+    auto *SendDataCall = new (Context) CallExpr(SendDataRef, args, /*Implicit=*/true, Type());
     Added<Expr *> AddedSendData(SendDataCall);
 
     if (!doTypeCheck(Context, TypeCheckDC, AddedSendData)) {

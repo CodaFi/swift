@@ -1974,7 +1974,7 @@ public:
       << " kind='" << E->getLiteralKindPlainName() << "'";
     PrintWithColorRAII(OS, LiteralValueColor) << " initializer=";
     E->getInitializer().dump(PrintWithColorRAII(OS, LiteralValueColor).getOS());
-    printArgumentLabels(E->getArgumentLabels());
+    printArgumentLabels(E->getArg()->getElementNames());
     OS << "\n";
     printRec(E->getArg());
     printSemanticExpr(E->getSemanticExpr());
@@ -2155,7 +2155,7 @@ public:
       PrintWithColorRAII(OS, DeclColor) << " decl=";
       printDeclRef(E->getDecl());
     }
-    printArgumentLabels(E->getArgumentLabels());
+    printArgumentLabels(E->getIndex()->getElementNames());
     OS << '\n';
     printRec(E->getBase());
     OS << '\n';
@@ -2174,7 +2174,7 @@ public:
     printCommon(E, "dynamic_subscript_expr");
     PrintWithColorRAII(OS, DeclColor) << " decl=";
     printDeclRef(E->getMember());
-    printArgumentLabels(E->getArgumentLabels());
+    printArgumentLabels(E->getIndex()->getElementNames());
     OS << '\n';
     printRec(E->getBase());
     OS << '\n';

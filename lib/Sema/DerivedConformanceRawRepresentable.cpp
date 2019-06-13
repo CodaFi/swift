@@ -103,8 +103,8 @@ static void deriveBodyRawRepresentable_raw(AbstractFunctionDecl *toRawDecl,
     auto selfRef = DerivedConformance::createSelfDeclRef(toRawDecl);
     auto bareTypeExpr = TypeExpr::createImplicit(rawTy, C);
     auto typeExpr = new (C) DotSelfExpr(bareTypeExpr, SourceLoc(), SourceLoc());
-    auto call = CallExpr::createImplicit(C, functionRef, {selfRef, typeExpr},
-                                         {Identifier(), C.Id_to});
+    auto *args = ArgumentExpr::create(C, SourceLoc(), {selfRef, typeExpr}, {Identifier(), C.Id_to}, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+    auto *call = new (C) CallExpr(functionRef, args, /*Implicit=*/true, Type());
     auto returnStmt = new (C) ReturnStmt(SourceLoc(), call);
     auto body = BraceStmt::create(C, SourceLoc(), ASTNode(returnStmt),
                                   SourceLoc());
@@ -350,8 +350,7 @@ deriveBodyRawRepresentable_init(AbstractFunctionDecl *initDecl, void *) {
     // valueExpr = "\(enumType).\(elt)"
     auto eltRef = new (C) DeclRefExpr(elt, DeclNameLoc(), /*implicit*/true);
     auto metaTyRef = TypeExpr::createImplicit(enumType, C);
-    auto *arg = ArgumentExpr::createSingle(C, metaTyRef);
-    auto valueExpr = new (C) DotSyntaxCallExpr(eltRef, SourceLoc(), arg);
+    auto valueExpr = new (C) DotSyntaxCallExpr(eltRef, SourceLoc(), metaTyRef);
     
     // assignment = "self = \(valueExpr)"
     auto selfRef = new (C) DeclRefExpr(selfDecl, DeclNameLoc(),

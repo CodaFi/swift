@@ -111,14 +111,16 @@ public:
 void StmtBuilder::printLiteralString(StringRef Str, SourceLoc Loc) {
   Expr *PrintFn = buildPrintRefExpr(Loc);
   Expr *PrintStr = new (Context) StringLiteralExpr(Str, Loc);
-  addToBody(CallExpr::createImplicit(Context, PrintFn, { PrintStr }, { }));
+  auto *Args = ArgumentExpr::create(Context, SourceLoc(), { PrintStr }, { }, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true);
+  addToBody(new (Context) CallExpr(PrintFn, Args, /*Implicit*/ true, Type()));
 }
 
 void StmtBuilder::printReplExpr(VarDecl *Arg, SourceLoc Loc) {
   Expr *DebugPrintlnFn = buildDebugPrintlnRefExpr(Loc);
   Expr *ArgRef = TC.buildRefExpr(Arg, DC, DeclNameLoc(Loc), /*Implicit=*/true,
                                  FunctionRefKind::Compound);
-  addToBody(CallExpr::createImplicit(Context, DebugPrintlnFn, { ArgRef }, { }));
+  auto *Args = ArgumentExpr::create(Context, SourceLoc(), { ArgRef }, { }, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true);
+  addToBody(new (Context) CallExpr(DebugPrintlnFn, Args, /*Implicit*/ true, Type()));
 }
 
 Identifier TypeChecker::getNextResponseVariableName(DeclContext *DC) {
@@ -270,7 +272,8 @@ void REPLChecker::generatePrintOfExpression(StringRef NameStr, Expr *E) {
   CE->setBody(Body, false);
   TC.typeCheckClosureBody(CE);
 
-  auto *TheCall = CallExpr::createImplicit(Context, CE, { E }, { });
+  auto *TheCallArgs = ArgumentExpr::create(Context, SourceLoc(), { E }, { }, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true);
+  auto *TheCall = new (Context) CallExpr(CE, TheCallArgs, /*Implicit*/ true, Type());
   TheCall->getArg()->setType(AnyFunctionType::composeInput(Context, args, false));
   TheCall->setType(Context.TheEmptyTupleType);
 

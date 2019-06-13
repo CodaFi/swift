@@ -557,8 +557,8 @@ public:
     BeforeLoggerRef->setImplicit(true);
     SmallVector<Identifier, 6> ArgLabels(ArgsWithSourceRange.size(),
                                          Identifier());
-    ApplyExpr *BeforeLoggerCall = CallExpr::createImplicit(
-        Context, BeforeLoggerRef, ArgsWithSourceRange, ArgLabels);
+    auto *BeforeLoggerCallArgs = ArgumentExpr::create(Context, SourceLoc(), ArgsWithSourceRange, ArgLabels, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+    auto *BeforeLoggerCall = new (Context) CallExpr(BeforeLoggerRef, BeforeLoggerCallArgs, /*Implicit=*/true, Type());
     Added<ApplyExpr *> AddedBeforeLogger(BeforeLoggerCall);
     if (!doTypeCheck(Context, TypeCheckDC, AddedBeforeLogger)) {
       // typically due to 'use of unresolved identifier '__builtin_pc_before''
@@ -569,8 +569,8 @@ public:
         UnresolvedDeclRefExpr(Context.getIdentifier("__builtin_pc_after"),
                               DeclRefKind::Ordinary, DeclNameLoc(SR.End));
     AfterLoggerRef->setImplicit(true);
-    ApplyExpr *AfterLoggerCall = CallExpr::createImplicit(
-        Context, AfterLoggerRef, ArgsWithSourceRange, ArgLabels);
+    auto *AfterLoggerCallArgs = ArgumentExpr::create(Context, SourceLoc(), ArgsWithSourceRange, ArgLabels, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+    auto *AfterLoggerCall = new (Context) CallExpr(AfterLoggerRef, AfterLoggerCallArgs, /*Implicit=*/true, Type());
     Added<ApplyExpr *> AddedAfterLogger(AfterLoggerCall);
     if (!doTypeCheck(Context, TypeCheckDC, AddedAfterLogger)) {
       // typically due to 'use of unresolved identifier '__builtin_pc_after''
@@ -639,8 +639,8 @@ public:
 
     SmallVector<Identifier, 6> ArgLabels(ArgsWithSourceRange.size(),
                                          Identifier());
-    ApplyExpr *LoggerCall = CallExpr::createImplicit(
-        Context, LoggerRef, ArgsWithSourceRange, ArgLabels);
+    auto *args = ArgumentExpr::create(Context, SourceLoc(), ArgsWithSourceRange, ArgLabels, {}, SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true, Type());
+    auto *LoggerCall = new (Context) CallExpr(LoggerRef, args, /*Implicit=*/true, Type());
     Added<ApplyExpr *> AddedLogger(LoggerCall);
 
     if (!doTypeCheck(Context, TypeCheckDC, AddedLogger)) {

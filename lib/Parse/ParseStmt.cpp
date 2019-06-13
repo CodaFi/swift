@@ -995,7 +995,9 @@ ParserResult<Stmt> Parser::parseStmtDefer() {
   auto DRE = new (Context) DeclRefExpr(tempDecl, DeclNameLoc(loc),
                                        /*Implicit*/true,
                                        AccessSemantics::DirectToStorage);
-  auto call = CallExpr::createImplicit(Context, DRE, { }, { });
+  auto *args = ArgumentExpr::createEmpty(Context, SourceLoc(), SourceLoc(),
+                                         /*Implicit*/ true);
+  auto call = new (Context) CallExpr(DRE, args, /*Implicit*/ true, Type());
   
   auto DS = new (Context) DeferStmt(DeferLoc, tempDecl, call);
   return makeParserResult(Status, DS);
