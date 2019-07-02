@@ -856,10 +856,11 @@ static Expr *buildStorageReference(AccessorDecl *accessor,
 
     SubscriptDecl *subscriptDecl = enclosingSelfAccess->subscript;
     auto &tc = static_cast<TypeChecker&>(*ctx.getLazyResolver());
-    lookupExpr = SubscriptExpr::create(
-        ctx, wrapperMetatype, SourceLoc(), args,
+    auto *lookupExprArgs = ArgumentExpr::create(
+        ctx, SourceLoc(), args,
         subscriptDecl->getFullName().getArgumentNames(), { }, SourceLoc(),
-        nullptr, subscriptDecl, /*Implicit=*/true);
+        /*HasTrailingClosure*/ false, /*Implicit*/ true);
+    lookupExpr = new (ctx) SubscriptExpr(wrapperMetatype, lookupExprArgs, subscriptDecl, /*Implicit=*/true, semantics);
     tc.typeCheckExpression(lookupExpr, accessor);
 
     // Make sure we produce an lvalue only when desired.
@@ -874,9 +875,8 @@ static Expr *buildStorageReference(AccessorDecl *accessor,
       }
     }
   } else if (auto subscript = dyn_cast<SubscriptDecl>(storage)) {
-    Expr *indices = buildSubscriptIndexReference(ctx, accessor);
-    lookupExpr = SubscriptExpr::create(ctx, selfDRE, indices, memberRef,
-                                       IsImplicit, semantics);
+    ArgumentExpr *indices = buildSubscriptIndexReference(ctx, accessor);
+    lookupExpr = new (ctx) SubscriptExpr(selfDRE, indices, memberRef, IsImplicit, semantics);
 
     if (selfAccessKind == SelfAccessorKind::Super)
       cast<LookupExpr>(lookupExpr)->setIsSuper(true);

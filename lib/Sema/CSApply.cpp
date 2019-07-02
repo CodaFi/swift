@@ -7006,8 +7006,7 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
   // the function.
   SmallVector<Identifier, 2> argLabelsScratch;
   if (auto fnType = cs.getType(fn)->getAs<FunctionType>()) {
-    auto origArg = isa<SelfApplyExpr>(apply) ? cast<SelfApplyExpr>(apply)->getBase() : apply->getArg();
-    auto *arg = coerceCallArguments(origArg, fnType,
+    auto *arg = coerceCallArguments(apply->getArg(), fnType,
                                     apply,
                                     apply->getArgumentLabels(argLabelsScratch),
                                     hasTrailingClosure,

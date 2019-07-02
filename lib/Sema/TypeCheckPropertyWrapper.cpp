@@ -662,8 +662,11 @@ Expr *swift::buildPropertyWrapperInitialValueCall(
     // call `init(initialValue:)` directly.
     auto attr = wrapperAttrs[i];
     if (!attr->getArg() || ignoreAttributeArgs) {
-      initializer = CallExpr::createImplicit(
-          ctx, typeExpr, {initializer}, {ctx.Id_initialValue});
+      auto initializerArgs = ArgumentExpr::create(
+          ctx, SourceLoc(), {initializer}, {ctx.Id_initialValue}, {},
+          SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true);
+      initializer = new (ctx) CallExpr(typeExpr, initializerArgs,
+                                       /*Implicit*/ true, Type());
       continue;
     }
 
@@ -688,8 +691,11 @@ Expr *swift::buildPropertyWrapperInitialValueCall(
       elementLocs.push_back(SourceLoc());
     }
 
-    initializer = CallExpr::createImplicit(
-        ctx, typeExpr, elements, elementNames);
+    auto initializerArgs = ArgumentExpr::create(
+          ctx, SourceLoc(), elements, elementNames, {},
+          SourceLoc(), /*HasTrailingClosure*/ false, /*Implicit*/ true);
+    initializer = new (ctx) CallExpr(typeExpr, initializerArgs,
+                                      /*Implicit*/ true, Type());
   }
   
   return initializer;
