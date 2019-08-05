@@ -180,6 +180,11 @@ public:
   }
 
   void visitFinalAttr(FinalAttr *attr);
+
+  void visitTestAttr(TestAttr *attr) {
+    llvm_unreachable("FIXME: Implement decl validation");
+  }
+
   void visitIBActionAttr(IBActionAttr *attr);
   void visitIBSegueActionAttr(IBSegueActionAttr *attr);
   void visitLazyAttr(LazyAttr *attr);
@@ -3403,6 +3408,7 @@ static bool shouldBlockImplicitDynamic(Decl *D) {
   if (D->getAttrs().hasAttribute<NonObjCAttr>() ||
       D->getAttrs().hasAttribute<SILGenNameAttr>() ||
       D->getAttrs().hasAttribute<TransparentAttr>() ||
+      D->getAttrs().hasAttribute<TestAttr>() ||
       D->getAttrs().hasAttribute<InlinableAttr>())
     return true;
   return false;

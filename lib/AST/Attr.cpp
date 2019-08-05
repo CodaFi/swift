@@ -1043,6 +1043,12 @@ bool DeclAttribute::printImpl(ASTPrinter &Printer, const PrintOptions &Options,
     break;
   }
 
+  case DAK_Test:
+    Printer.printAttrName("@_test");
+    if (!cast<TestAttr>(this)->Name.empty())
+      Printer << "(\"" << cast<TestAttr>(this)->Name << "\")";
+    break;
+
   case DAK_Count:
     llvm_unreachable("exceed declaration attribute kinds");
 

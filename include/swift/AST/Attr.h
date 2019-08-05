@@ -2060,6 +2060,24 @@ public:
   }
 };
 
+/// Defines the @_test("...") attribute.
+class TestAttr : public DeclAttribute {
+public:
+  TestAttr(StringRef Name, SourceLoc AtLoc, SourceRange Range)
+    : DeclAttribute(DAK_Test, AtLoc, Range, /*Implicit*/ false),
+      Name(Name) {}
+
+  TestAttr(StringRef Name)
+    : TestAttr(Name, SourceLoc(), SourceRange(), /*Implicit=*/false) {}
+
+  /// The test's name.
+  const StringRef Name;
+
+  static bool classof(const DeclAttribute *DA) {
+    return DA->getKind() == DAK_Test;
+  }
+};
+
 /// Attributes that may be applied to declarations.
 class DeclAttributes {
   /// Linked list of declaration attributes.

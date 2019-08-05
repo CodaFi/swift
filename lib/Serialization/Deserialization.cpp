@@ -4443,6 +4443,11 @@ llvm::Error DeclDeserializer::deserializeDeclAttributes() {
         Attr = SPIAccessControlAttr::create(ctx, SourceLoc(),
                                             SourceRange(), spis);
         break;
+      case decls_block::Test_DECL_ATTR: {
+        serialization::decls_block::TestDeclAttrLayout::readRecord(
+            scratch);
+        Attr = new (ctx) TestAttr(blobData);
+        break;
       }
 
 #define SIMPLE_DECL_ATTR(NAME, CLASS, ...) \
