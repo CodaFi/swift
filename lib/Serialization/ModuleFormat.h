@@ -56,7 +56,7 @@ const uint16_t SWIFTMODULE_VERSION_MAJOR = 0;
 /// describe what change you made. The content of this comment isn't important;
 /// it just ensures a conflict if two people change the module format.
 /// Don't worry about adhering to the 80-column limit for this line.
-const uint16_t SWIFTMODULE_VERSION_MINOR = 589; // cache prespecialization decls.
+const uint16_t SWIFTMODULE_VERSION_MINOR = 590; // @_test attribute
 
 /// A standard hash seed used for all string hashes in a serialized module.
 ///
@@ -1925,6 +1925,10 @@ namespace decls_block {
     TypeIDField // type referenced by this custom attribute
   >;
 
+  using TestDeclAttrLayout = BCRecordLayout<
+    Test_DECL_ATTR,
+    BCBlob      // test name
+  >;
 }
 
 /// Returns the encoding kind for the given decl.

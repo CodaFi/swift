@@ -594,6 +594,11 @@ CONTEXTUAL_SIMPLE_DECL_ATTR(async, Async,
   APIBreakingToAdd | APIBreakingToRemove,
   106)
 
+DECL_ATTR(_test, Test,
+  OnAbstractFunction |
+  LongAttribute | UserInaccessible,
+  110)
+
 #undef TYPE_ATTR
 #undef DECL_ATTR_ALIAS
 #undef CONTEXTUAL_DECL_ATTR_ALIAS

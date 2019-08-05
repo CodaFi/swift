@@ -1874,7 +1874,8 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
   }
 
   case DAK_CDecl:
-  case DAK_SILGenName: {
+  case DAK_SILGenName:
+  case DAK_Test: {
     if (!consumeIf(tok::l_paren)) {
       diagnose(Loc, diag::attr_expected_lparen, AttrName,
                DeclAttribute::isDeclModifier(DK));
@@ -1917,6 +1918,9 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
       else if (DK == DAK_CDecl)
         Attributes.add(new (Context) CDeclAttr(AsmName.getValue(), AtLoc,
                                                AttrRange, /*Implicit=*/false));
+      else if (DK == DAK_Test)
+        Attributes.add(new (Context) TestAttr(AsmName.getValue(), AtLoc,
+                                              AttrRange));
       else
         llvm_unreachable("out of sync with switch");
     }
