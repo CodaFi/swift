@@ -2790,6 +2790,12 @@ class Serializer::DeclSerializer : public DeclVisitor<DeclSerializer> {
       UnavailableFromAsyncDeclAttrLayout::emitRecord(
           S.Out, S.ScratchRecord, abbrCode, theAttr->isImplicit(),
           theAttr->Message);
+
+    case DAK_Test: {
+      auto *theAttr = cast<TestAttr>(DA);
+      auto abbrCode = S.DeclTypeAbbrCodes[TestDeclAttrLayout::Code];
+      TestDeclAttrLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
+  	                                 theAttr->Name);
       return;
     }
     }

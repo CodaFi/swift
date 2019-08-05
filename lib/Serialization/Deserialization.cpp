@@ -4762,6 +4762,11 @@ llvm::Error DeclDeserializer::deserializeDeclCommon() {
         Attr = SPIAccessControlAttr::create(ctx, SourceLoc(),
                                             SourceRange(), spis);
         break;
+      case decls_block::Test_DECL_ATTR: {
+        serialization::decls_block::TestDeclAttrLayout::readRecord(
+            scratch);
+        Attr = new (ctx) TestAttr(blobData);
+        break;
       }
 
       case decls_block::UnavailableFromAsync_DECL_ATTR: {
