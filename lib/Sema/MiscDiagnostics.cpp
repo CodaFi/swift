@@ -127,6 +127,10 @@ static void diagSyntacticUseRestrictions(const Expr *E, const DeclContext *DC,
         
         // Verify that `unsafeBitCast` isn't misused.
         checkForSuspiciousBitCasts(DRE, nullptr);
+
+        // Verify that @_test methods are not referenced from non-@_test
+        // contexts.
+        checkForTestContextIntegrity(DRE);
       }
       if (auto *MRE = dyn_cast<MemberRefExpr>(Base)) {
         if (isa<TypeDecl>(MRE->getMember().getDecl()))
@@ -744,6 +748,17 @@ static void diagSyntacticUseRestrictions(const Expr *E, const DeclContext *DC,
     static constexpr unsigned BNKPair(BitcastableNumberKind a,
                                       BitcastableNumberKind b) {
       return (a << 8) | b;
+    }
+
+    void checkForTestContextIntegrity(DeclRefExpr *DRE) {
+      // No @_test?  No problem.
+      if (!DRE->getDecl()->getAttrs().hasAttribute<TestAttr>())
+        return;
+
+      if (!DC->isTestContext()) {
+        TC.diagnose(DRE->getLoc(), diag::test_func_in_non_test_context,
+                    DRE->getDecl()->getBaseName().getIdentifier());
+      }
     }
     
     void checkForSuspiciousBitCasts(DeclRefExpr *DRE,

@@ -941,7 +941,7 @@ void swift::addImageTestSuiteBlockCallback(const void *testRecs,
                  recordsBegin, recordsEnd);
 }
 
-void swift::swift_enumerateTests_f(testVisitor_t visitor) {
+void swift::swift_enumerateTests_f(swift_test_visitor_t visitor) {
   if (!visitor) {
     return;
   }
@@ -956,7 +956,7 @@ void swift::swift_enumerateTests_f(testVisitor_t visitor) {
   }
 }
 
-void swift::swift_enumerateTests(testVisitor_block_t visitor) {
+void swift::swift_enumerateTests(swift_test_visitor_block_t visitor) {
   if (!visitor) {
     return;
   }

@@ -917,10 +917,10 @@ SWIFT_RUNTIME_EXPORT
 void swift_disableDynamicReplacementScope(const DynamicReplacementScope *scope);
 
 // FIXME: Roll this into a versioned struct.
-using testVisitor_t = void (const char * _Nonnull Name, SWIFT_CC(swift) void (*invoke)(void));
+using swift_test_visitor_t = void (const char * _Nonnull Name, SWIFT_CC(swift) void (*invoke)(void));
 
 SWIFT_RUNTIME_EXPORT
-void swift_enumerateTests_f(testVisitor_t visitor);
+void swift_enumerateTests_f(swift_test_visitor_t visitor);
 
 #ifndef __has_feature
 # define __has_feature(x) 0
@@ -928,10 +928,10 @@ void swift_enumerateTests_f(testVisitor_t visitor);
 
 #if __has_feature(blocks)
 // FIXME: Roll this into a versioned struct.
-using testVisitor_block_t = void (^)(const char * _Nonnull, SWIFT_CC(swift) void (*invoke)(void));
+using swift_test_visitor_block_t = void (^)(const char * _Nonnull, SWIFT_CC(swift) void (*invoke)(void));
 
 SWIFT_RUNTIME_EXPORT
-void swift_enumerateTests(testVisitor_block_t _Nonnull block);
+void swift_enumerateTests(swift_test_visitor_block_t _Nonnull block);
 #endif
 
 #pragma clang diagnostic pop

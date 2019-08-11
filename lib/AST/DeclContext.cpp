@@ -445,6 +445,19 @@ bool DeclContext::isInnermostContextGeneric() const {
   return false;
 }
 
+bool DeclContext::isTestContext() const {
+  auto dc = this;
+  do {
+    if (auto decl = dc->getAsDecl()) {
+      if (auto AFD = dyn_cast<AbstractFunctionDecl>(decl))
+        if (AFD->getAttrs().hasAttribute<TestAttr>())
+          return true;
+    }
+  } while ((dc = dc->getParent()));
+
+  return false;
+}
+
 unsigned DeclContext::getSyntacticDepth() const {
   // Module scope == depth 0.
   if (isModuleScopeContext())
