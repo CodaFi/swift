@@ -496,6 +496,10 @@ public:
   /// context.
   bool isInSpecializeExtensionContext() const;
 
+  /// Determine whether this declaration context or any of its parents are
+  /// annotated with @_test.
+  bool isTestContext() const;
+
   /// Get the most optimal resilience expansion for code in this context.
   /// If the body is able to be inlined into functions in other resilience
   /// domains, this ensures that only sufficiently-conservative access patterns
