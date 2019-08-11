@@ -78,6 +78,9 @@ void initializeDynamicReplacementLookup();
 /// Load the metadata from the image necessary to find functions by name.
 void initializeAccessibleFunctionsLookup();
 
+/// Load the metadata from the image necessary to enumerate test suites.
+void initializeTestSuiteLookup();
+
 // Callbacks to register metadata from an image to the runtime.
 void addImageProtocolsBlockCallback(const void *baseAddress,
                                     const void *start, uintptr_t size);
@@ -105,6 +108,8 @@ void addImageAccessibleFunctionsBlockCallback(const void *baseAddress,
 void addImageAccessibleFunctionsBlockCallbackUnsafe(const void *baseAddress,
                                                     const void *start,
                                                     uintptr_t size);
+
+void addImageTestSuiteBlockCallback(const void *start, uintptr_t size);
 
 int lookupSymbol(const void *address, SymbolInfo *info);
 

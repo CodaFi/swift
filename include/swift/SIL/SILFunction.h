@@ -346,6 +346,8 @@ private:
   /// The function is in a statically linked module.
   unsigned IsStaticallyLinked : 1;
 
+  bool IsTestFunction = false;
+
   static void
   validateSubclassScope(SubclassScope scope, IsThunk_t isThunk,
                         const GenericSpecializationInformation *genericInfo) {
@@ -736,6 +738,10 @@ public:
   void setAvailabilityForLinkage(AvailabilityContext availability) {
     Availability = availability;
   }
+
+  /// Return whether this function is part of the module's test suite.
+  bool isTestFunction() const { return IsTestFunction; }
+  void setTestFunction(bool value) { IsTestFunction = value; }
 
   /// Returns whether this function's symbol must always be weakly referenced
   /// across module boundaries.

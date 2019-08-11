@@ -1569,6 +1569,7 @@ namespace  {
 
     UNINTERESTING_ATTR(BackDeploy)
 
+    UNINTERESTING_ATTR(Test)
 #undef UNINTERESTING_ATTR
 
     void visitAvailableAttr(AvailableAttr *attr) {

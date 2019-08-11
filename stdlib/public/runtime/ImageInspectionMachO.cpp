@@ -46,6 +46,7 @@ constexpr const char DynamicReplacementSomeSection[] =
 constexpr const char AccessibleFunctionsSection[] =
     MachOAccessibleFunctionsSection;
 constexpr const char TextSegment[] = MachOTextSegment;
+constexpr const char TestSuiteSection[] = MachOTestSuiteSection;
 
 #if __POINTER_WIDTH__ == 64
 using mach_header_platform = mach_header_64;
@@ -172,6 +173,12 @@ void swift::initializeAccessibleFunctionsLookup() {
 }
 
 #if SWIFT_STDLIB_HAS_DLADDR
+void swift::initializeTestSuiteLookup() {
+  REGISTER_FUNC(
+    addImageCallback<TextSegment, TestSuiteSection,
+                     addImageTestSuiteBlockCallback>);
+}
+
 int swift::lookupSymbol(const void *address, SymbolInfo *info) {
   Dl_info dlinfo;
   if (dladdr(address, &dlinfo) == 0) {

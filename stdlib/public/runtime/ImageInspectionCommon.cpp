@@ -125,6 +125,12 @@ void swift_addNewDSOImage(swift::MetadataSections *sections) {
   if (accessible_funcs_section.length)
     swift::addImageAccessibleFunctionsBlockCallback(
         baseAddress, functions, accessible_funcs_section.length);
+
+  const auto &testsuite_section = sections->swift5_testsuite;
+  const void *testsuite =
+      reinterpret_cast<void *>(testsuite_section.start);
+  if (testsuite_section.length)
+    addImageTestSuiteBlockCallback(testsuite, testsuite_section.length);
 }
 
 void swift::initializeProtocolLookup() {
@@ -140,6 +146,26 @@ void swift::initializeDynamicReplacementLookup() {
 }
 
 void swift::initializeAccessibleFunctionsLookup() {
+}
+
+void swift::initializeTestSuiteLookup() {
+  const swift::MetadataSections *sections = registered;
+  while (true) {
+    const swift::MetadataSections::Range &suite = sections->swift5_testsuite;
+    if (suite.length)
+      addImageTestSuiteBlockCallback(reinterpret_cast<void *>(suite.start),
+                                     suite.length);
+
+    if (sections->next == registered)
+      break;
+    sections = sections->next;
+  }
+}
+
+// This is only used for backward deployment hooks, which we currently only support for
+// MachO. Add a stub here to make sure it still compiles.
+void *swift::lookupSection(const char *segment, const char *section, size_t *outSize) {
+  return nullptr;
 }
 
 #ifndef NDEBUG

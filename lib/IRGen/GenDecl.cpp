@@ -622,7 +622,8 @@ void IRGenModule::emitRuntimeRegistration() {
   if (SwiftProtocols.empty() && ProtocolConformances.empty() &&
       RuntimeResolvableTypes.empty() &&
       (!ObjCInterop || (ObjCProtocols.empty() && ObjCClasses.empty() &&
-                        ObjCCategoryDecls.empty())))
+                        ObjCCategoryDecls.empty())) &&
+      TestFunctionDefinitions.empty())
     return;
   
   // Find the entry point.
@@ -734,6 +735,25 @@ void IRGenModule::emitRuntimeRegistration() {
         protocols->getType()->getPointerElementType() , protocols, endIndices);
 
     RegIGF.Builder.CreateCall(getRegisterProtocolsFn(), {begin, end});
+  }
+
+  if (!TestFunctionDefinitions.empty()) {
+    llvm::Constant *testSuite = emitTestSuiteMetadata();
+
+    llvm::Constant *beginIndices[] = {
+      llvm::ConstantInt::get(Int32Ty, 0),
+      llvm::ConstantInt::get(Int32Ty, 0),
+    };
+    auto begin = llvm::ConstantExpr::getGetElementPtr(
+        /*Ty=*/nullptr, testSuite, beginIndices);
+    llvm::Constant *endIndices[] = {
+      llvm::ConstantInt::get(Int32Ty, 0),
+      llvm::ConstantInt::get(Int32Ty, TestFunctionDefinitions.size()),
+    };
+    auto end = llvm::ConstantExpr::getGetElementPtr(
+        /*Ty=*/nullptr, testSuite, endIndices);
+
+    RegIGF.Builder.CreateCall(getRegisterTestSuiteFn(), {begin, end});
   }
 
   // Register Swift protocol conformances if we added any.
@@ -1134,6 +1154,9 @@ static bool isLazilyEmittedFunction(SILFunction &f, SILModule &m) {
   if (f.getDynamicallyReplacedFunction())
     return false;
 
+  if (f.isTestFunction())
+    return false;
+
   if (hasCodeCoverageInstrumentation(f, m))
     return false;
 
@@ -1302,6 +1325,12 @@ deleteAndReenqueueForEmissionValuesDependentOnCanonicalPrespecializedMetadataRec
   //
   // here because we don't want to reemit metadata.
   emitLazyTypeContextDescriptor(IGM, &decl, RequireMetadata);
+}
+
+void IRGenerator::emitTestSuiteMetadata() {
+  for (auto &m : *this) {
+     m.second->emitTestSuiteMetadata();
+   }
 }
 
 /// Emit any lazy definitions (of globals or functions or whatever
@@ -1902,6 +1931,49 @@ void IRGenerator::emitDynamicReplacements() {
       /*isConstant*/ true, llvm::GlobalValue::PrivateLinkage);
   autoReplVar2->setSection(getDynamicReplacementSomeSection(IGM));
 }
+
+void IRGenModule::addTestToTestSuite(SILFunction *f, Optional<StringRef> Name) {
+  TestFunctionDefinitions.push_back({f, Name});
+}
+
+llvm::Constant *IRGenModule::emitTestSuiteMetadata() {
+  if (TestFunctionDefinitions.empty())
+    return nullptr;
+
+
+  // struct TestDescriptor {
+  //   RelativeDirectPointer<void> testFunction;
+  //   RelativeDirectPointer<const char, /*nullable*/ false> Name;
+  //   uint32_t flags; // unused
+  // }[0];
+  ConstantInitBuilder builder(*this);
+  auto testsArray = builder.beginArray(TestDescriptorTy);
+  for (auto &origFunc : TestFunctionDefinitions) {
+    llvm::Constant *fnPtr = llvm::ConstantExpr::getBitCast(
+        getAddrOfSILFunction(origFunc.TestFunction, NotForDefinition), Int8PtrTy);
+
+    auto testEntry = testsArray.beginStruct(TestDescriptorTy);
+    testEntry.addRelativeAddress(fnPtr);
+    if (auto L = origFunc.Description) {
+      testEntry.addRelativeAddress(getAddrOfGlobalString(*L,
+                                   /*willBeRelativelyAddressed*/ true));
+    } else {
+      // Synthesize the empty string.
+      testEntry.addRelativeAddress(
+          getAddrOfGlobalString("", /*willBeRelativelyAddressed*/ true));
+    }
+    testEntry.addInt32(0); // unused flags.
+    testEntry.finishAndAddTo(testsArray);
+  }
+
+  auto var = testsArray.finishAndCreateGlobal(
+      "\x01l_test_suite", getPointerAlignment(),
+      /*isConstant*/ true, llvm::GlobalValue::PrivateLinkage);
+  setTrueConstGlobal(var);
+  addUsedGlobal(var);
+  return var;
+}
+
 
 void IRGenerator::emitEagerClassInitialization() {
   if (ClassesForEagerInitialization.empty())

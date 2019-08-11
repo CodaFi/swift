@@ -119,6 +119,11 @@ public:
   IGNORED_ATTR(Isolated)
   IGNORED_ATTR(Preconcurrency)
   IGNORED_ATTR(BackDeploy)
+  // TODO(TF-828): Upstream `@differentiable` attribute type-checking from
+  // tensorflow branch.
+  IGNORED_ATTR(Differentiable)
+
+  IGNORED_ATTR(Test)
 #undef IGNORED_ATTR
 
   void visitAlignmentAttr(AlignmentAttr *attr) {
@@ -6034,4 +6039,22 @@ ValueDecl *RenamedDeclRequest::evaluate(Evaluator &evaluator,
   }
 
   return renamedDecl;
+}
+
+void AttributeChecker::visitTestAttr(TestAttr *attr) {
+  auto *AFD = dyn_cast<AbstractFunctionDecl>(D);
+  if (!AFD || !AFD->getDeclContext()->isModuleScopeContext()) {
+    diagnoseAndRemoveAttr(attr, diag::test_attribute_invalid);
+    return;
+  }
+
+  if (AFD->getParameters()->size() != 0) {
+    diagnoseAndRemoveAttr(attr, diag::test_attribute_cant_have_params);
+    return;
+  }
+
+  if (AFD->getGenericSignatureOfContext() != nullptr) {
+    diagnoseAndRemoveAttr(attr, diag::test_attribute_cant_have_generic_params);
+    return;
+  }
 }

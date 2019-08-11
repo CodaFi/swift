@@ -2210,6 +2210,17 @@ void IRGenSILFunction::emitSILFunction() {
     IGM.addAccessibleFunction(CurSILFn);
   }
 
+  // FIXME: wewlad
+  if (CurSILFn->isTestFunction()) {
+    if (auto L = CurSILFn->getLocation()) {
+      if (FuncDecl *FD = L.getAsASTNode<FuncDecl>()) {
+        if (auto *TA = FD->getAttrs().getAttribute<TestAttr>()) {
+          IGM.addTestToTestSuite(CurSILFn, TA->Name);
+        }
+      }
+    }
+  }
+
   // Configure the dominance resolver.
   // TODO: consider re-using a dom analysis from the PassManager
   // TODO: consider using a cheaper analysis at -O0

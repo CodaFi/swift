@@ -2044,17 +2044,16 @@ namespace decls_block {
     BCBlob      // Message
   >;
 
-<<<<<<< HEAD
   using BackDeployDeclAttrLayout = BCRecordLayout<
     BackDeploy_DECL_ATTR,
     BCFixed<1>,     // implicit flag
     BC_AVAIL_TUPLE, // OS version
     BCVBR<5>        // platform
-=======
+
   using TestDeclAttrLayout = BCRecordLayout<
     Test_DECL_ATTR,
+    BCFixed<1>,  // hasName?
     BCBlob      // test name
->>>>>>> dc0c969c639 (Add parsing and serialization for @_test)
   >;
 }
 

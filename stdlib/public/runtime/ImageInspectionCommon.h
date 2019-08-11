@@ -37,6 +37,9 @@
 /// The Mach-O section name for the section containing accessible functions.
 /// This lives within SEG_TEXT.
 #define MachOAccessibleFunctionsSection "__swift5_acfuncs"
+/// The Mach-O section name for the section containing this module's test suite
+/// metadata.  This lives within SEG_TEXT.
+#define MachOTestSuiteSection "__swift5_testsuite"
 
 #define MachOTextSegment "__TEXT"
 

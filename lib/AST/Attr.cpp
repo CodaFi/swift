@@ -1200,8 +1200,8 @@ bool DeclAttribute::printImpl(ASTPrinter &Printer, const PrintOptions &Options,
 
   case DAK_Test:
     Printer.printAttrName("@_test");
-    if (!cast<TestAttr>(this)->Name.empty())
-      Printer << "(\"" << cast<TestAttr>(this)->Name << "\")";
+    if (auto Name = cast<TestAttr>(this)->Name)
+      Printer << "(\"" << *Name << "\")";
     break;
 
   case DAK_Count:
@@ -1374,6 +1374,8 @@ StringRef DeclAttribute::getAttrName() const {
     return "_unavailableFromAsync";
   case DAK_BackDeploy:
     return "_backDeploy";
+  case DAK_Test:
+    return "_test";
   }
   llvm_unreachable("bad DeclAttrKind");
 }
