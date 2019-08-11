@@ -1794,9 +1794,47 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
     break;
   }
 
-  case DAK_CDecl:
-  case DAK_SILGenName:
   case DAK_Test: {
+    // Diagnose using @_test in a local scope.
+    //
+    // FIXME: Lift this restriction.
+    if (CurDeclContext->isLocalContext()) {
+      diagnose(Loc, diag::attr_only_at_non_local_scope, AttrName);
+    }
+
+    if (!consumeIf(tok::l_paren)) {
+      Attributes.add(new (Context) TestAttr(None, AtLoc, AttrRange));
+      break;
+    }
+
+    if (Tok.isNot(tok::string_literal, tok::r_paren)) {
+      diagnose(Loc, diag::attr_expected_string_literal, AttrName);
+      return false;
+    }
+
+    Optional<StringRef> TestName = getStringLiteralIfNotInterpolated(
+        Loc, ("'" + AttrName + "'").str());
+
+    consumeToken(tok::string_literal);
+
+    if (TestName.hasValue())
+      AttrRange = SourceRange(Loc, Tok.getRange().getStart());
+
+    if (!consumeIf(tok::r_paren)) {
+      diagnose(Loc, diag::attr_expected_rparen, AttrName,
+               DeclAttribute::isDeclModifier(DK));
+      return false;
+    }
+    DuplicateAttribute = Attributes.getAttribute<TestAttr>();
+    if (!DuplicateAttribute) {
+      Attributes.add(new (Context) TestAttr(TestName.getValue(), AtLoc,
+                                            AttrRange));
+    }
+    break;
+  }
+      
+  case DAK_CDecl:
+  case DAK_SILGenName: {
     if (!consumeIf(tok::l_paren)) {
       diagnose(Loc, diag::attr_expected_lparen, AttrName,
                DeclAttribute::isDeclModifier(DK));
@@ -1839,9 +1877,6 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
       else if (DK == DAK_CDecl)
         Attributes.add(new (Context) CDeclAttr(AsmName.getValue(), AtLoc,
                                                AttrRange, /*Implicit=*/false));
-      else if (DK == DAK_Test)
-        Attributes.add(new (Context) TestAttr(AsmName.getValue(), AtLoc,
-                                              AttrRange));
       else
         llvm_unreachable("out of sync with switch");
     }

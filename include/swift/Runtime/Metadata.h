@@ -845,6 +845,10 @@ SWIFT_RUNTIME_EXPORT
 void swift_registerProtocols(const ProtocolRecord *begin,
                              const ProtocolRecord *end);
 
+SWIFT_RUNTIME_EXPORT
+void swift_registerTestSuite(const TestDescriptor *begin,
+                             const TestDescriptor *end);
+
 /// Register a block of protocol conformance records for dynamic lookup.
 SWIFT_RUNTIME_EXPORT
 void swift_registerProtocolConformances(const ProtocolConformanceRecord *begin,
@@ -911,6 +915,24 @@ void swift_enableDynamicReplacementScope(const DynamicReplacementScope *scope);
 
 SWIFT_RUNTIME_EXPORT
 void swift_disableDynamicReplacementScope(const DynamicReplacementScope *scope);
+
+// FIXME: Roll this into a versioned struct.
+using testVisitor_t = void (const char * _Nonnull Name, SWIFT_CC(swift) void (*invoke)(void));
+
+SWIFT_RUNTIME_EXPORT
+void swift_enumerateTests_f(testVisitor_t visitor);
+
+#ifndef __has_feature
+# define __has_feature(x) 0
+#endif
+
+#if __has_feature(blocks)
+// FIXME: Roll this into a versioned struct.
+using testVisitor_block_t = void (^)(const char * _Nonnull, SWIFT_CC(swift) void (*invoke)(void));
+
+SWIFT_RUNTIME_EXPORT
+void swift_enumerateTests(testVisitor_block_t _Nonnull block);
+#endif
 
 #pragma clang diagnostic pop
 

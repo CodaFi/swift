@@ -44,6 +44,7 @@ constexpr const char DynamicReplacementSection[] =
 constexpr const char DynamicReplacementSomeSection[] =
     MachODynamicReplacementSomeSection;
 constexpr const char TextSegment[] = MachOTextSegment;
+constexpr const char TestSuiteSection[] = MachOTestSuiteSection;
 
 #if __POINTER_WIDTH__ == 64
 using mach_header_platform = mach_header_64;
@@ -148,6 +149,12 @@ void swift::initializeDynamicReplacementLookup() {
       addImageCallback2Sections<TextSegment, DynamicReplacementSection,
                                 TextSegment, DynamicReplacementSomeSection,
                                 addImageDynamicReplacementBlockCallback>);
+}
+
+void swift::initializeTestSuiteLookup() {
+  REGISTER_FUNC(
+    addImageCallback<TextSegment, TestSuiteSection,
+                     addImageTestSuiteBlockCallback>);
 }
 
 int swift::lookupSymbol(const void *address, SymbolInfo *info) {

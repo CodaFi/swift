@@ -81,6 +81,12 @@ void swift_addNewDSOImage(const void *addr) {
         replacements, dynamic_replacements.length, replacements_some,
         dynamic_replacements_some.length);
   }
+
+  const auto &testsuite_section = sections->swift5_testsuite;
+  const void *testsuite =
+      reinterpret_cast<void *>(testsuite_section.start);
+  if (testsuite_section.length)
+    addImageTestSuiteBlockCallback(testsuite, testsuite_section.length);
 }
 
 void swift::initializeProtocolLookup() {
@@ -129,6 +135,20 @@ void swift::initializeTypeMetadataRecordLookup() {
 }
 
 void swift::initializeDynamicReplacementLookup() {
+}
+
+void swift::initializeTestSuiteLookup() {
+  const swift::MetadataSections *sections = registered;
+  while (true) {
+    const swift::MetadataSections::Range &suite = sections->swift5_testsuite;
+    if (suite.length)
+      addImageTestSuiteBlockCallback(reinterpret_cast<void *>(suite.start),
+                                     suite.length);
+
+    if (sections->next == registered)
+      break;
+    sections = sections->next;
+  }
 }
 
 // This is only used for backward deployment hooks, which we currently only support for

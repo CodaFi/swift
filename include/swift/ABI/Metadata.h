@@ -4841,6 +4841,28 @@ public:
   uint32_t getFlags() { return flags; }
 };
 
+using TestInvocation = SWIFT_CC(swift) void (*)(void);
+
+/// A record describing a test in a test suite.
+template <typename Runtime>
+class TargetTestDescriptor {
+  RelativeDirectPointer<TestInvocation, false> testFunction;
+  RelativeDirectPointer<const char, /*nullable*/ false> Name;
+  uint32_t flags; // unused
+
+public:
+  TestInvocation getInvocation() const {
+    return reinterpret_cast<TestInvocation>(testFunction.get());
+  }
+
+  const char *getName() const {
+    return Name.get();
+  }
+
+  uint32_t getFlags() const { return flags; }
+};
+using TestDescriptor = TargetTestDescriptor<InProcess>;
+
 } // end namespace swift
 
 #pragma clang diagnostic pop

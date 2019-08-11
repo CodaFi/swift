@@ -1257,6 +1257,14 @@ FUNCTION(EndAccess, swift_endAccess, C_CC, AlwaysAvailable,
          ARGS(getFixedBufferTy()->getPointerTo()),
          ATTRS(NoUnwind))
 
+// void swift_registerTestSuite(const TestDescriptor *begin,
+//                              const TestDescriptor *end)
+FUNCTION(RegisterTestSuite,
+         swift_registerTestSuite, C_CC, AlwaysAvailable,
+         RETURNS(VoidTy),
+         ARGS(TestDescriptorPtrTy, TestDescriptorPtrTy),
+         ATTRS(NoUnwind))
+
 FUNCTION(GetOrigOfReplaceable, swift_getOrigOfReplaceable, C_CC,
          DynamicReplacementAvailability,
          RETURNS(FunctionPtrTy),

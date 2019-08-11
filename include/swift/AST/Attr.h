@@ -2063,15 +2063,15 @@ public:
 /// Defines the @_test("...") attribute.
 class TestAttr : public DeclAttribute {
 public:
-  TestAttr(StringRef Name, SourceLoc AtLoc, SourceRange Range)
+  TestAttr(Optional<StringRef> Name, SourceLoc AtLoc, SourceRange Range)
     : DeclAttribute(DAK_Test, AtLoc, Range, /*Implicit*/ false),
       Name(Name) {}
 
-  TestAttr(StringRef Name)
-    : TestAttr(Name, SourceLoc(), SourceRange(), /*Implicit=*/false) {}
+  TestAttr(Optional<StringRef> Name)
+    : TestAttr(Name, SourceLoc(), SourceRange()) {}
 
-  /// The test's name.
-  const StringRef Name;
+  /// The test's name, if any.
+  Optional<StringRef> Name;
 
   static bool classof(const DeclAttribute *DA) {
     return DA->getKind() == DAK_Test;

@@ -4444,9 +4444,13 @@ llvm::Error DeclDeserializer::deserializeDeclAttributes() {
                                             SourceRange(), spis);
         break;
       case decls_block::Test_DECL_ATTR: {
-        serialization::decls_block::TestDeclAttrLayout::readRecord(
-            scratch);
-        Attr = new (ctx) TestAttr(blobData);
+        bool hasText;
+        serialization::decls_block::TestDeclAttrLayout
+            ::readRecord(scratch, hasText);
+        if (hasText)
+          Attr = new (ctx) TestAttr(blobData);
+        else
+          Attr = new (ctx) TestAttr(None);
         break;
       }
 

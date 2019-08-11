@@ -36,6 +36,9 @@
 /// This lives within SEG_TEXT.
 #define MachODynamicReplacementSection "__swift5_replace"
 #define MachODynamicReplacementSomeSection "__swift5_replac2"
+/// The Mach-O section name for the section containing this module's test suite
+/// metadata.  This lives within SEG_TEXT.
+#define MachOTestSuiteSection "__swift5_testsuite"
 
 #define MachOTextSegment "__TEXT"
 

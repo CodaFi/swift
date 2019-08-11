@@ -888,7 +888,88 @@ public:
   }
 };
 
+#pragma mark Test descriptor cache
+namespace {
+  struct TestSection {
+    const TestDescriptor *Begin, *End;
+
+    const TestDescriptor *begin() const {
+      return Begin;
+    }
+    const TestDescriptor *end() const {
+      return End;
+    }
+  };
+
+  struct TestSuiteMetadataPrivateState {
+    ConcurrentReadableArray<TestSection> SectionsToScan;
+
+    TestSuiteMetadataPrivateState() {
+      initializeTestSuiteLookup();
+    }
+  };
+
+  static Lazy<TestSuiteMetadataPrivateState> TestSuite;
 } // namespace
+
+
+static void _registerTests(TestSuiteMetadataPrivateState &C,
+                           const TestDescriptor *begin,
+                           const TestDescriptor *end) {
+  C.SectionsToScan.push_back(TestSection{begin, end});
+}
+
+void swift::swift_registerTestSuite(const TestDescriptor *begin,
+                                    const TestDescriptor *end) {
+  auto &C = TestSuite.get();
+  _registerTests(C, begin, end);
+}
+
+void swift::addImageTestSuiteBlockCallback(const void *testRecs,
+                                           uintptr_t testSuiteSize) {
+  assert(testSuiteSize % sizeof(TestDescriptor) == 0 &&
+         "protocols section not a multiple of TestDescriptor");
+
+  auto testBytes = reinterpret_cast<const char *>(testRecs);
+  auto recordsBegin
+    = reinterpret_cast<const TestDescriptor *>(testRecs);
+  auto recordsEnd
+    = reinterpret_cast<const TestDescriptor *>(testBytes + testSuiteSize);
+
+  // Register all tests in the section.
+  _registerTests(TestSuite.unsafeGetAlreadyInitialized(),
+                 recordsBegin, recordsEnd);
+}
+
+void swift::swift_enumerateTests_f(testVisitor_t visitor) {
+  if (!visitor) {
+    return;
+  }
+
+  auto &C = TestSuite.get();
+  for (auto &section : C.SectionsToScan.snapshot()) {
+    for (const auto &record : section) {
+      if (auto test = record.getInvocation()) {
+        visitor(record.getName(), test);
+      }
+    }
+  }
+}
+
+void swift::swift_enumerateTests(testVisitor_block_t visitor) {
+  if (!visitor) {
+    return;
+  }
+
+  auto &C = TestSuite.get();
+  for (auto &section : C.SectionsToScan.snapshot()) {
+    for (const auto &record : section) {
+      if (auto test = record.getInvocation()) {
+        visitor(record.getName(), test);
+      }
+    }
+  }
+}
 
 #pragma mark Metadata lookup via mangled name
 

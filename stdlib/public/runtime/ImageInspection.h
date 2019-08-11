@@ -73,6 +73,9 @@ void initializeTypeMetadataRecordLookup();
 /// Load the metadata from the image necessary to perform dynamic replacements.
 void initializeDynamicReplacementLookup();
 
+/// Load the metadata from the image necessary to enumerate test suites.
+void initializeTestSuiteLookup();
+
 // Callbacks to register metadata from an image to the runtime.
 void addImageProtocolsBlockCallback(const void *start, uintptr_t size);
 void addImageProtocolsBlockCallbackUnsafe(const void *start, uintptr_t size);
@@ -87,6 +90,7 @@ void addImageTypeMetadataRecordBlockCallbackUnsafe(const void *start,
 void addImageDynamicReplacementBlockCallback(const void *start, uintptr_t size,
                                              const void *start2,
                                              uintptr_t size2);
+void addImageTestSuiteBlockCallback(const void *start, uintptr_t size);
 
 int lookupSymbol(const void *address, SymbolInfo *info);
 void *lookupSection(const char *segment, const char *section, size_t *outSize);

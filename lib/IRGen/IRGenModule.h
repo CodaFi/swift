@@ -413,6 +413,8 @@ public:
   // Emit info that describes the entry point to the module, if it has one.
   void emitEntryPointInfo();
 
+  void emitTestSuiteMetadata();
+
   /// Checks if metadata for this type can be emitted lazily. This is true for
   /// non-public types as well as imported types, except for classes and
   /// protocols which are always emitted eagerly.
@@ -694,7 +696,9 @@ public:
   llvm::StructType *ObjCFullResilientClassStubTy;   /// %objc_full_class_stub
   llvm::StructType *ObjCResilientClassStubTy;   /// %objc_class_stub
   llvm::StructType *ProtocolRecordTy;
+  llvm::StructType *TestDescriptorTy;
   llvm::PointerType *ProtocolRecordPtrTy;
+  llvm::PointerType *TestDescriptorPtrTy;
   llvm::StructType *ProtocolConformanceDescriptorTy;
   llvm::PointerType *ProtocolConformanceDescriptorPtrTy;
   llvm::StructType *TypeContextDescriptorTy;
@@ -998,11 +1002,15 @@ public:
   void addCompilerUsedGlobal(llvm::GlobalValue *global);
   void addObjCClass(llvm::Constant *addr, bool nonlazy);
   void addProtocolConformance(ConformanceDescription &&conformance);
+  void addTestToTestSuite(SILFunction *f, Optional<StringRef> Name);
 
   llvm::Constant *emitSwiftProtocols();
   llvm::Constant *emitProtocolConformances();
   llvm::Constant *emitTypeMetadataRecords();
   llvm::Constant *emitFieldDescriptors();
+  llvm::Constant *emitTestSuiteMetadata();
+
+
 
   llvm::Constant *getConstantSignedFunctionPointer(llvm::Constant *fn,
                                                    CanSILFunctionType fnType);
@@ -1163,6 +1171,16 @@ private:
   /// A mapping from order numbers to the LLVM functions which we
   /// created for the SIL functions with those orders.
   SuccessorMap<unsigned, llvm::Function*> EmittedFunctionsByOrder;
+
+  struct TestFunctionInfo {
+    SILFunction *TestFunction;
+    Optional<StringRef> Description;
+
+    TestFunctionInfo(SILFunction *Fn, Optional<StringRef> Desc)
+      : TestFunction(Fn), Description(Desc) {}
+  };
+
+  llvm::SmallVector<TestFunctionInfo, 8> TestFunctionDefinitions;
 
   ObjCProtocolPair getObjCProtocolGlobalVars(ProtocolDecl *proto);
   void emitLazyObjCProtocolDefinitions();

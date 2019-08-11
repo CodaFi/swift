@@ -5450,3 +5450,30 @@ ERROR(atomics_ordering_must_be_constant, none,
 
 #define UNDEFINE_DIAGNOSTIC_MACROS
 #include "DefineDiagnosticMacros.h"
+
+ERROR(experimental_differentiable_programming_disabled, none,
+      "differentiable programming is an experimental feature that is "
+      "currently disabled", ())
+
+//------------------------------------------------------------------------------
+// MARK: @_test
+//------------------------------------------------------------------------------
+
+ERROR(test_attribute_invalid, none,
+      "@_test attribute only applies to top-level functions", ())
+ERROR(test_attribute_cant_have_params, none,
+      "@_test attribute only applies to functions with no arguments", ())
+ERROR(test_attribute_cant_have_generic_params, none,
+      "@_test attribute only applies functions with no generic parameters", ())
+ERROR(test_throws,none,
+      "raising errors from @_test functions is not supported", ())
+
+#ifndef DIAG_NO_UNDEF
+# if defined(DIAG)
+#  undef DIAG
+# endif
+# undef NOTE
+# undef WARNING
+# undef ERROR
+# undef FIXIT
+#endif

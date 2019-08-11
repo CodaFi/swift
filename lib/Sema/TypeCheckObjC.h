@@ -42,6 +42,8 @@ public:
   enum Kind {
     /// Has the '@cdecl' attribute.
     ExplicitlyCDecl,
+    /// Has the '@_test' attribute.
+    ExplicitlyTest,
     /// Has the 'dynamic' modifier.
     ExplicitlyDynamic,
     /// Has an explicit '@objc' attribute.

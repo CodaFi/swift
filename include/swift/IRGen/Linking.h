@@ -279,7 +279,7 @@ class LinkEntity {
     /// The pointer is a AbstractStorageDecl*.
     DynamicallyReplaceableFunctionVariableAST,
 
-    /// The pointer is a AbstractStorageDecl*.
+    /// The pointer is a AbstractFunctionDecl*.
     DynamicallyReplaceableFunctionKeyAST,
 
     /// The original implementation of a dynamically replaceable function.
