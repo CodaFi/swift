@@ -121,6 +121,7 @@ public:
   IGNORED_ATTR(OriginallyDefinedIn)
   IGNORED_ATTR(NoDerivative)
   IGNORED_ATTR(SpecializeExtension)
+  IGNORED_ATTR(Test)
 #undef IGNORED_ATTR
 
   void visitAlignmentAttr(AlignmentAttr *attr) {
@@ -5444,4 +5445,22 @@ void AttributeChecker::visitTransposeAttr(TransposeAttr *attr) {
 
   // Set the resolved linearity parameter indices in the attribute.
   attr->setParameterIndices(linearParamIndices);
+}
+
+void AttributeChecker::visitTestAttr(TestAttr *attr) {
+  auto *AFD = dyn_cast<AbstractFunctionDecl>(D);
+  if (!AFD || !AFD->getDeclContext()->isModuleScopeContext()) {
+    diagnoseAndRemoveAttr(attr, diag::test_attribute_invalid);
+    return;
+  }
+
+  if (AFD->getParameters()->size() != 0) {
+    diagnoseAndRemoveAttr(attr, diag::test_attribute_cant_have_params);
+    return;
+  }
+
+  if (AFD->getGenericSignatureOfContext() != nullptr) {
+    diagnoseAndRemoveAttr(attr, diag::test_attribute_cant_have_generic_params);
+    return;
+  }
 }

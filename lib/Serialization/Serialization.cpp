@@ -2584,7 +2584,8 @@ class Serializer::DeclSerializer : public DeclVisitor<DeclSerializer> {
       auto *theAttr = cast<TestAttr>(DA);
       auto abbrCode = S.DeclTypeAbbrCodes[TestDeclAttrLayout::Code];
       TestDeclAttrLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
-  	                                 theAttr->Name);
+                                     theAttr->Name.hasValue(),
+  	                                 theAttr->Name.getValueOr(""));
       return;
     }
     }

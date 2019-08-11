@@ -400,6 +400,14 @@ IRGenModule::IRGenModule(IRGenerator &irgen,
     });
   ProtocolRecordPtrTy = ProtocolRecordTy->getPointerTo();
 
+  TestDescriptorTy =
+    createStructType(*this, "swift.testdescriptor", {
+      RelativeAddressTy,
+      RelativeAddressTy,
+      Int32Ty,
+  });
+  TestDescriptorPtrTy = TestDescriptorTy->getPointerTo();
+
   ProtocolConformanceDescriptorTy
     = createStructType(*this, "swift.protocol_conformance_descriptor", {
       RelativeAddressTy,

@@ -34,6 +34,7 @@ using namespace swift;
 bool swift::shouldDiagnoseObjCReason(ObjCReason reason, ASTContext &ctx) {
   switch(reason) {
   case ObjCReason::ExplicitlyCDecl:
+  case ObjCReason::ExplicitlyTest:
   case ObjCReason::ExplicitlyDynamic:
   case ObjCReason::ExplicitlyObjC:
   case ObjCReason::ExplicitlyIBOutlet:
@@ -63,6 +64,7 @@ bool swift::shouldDiagnoseObjCReason(ObjCReason reason, ASTContext &ctx) {
 unsigned swift::getObjCDiagnosticAttrKind(ObjCReason reason) {
   switch (reason) {
   case ObjCReason::ExplicitlyCDecl:
+  case ObjCReason::ExplicitlyTest:
   case ObjCReason::ExplicitlyDynamic:
   case ObjCReason::ExplicitlyObjC:
   case ObjCReason::ExplicitlyIBOutlet:

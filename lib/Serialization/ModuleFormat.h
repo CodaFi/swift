@@ -1927,6 +1927,7 @@ namespace decls_block {
 
   using TestDeclAttrLayout = BCRecordLayout<
     Test_DECL_ATTR,
+    BCFixed<1>,  // hasName?
     BCBlob      // test name
   >;
 }
