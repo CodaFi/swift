@@ -1796,13 +1796,12 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
 
   case DAK_Test: {
     // Diagnose using @_test in a local scope.
-    //
-    // FIXME: Lift this restriction.
     if (CurDeclContext->isLocalContext()) {
       diagnose(Loc, diag::attr_only_at_non_local_scope, AttrName);
     }
 
     if (!consumeIf(tok::l_paren)) {
+      AttrRange = Loc;
       Attributes.add(new (Context) TestAttr(None, AtLoc, AttrRange));
       break;
     }

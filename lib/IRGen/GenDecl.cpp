@@ -1816,13 +1816,13 @@ llvm::Constant *IRGenModule::emitTestSuiteMetadata() {
   // }[0];
   ConstantInitBuilder builder(*this);
   auto testsArray = builder.beginArray(TestDescriptorTy);
-  for (auto &origFunc : TestFunctionDefinitions) {
+  for (auto &testFunc : TestFunctionDefinitions) {
     llvm::Constant *fnPtr = llvm::ConstantExpr::getBitCast(
-        getAddrOfSILFunction(origFunc.TestFunction, NotForDefinition), Int8PtrTy);
+        getAddrOfSILFunction(testFunc.TestFunction, NotForDefinition), Int8PtrTy);
 
     auto testEntry = testsArray.beginStruct(TestDescriptorTy);
     testEntry.addRelativeAddress(fnPtr);
-    if (auto L = origFunc.Description) {
+    if (auto L = testFunc.Description) {
       testEntry.addRelativeAddress(getAddrOfGlobalString(*L,
                                    /*willBeRelativelyAddressed*/ true));
     } else {
