@@ -6043,7 +6043,7 @@ ValueDecl *RenamedDeclRequest::evaluate(Evaluator &evaluator,
 
 void AttributeChecker::visitTestAttr(TestAttr *attr) {
   auto *AFD = dyn_cast<AbstractFunctionDecl>(D);
-  if (!AFD || !AFD->getDeclContext()->isModuleScopeContext()) {
+  if (!AFD || AFD->getDeclContext()->isLocalContext()) {
     diagnoseAndRemoveAttr(attr, diag::test_attribute_invalid);
     return;
   }
