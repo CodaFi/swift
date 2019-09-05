@@ -25,6 +25,7 @@
 #include "swift/Runtime/HeapObject.h"
 #include "swift/Runtime/Metadata.h"
 #include "swift/Runtime/Mutex.h"
+#include "swift/Runtime/Testing.h"
 #include "swift/Strings.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
@@ -996,7 +997,7 @@ void swift::swift_registerTestSuite(const TestDescriptor *begin,
 void swift::addImageTestSuiteBlockCallback(const void *testRecs,
                                            uintptr_t testSuiteSize) {
   assert(testSuiteSize % sizeof(TestDescriptor) == 0 &&
-         "protocols section not a multiple of TestDescriptor");
+         "test metadata section not a multiple of TestDescriptor");
 
   auto testBytes = reinterpret_cast<const char *>(testRecs);
   auto recordsBegin
@@ -1009,6 +1010,7 @@ void swift::addImageTestSuiteBlockCallback(const void *testRecs,
                  recordsBegin, recordsEnd);
 }
 
+// FIXME: Move to the existential ABI
 void swift::swift_enumerateTests_f(swift_test_visitor_t visitor) {
   if (!visitor) {
     return;

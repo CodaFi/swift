@@ -187,10 +187,7 @@ public:
   void visitFinalAttr(FinalAttr *attr);
   void visitCompileTimeConstAttr(CompileTimeConstAttr *attr) {}
 
-  void visitTestAttr(TestAttr *attr) {
-    llvm_unreachable("FIXME: Implement decl validation");
-  }
-
+  void visitTestAttr(TestAttr *attr);
   void visitIBActionAttr(IBActionAttr *attr);
   void visitIBSegueActionAttr(IBSegueActionAttr *attr);
   void visitLazyAttr(LazyAttr *attr);
