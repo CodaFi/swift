@@ -1,0 +1,165 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		99E31E2D233873FE0059500F /* Swift.instrpkg in Sources */ = {isa = PBXBuildFile; fileRef = 99E31E2C233873FE0059500F /* Swift.instrpkg */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		99E31E29233873FE0059500F /* Swift.instrdst */ = {isa = PBXFileReference; explicitFileType = com.apple.instruments.instrdst; includeInIndex = 0; path = Swift.instrdst; sourceTree = BUILT_PRODUCTS_DIR; };
+		99E31E2C233873FE0059500F /* Swift.instrpkg */ = {isa = PBXFileReference; lastKnownFileType = "com.apple.instruments.package-definition"; path = Swift.instrpkg; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		99E31E22233873FE0059500F = {
+			isa = PBXGroup;
+			children = (
+				99E31E2B233873FE0059500F /* Swift */,
+				99E31E2A233873FE0059500F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		99E31E2A233873FE0059500F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				99E31E29233873FE0059500F /* Swift.instrdst */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		99E31E2B233873FE0059500F /* Swift */ = {
+			isa = PBXGroup;
+			children = (
+				99E31E2C233873FE0059500F /* Swift.instrpkg */,
+			);
+			path = Swift;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		99E31E28233873FE0059500F /* Swift */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 99E31E2E233873FE0059500F /* Build configuration list for PBXNativeTarget "Swift" */;
+			buildPhases = (
+				99E31E27233873FE0059500F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Swift;
+			productName = Swift;
+			productReference = 99E31E29233873FE0059500F /* Swift.instrdst */;
+			productType = "com.apple.product-type.instruments-package";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		99E31E23233873FE0059500F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1100;
+				ORGANIZATIONNAME = "Robert Widmann";
+				TargetAttributes = {
+					99E31E28233873FE0059500F = {
+						CreatedOnToolsVersion = 11.0;
+					};
+				};
+			};
+			buildConfigurationList = 99E31E26233873FE0059500F /* Build configuration list for PBXProject "Swift" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 99E31E22233873FE0059500F;
+			productRefGroup = 99E31E2A233873FE0059500F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				99E31E28233873FE0059500F /* Swift */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		99E31E27233873FE0059500F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				99E31E2D233873FE0059500F /* Swift.instrpkg in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		99E31E24233873FE0059500F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Debug;
+		};
+		99E31E25233873FE0059500F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+			};
+			name = Release;
+		};
+		99E31E2F233873FE0059500F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Instruments/Packages";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				VERSIONING_SYSTEM = "";
+			};
+			name = Debug;
+		};
+		99E31E30233873FE0059500F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Instruments/Packages";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				VERSIONING_SYSTEM = "";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		99E31E26233873FE0059500F /* Build configuration list for PBXProject "Swift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				99E31E24233873FE0059500F /* Debug */,
+				99E31E25233873FE0059500F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		99E31E2E233873FE0059500F /* Build configuration list for PBXNativeTarget "Swift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				99E31E2F233873FE0059500F /* Debug */,
+				99E31E30233873FE0059500F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 99E31E23233873FE0059500F /* Project object */;
+}
