@@ -720,7 +720,9 @@ DECL_ATTR(_backDeploy, BackDeploy,
   129)
 
 DECL_ATTR(_test, Test,
-  OnAbstractFunction |
+  OnImport | OnFunc | OnConstructor | OnVar | OnSubscript | OnAbstractFunction |
+  OnNominalType |
+  ABIBreakingToAdd | ABIBreakingToRemove | APIBreakingToRemove | APIBreakingToAdd |
   LongAttribute | UserInaccessible,
   130)
 

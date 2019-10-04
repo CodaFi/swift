@@ -399,14 +399,6 @@ IRGenModule::IRGenModule(IRGenerator &irgen,
     });
   ProtocolRecordPtrTy = ProtocolRecordTy->getPointerTo();
 
-  TestDescriptorTy =
-    createStructType(*this, "swift.testdescriptor", {
-      RelativeAddressTy,
-      RelativeAddressTy,
-      Int32Ty,
-  });
-  TestDescriptorPtrTy = TestDescriptorTy->getPointerTo();
-
   ProtocolConformanceDescriptorTy
     = createStructType(*this, "swift.protocol_conformance_descriptor", {
       RelativeAddressTy,
@@ -462,6 +454,15 @@ IRGenModule::IRGenModule(IRGenerator &irgen,
     });
   TypeMetadataRecordPtrTy
     = TypeMetadataRecordTy->getPointerTo(DefaultAS);
+
+  TestDescriptorTy =
+    createStructType(*this, "swift.testdescriptor", {
+      RelativeAddressTy,
+      RelativeAddressTy,
+      RelativeAddressTy,
+      Int32Ty,
+  });
+  TestDescriptorPtrTy = TestDescriptorTy->getPointerTo();
 
   FieldDescriptorTy
     = llvm::StructType::create(getLLVMContext(), "swift.field_descriptor");
