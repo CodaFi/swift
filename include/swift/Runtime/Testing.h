@@ -19,65 +19,65 @@
 
 #include "swift/ABI/Metadata.h"
 #include "swift/Reflection/Records.h"
+#include "swift/Runtime/ExistentialContainer.h"
+#include "swift/Runtime/HeapObject.h"
 
 namespace swift {
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
 
-#ifdef SWIFT_RUNTIME_USE_EXISTENTIAL_TEST_ABI
+struct SwiftError;
 
 struct AnyTestWitnessTable;
 
 /// The layout of AnyTest existential.
 struct AnyTest {
   OpaqueExistentialContainer Header;
-  const AnyTestWitnessTable *TestWitness;
+  const AnyTestWitnessTable *_Nonnull TestWitness;
 };
 
+// protocol AnyTest {
+struct AnyTestWitnessTable : WitnessTable {
+  static_assert(WitnessTableFirstRequirementOffset == 1,
+                "Witness table layout changed");
 
-// FIXME: Roll this into a versioned struct.
-using swift_test_visitor_t = void (*)(AnyTest);
+  // init()
+  SWIFT_CC(swift)
+  void (*_Nonnull init)(OpaqueValue *_Nonnull existentialBox,
+                        const Metadata *_Nonnull Self,
+                        const Metadata *_Nonnull self,
+                        void *_Nonnull *_Nonnull buf);
+};
 
-SWIFT_RUNTIME_EXPORT
-void swift_enumerateTests_f(swift_test_visitor_t visitor);
+template <typename Invocation>
+using swift_test_visitor_t = void (*_Nonnull)(const void *_Nonnull section, void *fptr);
+
+SWIFT_RUNTIME_EXPORT SWIFT_CC(swift)
+void swift_enumerateTests_f(
+    swift_test_visitor_t<TestInvocation::Global> globalVisitor,
+    swift_test_visitor_t<TestInvocation::Metatype> metaVisitor,
+    swift_test_visitor_t<TestInvocation::Instance> instanceVisitor);
 
 #ifndef __has_feature
-# define __has_feature(x) 0
+#define __has_feature(x) 0
 #endif
 
 #if __has_feature(blocks)
-// FIXME: Roll this into a versioned struct.
-using swift_test_visitor_block_t = void (^)(AnyTest);
+template <typename Invocation>
+using swift_test_visitor_block_t =
+    void (^_Nonnull)(const void *_Nonnull section, void *fptr);
 
-SWIFT_RUNTIME_EXPORT
-void swift_enumerateTests(swift_test_visitor_block_t _Nonnull block);
-#endif
+SWIFT_RUNTIME_EXPORT SWIFT_CC(swift)
+void swift_enumerateTests(
+    swift_test_visitor_block_t<TestInvocation::Global> globalVisitor,
+    swift_test_visitor_block_t<TestInvocation::Metatype> metaVisitor,
+    swift_test_visitor_block_t<TestInvocation::Instance> instanceVisitor);
 
-#else
-
-// FIXME: Roll this into a versioned struct.
-using swift_test_visitor_t = void (const char * _Nonnull Name, SWIFT_CC(swift) void (*invoke)(void));
-
-SWIFT_RUNTIME_EXPORT
-void swift_enumerateTests_f(swift_test_visitor_t visitor);
-
-#ifndef __has_feature
-# define __has_feature(x) 0
-#endif
-
-#if __has_feature(blocks)
-// FIXME: Roll this into a versioned struct.
-using swift_test_visitor_block_t = void (^)(const char * _Nonnull, SWIFT_CC(swift) void (*invoke)(void));
-
-SWIFT_RUNTIME_EXPORT
-void swift_enumerateTests(swift_test_visitor_block_t _Nonnull block);
-#endif
-
-#endif // SWIFT_RUNTIME_USE_EXISTENTIAL_TEST_ABI
+#endif // __has_feature(blocks)
 
 #pragma clang diagnostic pop
 
-} // end namespace swift
+}; // end namespace swift
 
 #endif // SWIFT_TESTING_METADATA_H

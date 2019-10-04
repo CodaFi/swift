@@ -595,7 +595,9 @@ CONTEXTUAL_SIMPLE_DECL_ATTR(async, Async,
   106)
 
 DECL_ATTR(_test, Test,
-  OnAbstractFunction |
+  OnImport | OnFunc | OnConstructor | OnVar | OnSubscript | OnAbstractFunction |
+  OnNominalType |
+  ABIBreakingToAdd | ABIBreakingToRemove | APIBreakingToRemove | APIBreakingToAdd |
   LongAttribute | UserInaccessible,
   110)
 
