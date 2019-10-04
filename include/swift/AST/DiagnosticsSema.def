@@ -5460,13 +5460,11 @@ ERROR(experimental_differentiable_programming_disabled, none,
 //------------------------------------------------------------------------------
 
 ERROR(test_attribute_invalid, none,
-      "@_test attribute only applies to top-level functions", ())
+      "@_test attribute cannot appear in nested function", ())
 ERROR(test_attribute_cant_have_params, none,
       "@_test attribute only applies to functions with no arguments", ())
 ERROR(test_attribute_cant_have_generic_params, none,
       "@_test attribute only applies functions with no generic parameters", ())
-ERROR(test_throws,none,
-      "raising errors from @_test functions is not supported", ())
 ERROR(test_func_in_non_test_context, none,
       "@_test function %0 cannot be used outside of @_test context", (Identifier))
 

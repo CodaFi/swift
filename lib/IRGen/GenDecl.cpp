@@ -1800,27 +1800,47 @@ void IRGenerator::emitDynamicReplacements() {
   autoReplVar2->setSection(getDynamicReplacementSomeSection(IGM));
 }
 
-void IRGenModule::addTestToTestSuite(SILFunction *f, Optional<StringRef> Name) {
-  TestFunctionDefinitions.push_back({f, Name});
+void IRGenModule::addTestToTestSuite(NominalTypeDecl *suite, SILFunction *f, Optional<StringRef> Name) {
+  TestFunctionDefinitions.push_back({suite, f, Name});
 }
 
 llvm::Constant *IRGenModule::emitTestSuiteMetadata() {
   if (TestFunctionDefinitions.empty())
     return nullptr;
 
-
   // struct TestDescriptor {
-  //   RelativeDirectPointer<void> testFunction;
+  //   RelativeDirectPointer<const char> mangledName;
+  //   RelativeDirectPointer<void(...)> testFunction;
   //   RelativeDirectPointer<const char, /*nullable*/ false> Name;
-  //   uint32_t flags; // unused
+  //   enum : uint32_t {
+  //     TestCallingConventionGlobal = 0,
+  //     TestCallingConventionThruMetatype = 1 << 0,
+  //     TestCallingConventionThruInstance = 1 << 1,
+  //   } flags;
   // }[0];
   ConstantInitBuilder builder(*this);
   auto testsArray = builder.beginArray(TestDescriptorTy);
   for (auto &testFunc : TestFunctionDefinitions) {
+    auto *fnAddr = getAddrOfSILFunction(testFunc.TestFunction, NotForDefinition);
     llvm::Constant *fnPtr = llvm::ConstantExpr::getBitCast(
-        getAddrOfSILFunction(testFunc.TestFunction, NotForDefinition), Int8PtrTy);
+        fnAddr, Int8PtrTy);
 
+
+    uint32_t flags = 0;
     auto testEntry = testsArray.beginStruct(TestDescriptorTy);
+    if (auto *Suite = testFunc.Suite) {
+      auto ref = getTypeRef(Suite->getSelfInterfaceType()->getCanonicalType(),
+                            CanGenericSignature(),
+                            MangledTypeRefRole::Metadata).first;
+      testEntry.addRelativeAddress(ref);
+      if (Suite->isInstanceMember()) 
+        flags = 1 << 1; // TestCallingConventionThruInstance
+      else
+        flags = 1 << 0; // TestCallingConventionThruMetatype
+    } else {
+      testEntry.addRelativeAddressOrNull(nullptr);
+      flags = 0; // TestCallingConventionGlobal
+    }
     testEntry.addRelativeAddress(fnPtr);
     if (auto L = testFunc.Description) {
       testEntry.addRelativeAddress(getAddrOfGlobalString(*L,
@@ -1830,14 +1850,34 @@ llvm::Constant *IRGenModule::emitTestSuiteMetadata() {
       testEntry.addRelativeAddress(
           getAddrOfGlobalString("", /*willBeRelativelyAddressed*/ true));
     }
-    testEntry.addInt32(0); // unused flags.
+    testEntry.addInt32(flags);
     testEntry.finishAndAddTo(testsArray);
   }
 
   auto var = testsArray.finishAndCreateGlobal(
-      "\x01l_test_suite", getPointerAlignment(),
+      "\x01l_tests", getPointerAlignment(),
       /*isConstant*/ true, llvm::GlobalValue::PrivateLinkage);
-  setTrueConstGlobal(var);
+
+  StringRef sectionName;
+  switch (TargetInfo.OutputObjectFormat) {
+  case llvm::Triple::UnknownObjectFormat:
+    llvm_unreachable("Don't know how to emit tests for "
+                     "the selected object format.");
+  case llvm::Triple::MachO:
+    sectionName = "__TEXT, __swift5_tests, regular, no_dead_strip";
+    break;
+  case llvm::Triple::ELF:
+  case llvm::Triple::Wasm:
+    sectionName = "swift5_testsuite";
+    break;
+  case llvm::Triple::XCOFF:
+  case llvm::Triple::COFF:
+    sectionName = ".sw5test$B";
+    break;
+  }
+
+  var->setSection(sectionName);
+  disableAddressSanitizer(*this, var);
   addUsedGlobal(var);
   return var;
 }

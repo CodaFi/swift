@@ -234,5 +234,8 @@
   ],
   "Result": [
     "Result.swift"
+  ],
+  "Test": [
+    "AnyTestSuite.swift"
   ]
 }

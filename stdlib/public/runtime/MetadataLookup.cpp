@@ -889,6 +889,8 @@ public:
   }
 };
 
+} // namespace
+
 #pragma mark Test descriptor cache
 namespace {
   struct TestSection {
@@ -942,32 +944,52 @@ void swift::addImageTestSuiteBlockCallback(const void *testRecs,
                  recordsBegin, recordsEnd);
 }
 
-// FIXME: Move to the existential ABI
-void swift::swift_enumerateTests_f(swift_test_visitor_t visitor) {
-  if (!visitor) {
+void swift::swift_enumerateTests(
+    swift_test_visitor_block_t<TestInvocation::Global> globalVisitor,
+    swift_test_visitor_block_t<TestInvocation::Metatype> metaVisitor,
+    swift_test_visitor_block_t<TestInvocation::Instance> instanceVisitor) {
+
+  if (!globalVisitor || !metaVisitor || !instanceVisitor) {
+    fatalError(0, "Bad block");
     return;
   }
 
   auto &C = TestSuite.get();
   for (auto &section : C.SectionsToScan.snapshot()) {
     for (const auto &record : section) {
-      if (auto test = record.getInvocation()) {
-        visitor(record.getName(), test);
+      if (record.isGlobal()) {
+        globalVisitor(&record, nullptr);
+      } else if (record.isMeta()) {
+        metaVisitor(&record, (void *)record.getMangledTypeName().data());
+      } else if (record.isInstance()) {
+        instanceVisitor(&record, (void *)record.getMangledTypeName().data());
+      } else {
+        fatalError(0, "Found test record with invalid type %s, %lu!", record.getName(), record.getFlags());
       }
     }
   }
 }
 
-void swift::swift_enumerateTests(swift_test_visitor_block_t visitor) {
-  if (!visitor) {
+void swift::swift_enumerateTests_f(
+    swift_test_visitor_t<TestInvocation::Global> globalVisitor,
+    swift_test_visitor_t<TestInvocation::Metatype> metaVisitor,
+    swift_test_visitor_t<TestInvocation::Instance> instanceVisitor) {
+  if (!globalVisitor || !metaVisitor || !instanceVisitor) {
+    fatalError(0, "Found test record with invalid type!");
     return;
   }
 
   auto &C = TestSuite.get();
   for (auto &section : C.SectionsToScan.snapshot()) {
     for (const auto &record : section) {
-      if (auto test = record.getInvocation()) {
-        visitor(record.getName(), test);
+      if (record.isGlobal()) {
+        globalVisitor(&record, nullptr);
+      } else if (record.isMeta()) {
+        metaVisitor(&record, (void *)record.getMangledTypeName().data());
+      } else if (record.isInstance()) {
+        instanceVisitor(&record, (void *)record.getMangledTypeName().data());
+      } else {
+        fatalError(0, "Found test record with invalid type %s, %lu!", record.getName(), record.getFlags());
       }
     }
   }

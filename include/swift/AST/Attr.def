@@ -585,7 +585,9 @@ SIMPLE_DECL_ATTR(globalActor, GlobalActor,
   104)
 
 DECL_ATTR(_test, Test,
-  OnAbstractFunction |
+  OnImport | OnFunc | OnConstructor | OnVar | OnSubscript | OnAbstractFunction |
+  OnNominalType |
+  ABIBreakingToAdd | ABIBreakingToRemove | APIBreakingToRemove | APIBreakingToAdd |
   LongAttribute | UserInaccessible,
   105)
 

@@ -1002,7 +1002,8 @@ public:
   void addCompilerUsedGlobal(llvm::GlobalValue *global);
   void addObjCClass(llvm::Constant *addr, bool nonlazy);
   void addProtocolConformance(ConformanceDescription &&conformance);
-  void addTestToTestSuite(SILFunction *f, Optional<StringRef> Name);
+  void addTestToTestSuite(NominalTypeDecl *suite, SILFunction *f,
+                          Optional<StringRef> Name);
 
   llvm::Constant *emitSwiftProtocols();
   llvm::Constant *emitProtocolConformances();
@@ -1173,11 +1174,13 @@ private:
   SuccessorMap<unsigned, llvm::Function*> EmittedFunctionsByOrder;
 
   struct TestFunctionInfo {
+    NominalTypeDecl *Suite;
     SILFunction *TestFunction;
     Optional<StringRef> Description;
 
-    TestFunctionInfo(SILFunction *Fn, Optional<StringRef> Desc)
-      : TestFunction(Fn), Description(Desc) {}
+    TestFunctionInfo(NominalTypeDecl *Suite, SILFunction *Fn,
+                     Optional<StringRef> Desc)
+      : Suite(Suite), TestFunction(Fn), Description(Desc) {}
   };
 
   llvm::SmallVector<TestFunctionInfo, 8> TestFunctionDefinitions;

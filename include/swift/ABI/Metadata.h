@@ -4841,18 +4841,56 @@ public:
   uint32_t getFlags() { return flags; }
 };
 
-using TestInvocation = SWIFT_CC(swift) void (*)(void);
+namespace TestInvocation {
+// () throws -> ()
+using Global = SWIFT_CC(swift) void (*)(
+    SWIFT_CONTEXT void *, SWIFT_ERROR_RESULT struct SwiftError **error);
+// (AnyTest.Type) -> () throws -> ()
+using Metatype = SWIFT_CC(swift) void (*)(
+    const Metadata *Self, void **container, const Metadata *self,
+    SWIFT_CONTEXT void *, SWIFT_ERROR_RESULT struct SwiftError **error);
+// (AnyTest) -> () throws -> ()
+using Instance = SWIFT_CC(swift) void (*)(
+    const Metadata *Self, void **container, OpaqueValue *self,
+    SWIFT_CONTEXT void *, SWIFT_ERROR_RESULT struct SwiftError **error);
+} // namespace TestInvocation
 
 /// A record describing a test in a test suite.
 template <typename Runtime>
 class TargetTestDescriptor {
-  RelativeDirectPointer<TestInvocation, false> testFunction;
+  const RelativeDirectPointer<const char> MangledTypeName;
+  TargetRelativeDirectPointer<Runtime, void(...), /*Nullable*/ false> testFunction;
   RelativeDirectPointer<const char, /*nullable*/ false> Name;
-  uint32_t flags; // unused
+  uint32_t flags;
+
+  enum : uint32_t {
+    TestCallingConventionGlobal = 0,
+    TestCallingConventionThruMetatype = 1 << 0,
+    TestCallingConventionThruInstance = 1 << 1,
+  };
 
 public:
-  TestInvocation getInvocation() const {
-    return reinterpret_cast<TestInvocation>(testFunction.get());
+  bool hasMangledTypeName() const {
+    return MangledTypeName;
+  }
+
+  StringRef getMangledTypeName() const {
+    return Demangle::makeSymbolicMangledNameStringRef(MangledTypeName.get());
+  }
+
+  TestInvocation::Global getGlobalInvocation() const {
+//    assert(isGlobal());
+    return reinterpret_cast<TestInvocation::Global>(testFunction.get());
+  }
+
+  TestInvocation::Metatype getMetatypeInvocation() const {
+//    assert(isMeta());
+    return reinterpret_cast<TestInvocation::Metatype>(testFunction.get());
+  }
+
+  TestInvocation::Instance getInstanceInvocation() const {
+//    assert(isInstance());
+    return reinterpret_cast<TestInvocation::Instance>(testFunction.get());
   }
 
   const char *getName() const {
@@ -4860,6 +4898,11 @@ public:
   }
 
   uint32_t getFlags() const { return flags; }
+
+  bool isGlobal() const { return flags == TestCallingConventionGlobal; }
+  bool isInstance() const { return flags == TestCallingConventionThruInstance; }
+  bool isMeta() const { return flags == TestCallingConventionThruMetatype; }
+
 };
 using TestDescriptor = TargetTestDescriptor<InProcess>;
 

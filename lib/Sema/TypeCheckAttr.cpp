@@ -5294,19 +5294,20 @@ void AttributeChecker::visitTransposeAttr(TransposeAttr *attr) {
 }
 
 void AttributeChecker::visitTestAttr(TestAttr *attr) {
-  auto *AFD = dyn_cast<AbstractFunctionDecl>(D);
-  if (!AFD || AFD->getDeclContext()->isLocalContext()) {
-    diagnoseAndRemoveAttr(attr, diag::test_attribute_invalid);
-    return;
-  }
+  if (auto *AFD = dyn_cast<AbstractFunctionDecl>(D)) {
+    if (AFD->getDeclContext()->isLocalContext()) {
+      diagnoseAndRemoveAttr(attr, diag::test_attribute_invalid);
+      return;
+    }
 
-  if (AFD->getParameters()->size() != 0) {
-    diagnoseAndRemoveAttr(attr, diag::test_attribute_cant_have_params);
-    return;
-  }
+    if (AFD->getParameters()->size() != 0) {
+      diagnoseAndRemoveAttr(attr, diag::test_attribute_cant_have_params);
+      return;
+    }
 
-  if (AFD->getGenericSignatureOfContext() != nullptr) {
-    diagnoseAndRemoveAttr(attr, diag::test_attribute_cant_have_generic_params);
-    return;
+    if (AFD->getGenericSignatureOfContext()) {
+      diagnoseAndRemoveAttr(attr, diag::test_attribute_cant_have_generic_params);
+      return;
+    }
   }
 }

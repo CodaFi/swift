@@ -1,23 +1,90 @@
 // RUN: %target-swift-typecheck-verify -enable-testing
 
-@_test("Simple test") func go1() {
+@_test public func go1() {
   print("Hello World")
 }
 
-@_test("") func go2() {
+ @_test("") public func go2() {
   print("Silence")
 }
 
-@_test func go3() {
+ @_test public func go3() {
   print("No name")
 }
 
-typealias testVisitor_t = @convention(block) (UnsafePointer<CChar>, @convention(c) () -> ()) -> ()
+class Foo: AnyTestSuite {
+  let x: Int
+
+  required init() { self.x = 42 }
+
+  @_test func foo() {
+    print(self.x)
+  }
+
+  @_test static func bar() {
+    print("Static")
+  }
+}
+
+typealias GlobalTest = @convention(thin) () throws -> ()
+typealias StaticTest = @convention(thin) (AnyTestSuite.Type) throws -> ()
+typealias InstanceTest = @convention(thin) (AnyTestSuite) throws -> ()
+
+typealias SectionVisitor = @convention(block) (UnsafeRawPointer, UnsafeRawPointer) -> Void
 
 @_silgen_name("swift_enumerateTests")
-func enumerateTests(_ visitor: testVisitor_t)
+func enumerateTests(_ globalVisitor: SectionVisitor, _ metaVisitor: SectionVisitor, _ instanceVisitor: SectionVisitor)
 
-enumerateTests { name, call in
-  print("Running Test Named \"\(String(cString: name))\"")
-  call()
+func relativePointer(base: UnsafeRawPointer, offset: Int) -> UnsafeRawPointer {
+  let off = (base + offset).load(as: Int32.self)
+  return (base + offset).advanced(by: Int(off))
 }
+
+// struct TestDescriptor {
+//   MetadataPointer metadata;
+//   RelativeDirectPointer<void(...)> testFunction;
+//   RelativeDirectPointer<const char, /*nullable*/ false> Name;
+//   enum : uint32_t {
+//     TestCallingConventionGlobal = 0,
+//     TestCallingConventionThruMetatype = 1 << 0,
+//     TestCallingConventionThruInstance = 1 << 1,
+//   } flags;
+// }[0];
+enumerateTests(
+    { section, meta in
+      let realPtr = unsafeBitCast(relativePointer(base: section, offset: 4), to: GlobalTest.self)
+      try! realPtr()
+    },
+    { section, meta in
+      let typePtr = unsafeBitCast(relativePointer(base: section, offset: 0), to: UnsafePointer<CChar>.self)
+      guard let mangledName = String(validatingUTF8: typePtr) else {
+        fatalError("Failed to get mangled name!")
+      }
+      guard let metadata = _typeByName(mangledName) else {
+        fatalError("Failed to get metatype for mangled name: \(mangledName)!")
+      }
+      guard let type = metadata as? AnyTestSuite.Type else {
+        // Not a testing context
+        print("AnyTestSuite conformance check failed for: \(metadata)")
+        return
+      }
+      let realPtr = unsafeBitCast(relativePointer(base: section, offset: 4), to: StaticTest.self)
+      try! realPtr(type)
+    },
+    { section, meta in
+      let typePtr = unsafeBitCast(relativePointer(base: section, offset: 0), to: UnsafePointer<CChar>.self)
+      guard let mangledName = String(validatingUTF8: typePtr) else {
+        fatalError("Failed to get mangled name!")
+      }
+      guard let metadata = _typeByName(mangledName) else {
+        fatalError("Failed to get metatype for mangled name: \(mangledName)!")
+      }
+      guard let type = metadata as? AnyTestSuite.Type else {
+        // Not a testing context
+        print("AnyTestSuite conformance check failed for: \(metadata)")
+        return
+      }
+      let value = type.init()
+      let realPtr = unsafeBitCast(relativePointer(base: section, offset: 4), to: InstanceTest.self)
+      try! realPtr(value)
+    })
