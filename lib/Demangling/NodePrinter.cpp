@@ -591,6 +591,7 @@ private:
     case Node::Kind::AsyncAwaitResumePartialFunction:
     case Node::Kind::AsyncSuspendResumePartialFunction:
     case Node::Kind::AccessibleFunctionRecord:
+    case Node::Kind::TestThunk:
       return false;
     }
     printer_unreachable("bad node kind");
@@ -2899,6 +2900,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << ')';
     }
     return nullptr;
+<<<<<<< HEAD
   case Node::Kind::PredefinedObjCAsyncCompletionHandlerImpl:
     Printer << "predefined ";
     LLVM_FALLTHROUGH;
@@ -2947,6 +2949,28 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << " suspend resume partial function for ";
     }
     return nullptr;
+=======
+  case Node::Kind::TestThunk: {
+    if (Options.ShortenThunk) {
+      Printer << "test thunk for ";
+//      print(Node->getChild(Node->getNumChildren() - 1));
+      return nullptr;
+    }
+    Printer << "test thunk ";
+    unsigned idx = 0;
+    if (Node->getNumChildren() == 3) {
+      auto generics = Node->getChild(0);
+      idx = 1;
+      print(generics);
+      Printer << " ";
+    }
+    Printer << "from ";
+    print(Node->getChild(idx + 1));
+    Printer << " to ";
+    print(Node->getChild(idx));
+    return nullptr;
+  }
+>>>>>>> 6b3642c4d6a (XXX)
   }
 
   printer_unreachable("bad node kind!");

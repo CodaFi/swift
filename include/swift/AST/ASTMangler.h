@@ -106,6 +106,8 @@ public:
     DistributedThunk,
     DistributedAccessor,
     AccessibleFunctionRecord
+    DirectMethodReferenceThunk,
+    TestThunk,
   };
 
   ASTMangler(bool DWARFMangling = false)

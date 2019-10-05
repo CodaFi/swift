@@ -511,7 +511,7 @@ public:
   bool isInSpecializeExtensionContext() const;
 
   /// Determine whether this declaration context or any of its parents are
-  /// annotated with @_test.
+  /// annotated with @test.
   bool isTestContext() const;
 
   /// Get the most optimal resilience expansion for code in this context.

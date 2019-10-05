@@ -2688,6 +2688,12 @@ ManglingError Remangler::mangleIndexSubset(Node *node, unsigned depth) {
   return ManglingError::Success;
 }
 
+ManglingError Remangler::mangleTestThunk(Node *node, unsigned) {
+  RETURN_IF_ERROR(mangleChildNodesReversed(node, depth + 1));
+  Buffer << "TT";
+  return ManglingError::Success;
+}
+
 ManglingError Remangler::mangleReadAccessor(Node *node, unsigned depth) {
   return mangleAbstractStorage(node->getFirstChild(), "r", depth + 1);
 }

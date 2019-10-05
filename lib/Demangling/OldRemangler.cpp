@@ -1018,6 +1018,11 @@ ManglingError Remangler::mangleProtocolSelfConformanceWitness(Node *node,
   return mangleSingleChildNode(node, depth + 1); // entity
 }
 
+ManglingError Remangler::mangleTestThunk(Node *node, unsigned depth) {
+  Buffer << "<test-thunk>";
+  return ManglingError::Success;
+}
+
 ManglingError Remangler::mangleProtocolWitness(Node *node, unsigned depth) {
   Buffer << "TW";
   return mangleChildNodes(node, depth + 1); // protocol conformance, entity

@@ -333,5 +333,8 @@ NODE(CompileTimeConst)
 // Added in Swift 5.7
 NODE(OpaqueReturnTypeIndexed)
 
+// Future Language Extension
+NODE(TestThunk)
+
 #undef CONTEXT_NODE
 #undef NODE

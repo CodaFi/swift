@@ -857,6 +857,8 @@ void ASTMangler::appendSymbolKind(SymbolKind SKind) {
     case SymbolKind::DistributedThunk: return appendOperator("TE");
     case SymbolKind::DistributedAccessor: return appendOperator("TF");
     case SymbolKind::AccessibleFunctionRecord: return appendOperator("HF");
+    case SymbolKind::DirectMethodReferenceThunk: return appendOperator("Td");
+    case SymbolKind::TestThunk: return appendOperator("TT");
   }
 }
 

@@ -1,14 +1,14 @@
 // RUN: %target-swift-typecheck-verify -enable-testing
 
-@_test public func go1() {
+@test public func go1() {
   print("Hello World")
 }
 
- @_test("") public func go2() {
+@test("") public func go2() {
   print("Silence")
 }
 
- @_test public func go3() {
+@test public func go3() {
   print("No name")
 }
 
@@ -17,12 +17,14 @@ class Foo: AnyTestSuite {
 
   required init() { self.x = 42 }
 
-  @_test func foo() {
-    print(self.x)
+  @test static func bar() {
+    print("Static")
   }
 
-  @_test static func bar() {
-    print("Static")
+  @test("") func foo() throws {
+    print("Enter")
+    print(self)
+    print("Exit")
   }
 }
 
@@ -56,6 +58,7 @@ enumerateTests(
       try! realPtr()
     },
     { section, meta in
+
       let typePtr = unsafeBitCast(relativePointer(base: section, offset: 0), to: UnsafePointer<CChar>.self)
       guard let mangledName = String(validatingUTF8: typePtr) else {
         fatalError("Failed to get mangled name!")
@@ -85,6 +88,8 @@ enumerateTests(
         return
       }
       let value = type.init()
-      let realPtr = unsafeBitCast(relativePointer(base: section, offset: 4), to: InstanceTest.self)
-      try! realPtr(value)
+      let ptr = relativePointer(base: section, offset: 4)
+      let realPtr = unsafeBitCast(ptr, to: InstanceTest.self)
+      print("\(ptr) - \(meta)")
+      try! realPtr(value as AnyTestSuite)
     })

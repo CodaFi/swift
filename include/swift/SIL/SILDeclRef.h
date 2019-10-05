@@ -170,6 +170,8 @@ struct SILDeclRef {
   unsigned isForeign : 1;
   /// True if this references a distributed function.
   unsigned isDistributed : 1;
+  /// True if this references a test thunk entrypoint.
+  unsigned isTestThunk : 1;
   /// The default argument index for a default argument getter.
   unsigned defaultArgIndex : 10;
 
@@ -204,13 +206,14 @@ struct SILDeclRef {
 
   /// Produces a null SILDeclRef.
   SILDeclRef()
-      : loc(), kind(Kind::Func), isForeign(0), isDistributed(0), defaultArgIndex(0) {}
+      : loc(), kind(Kind::Func), isForeign(0), isDistributed(0), isTestThunk(0), defaultArgIndex(0) {}
 
   /// Produces a SILDeclRef of the given kind for the given decl.
   explicit SILDeclRef(
       ValueDecl *decl, Kind kind,
       bool isForeign = false,
       bool isDistributed = false,
+      bool isTestThunk = false,
       AutoDiffDerivativeFunctionIdentifier *derivativeId = nullptr);
 
   /// Produces a SILDeclRef for the given ValueDecl or
@@ -353,6 +356,7 @@ struct SILDeclRef {
     return llvm::hash_combine(ref.loc.getOpaqueValue(),
                               static_cast<int>(ref.kind),
                               ref.isForeign, ref.isDistributed,
+                              ref.isTestThunk,
                               ref.defaultArgIndex);
   }
 
@@ -360,6 +364,7 @@ struct SILDeclRef {
     return loc.getOpaqueValue() == rhs.loc.getOpaqueValue() &&
            kind == rhs.kind && isForeign == rhs.isForeign &&
            isDistributed == rhs.isDistributed &&
+           isTestThunk == rhs.isTestThunk &&
            defaultArgIndex == rhs.defaultArgIndex &&
            pointer == rhs.pointer;
   }
@@ -378,6 +383,7 @@ struct SILDeclRef {
     return SILDeclRef(loc.getOpaqueValue(), kind,
                       /*foreign=*/foreign,
                       /*distributed=*/false,
+                      /*testthunk=*/isTestThunk,
                       defaultArgIndex,
                       pointer.get<AutoDiffDerivativeFunctionIdentifier *>());
   }
@@ -387,6 +393,19 @@ struct SILDeclRef {
     return SILDeclRef(loc.getOpaqueValue(), kind,
                       /*foreign=*/false,
                       /*distributed=*/distributed,
+                      /*testthunk=*/isTestThunk,
+                      defaultArgIndex,
+                      pointer.get<AutoDiffDerivativeFunctionIdentifier *>());
+  }
+
+
+  /// Returns the test entry point corresponding to the same
+  /// decl.
+  SILDeclRef asTestThunk(bool test = true) const {
+    return SILDeclRef(loc.getOpaqueValue(), kind,
+                      /*foreign=*/foreign,
+                      /*distributed=*/distributed,
+                      /*testthunk=*/test,
                       defaultArgIndex,
                       pointer.get<AutoDiffDerivativeFunctionIdentifier *>());
   }
@@ -508,10 +527,12 @@ private:
   explicit SILDeclRef(void *opaqueLoc, Kind kind,
                       bool isForeign,
                       bool isDistributed,
+                      bool isTest,
                       unsigned defaultArgIndex,
                       AutoDiffDerivativeFunctionIdentifier *derivativeId)
       : loc(Loc::getFromOpaqueValue(opaqueLoc)), kind(kind),
         isForeign(isForeign), isDistributed(isDistributed),
+        isTestThunk(isTest),
         defaultArgIndex(defaultArgIndex),
         pointer(derivativeId) {}
 };
@@ -534,11 +555,11 @@ template<> struct DenseMapInfo<swift::SILDeclRef> {
   using UnsignedInfo = DenseMapInfo<unsigned>;
 
   static SILDeclRef getEmptyKey() {
-    return SILDeclRef(PointerInfo::getEmptyKey(), Kind::Func, false, false, 0,
+    return SILDeclRef(PointerInfo::getEmptyKey(), Kind::Func, false, false, false, 0,
                       nullptr);
   }
   static SILDeclRef getTombstoneKey() {
-    return SILDeclRef(PointerInfo::getTombstoneKey(), Kind::Func, false, false,
+    return SILDeclRef(PointerInfo::getTombstoneKey(), Kind::Func, false, false, false,
                       0, nullptr);
   }
   static unsigned getHashValue(swift::SILDeclRef Val) {
