@@ -146,6 +146,8 @@ struct SILDeclRef {
   Kind kind : 4;
   /// True if this references a foreign entry point for the referenced decl.
   unsigned isForeign : 1;
+  /// True if this references a test thunk entrypoint.
+  unsigned isTestThunk : 1;
   /// The default argument index for a default argument getter.
   unsigned defaultArgIndex : 10;
   /// The derivative function identifier.
@@ -153,12 +155,14 @@ struct SILDeclRef {
 
   /// Produces a null SILDeclRef.
   SILDeclRef()
-      : loc(), kind(Kind::Func), isForeign(0), defaultArgIndex(0),
+      : loc(), kind(Kind::Func), isForeign(0), isTestThunk(0),
+        defaultArgIndex(0),
         derivativeFunctionIdentifier(nullptr) {}
 
   /// Produces a SILDeclRef of the given kind for the given decl.
   explicit SILDeclRef(
       ValueDecl *decl, Kind kind, bool isForeign = false,
+      bool isTestThunk = false,
       AutoDiffDerivativeFunctionIdentifier *derivativeId = nullptr);
 
   /// Produces a SILDeclRef for the given ValueDecl or
@@ -280,12 +284,14 @@ struct SILDeclRef {
   friend llvm::hash_code hash_value(const SILDeclRef &ref) {
     return llvm::hash_combine(ref.loc.getOpaqueValue(),
                               static_cast<int>(ref.kind),
-                              ref.isForeign, ref.defaultArgIndex);
+                              ref.isForeign, ref.isTestThunk,
+                              ref.defaultArgIndex);
   }
 
   bool operator==(SILDeclRef rhs) const {
     return loc.getOpaqueValue() == rhs.loc.getOpaqueValue() &&
            kind == rhs.kind && isForeign == rhs.isForeign &&
+           isTestThunk == rhs.isTestThunk &&
            defaultArgIndex == rhs.defaultArgIndex &&
            derivativeFunctionIdentifier == rhs.derivativeFunctionIdentifier;
   }
@@ -301,7 +307,8 @@ struct SILDeclRef {
   /// Returns the foreign (or native) entry point corresponding to the same
   /// decl.
   SILDeclRef asForeign(bool foreign = true) const {
-    return SILDeclRef(loc.getOpaqueValue(), kind, foreign, defaultArgIndex,
+    return SILDeclRef(loc.getOpaqueValue(), kind, foreign, isTestThunk,
+                      defaultArgIndex,
                       derivativeFunctionIdentifier);
   }
 
@@ -329,6 +336,13 @@ struct SILDeclRef {
     SILDeclRef result = *this;
     result.loc = decl;
     return result;
+  }
+
+  /// Returns the test entry point corresponding to the same
+  /// decl.
+  SILDeclRef asTestThunk(bool test = true) const {
+    return SILDeclRef(loc.getOpaqueValue(), kind,
+                      isForeign, test, defaultArgIndex);
   }
 
   /// True if the decl ref references a thunk from a natively foreign
@@ -411,10 +425,12 @@ private:
   friend struct llvm::DenseMapInfo<swift::SILDeclRef>;
   /// Produces a SILDeclRef from an opaque value.
   explicit SILDeclRef(void *opaqueLoc, Kind kind, bool isForeign,
+                      bool isTest,
                       unsigned defaultArgIndex,
                       AutoDiffDerivativeFunctionIdentifier *derivativeId)
       : loc(Loc::getFromOpaqueValue(opaqueLoc)), kind(kind),
-        isForeign(isForeign), defaultArgIndex(defaultArgIndex),
+        isForeign(isForeign), isTestThunk(isTest),
+        defaultArgIndex(defaultArgIndex),
         derivativeFunctionIdentifier(derivativeId) {}
 };
 
@@ -450,8 +466,9 @@ template<> struct DenseMapInfo<swift::SILDeclRef> {
                     ? UnsignedInfo::getHashValue(Val.defaultArgIndex)
                     : 0;
     unsigned h4 = UnsignedInfo::getHashValue(Val.isForeign);
-    unsigned h5 = PointerInfo::getHashValue(Val.derivativeFunctionIdentifier);
-    return h1 ^ (h2 << 4) ^ (h3 << 9) ^ (h4 << 7) ^ (h5 << 11);
+    unsigned h5 = UnsignedInfo::getHashValue(Val.isForeign);
+    unsigned h6 = PointerInfo::getHashValue(Val.derivativeFunctionIdentifier);
+    return h1 ^ (h2 << 4) ^ (h3 << 9) ^ (h4 << 7) ^ (h5 << 11) ^ (h6 << 13);
   }
   static bool isEqual(swift::SILDeclRef const &LHS,
                       swift::SILDeclRef const &RHS) {

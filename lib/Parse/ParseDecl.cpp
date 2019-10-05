@@ -1795,7 +1795,7 @@ bool Parser::parseNewDeclAttribute(DeclAttributes &Attributes, SourceLoc AtLoc,
   }
 
   case DAK_Test: {
-    // Diagnose using @_test in a local scope.
+    // Diagnose using @test in a local scope.
     if (CurDeclContext->isLocalContext()) {
       diagnose(Loc, diag::attr_only_at_non_local_scope, AttrName);
     }

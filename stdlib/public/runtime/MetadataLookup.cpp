@@ -962,7 +962,7 @@ void swift::swift_enumerateTests(
       } else if (record.isMeta()) {
         metaVisitor(&record, (void *)record.getMangledTypeName().data());
       } else if (record.isInstance()) {
-        instanceVisitor(&record, (void *)record.getMangledTypeName().data());
+        instanceVisitor(&record, (void *)record.getInstanceInvocation());
       } else {
         fatalError(0, "Found test record with invalid type %s, %lu!", record.getName(), record.getFlags());
       }

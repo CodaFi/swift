@@ -307,7 +307,10 @@ public:
 
   void preEmitFunction(SILDeclRef constant, SILFunction *F, SILLocation L);
   void postEmitFunction(SILDeclRef constant, SILFunction *F);
-  
+
+  /// Emits a thunk from an AnyTestSuite-bearing test function.
+  void emitTestThunk(SILDeclRef thunk);
+
   /// Add a global variable to the SILModule.
   void addGlobalVariable(VarDecl *global);
 

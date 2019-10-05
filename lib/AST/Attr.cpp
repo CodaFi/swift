@@ -1044,7 +1044,7 @@ bool DeclAttribute::printImpl(ASTPrinter &Printer, const PrintOptions &Options,
   }
 
   case DAK_Test:
-    Printer.printAttrName("@_test");
+    Printer.printAttrName("@test");
     if (auto Name = cast<TestAttr>(this)->Name)
       Printer << "(\"" << *Name << "\")";
     break;

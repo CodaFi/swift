@@ -5046,6 +5046,7 @@ SpecialProtocol irgen::getSpecialProtocolID(ProtocolDecl *P) {
   case KnownProtocolKind::Differentiable:
   case KnownProtocolKind::FloatingPoint:
   case KnownProtocolKind::Actor:
+  case KnownProtocolKind::AnyTestSuite:
     return SpecialProtocol::None;
   }
 

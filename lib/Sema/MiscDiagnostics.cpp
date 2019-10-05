@@ -128,7 +128,7 @@ static void diagSyntacticUseRestrictions(const Expr *E, const DeclContext *DC,
         // Verify that `unsafeBitCast` isn't misused.
         checkForSuspiciousBitCasts(DRE, nullptr);
 
-        // Verify that @_test methods are not referenced from non-@_test
+        // Verify that @test methods are not referenced from non-@test
         // contexts.
         checkForTestContextIntegrity(DRE);
       }
@@ -751,7 +751,7 @@ static void diagSyntacticUseRestrictions(const Expr *E, const DeclContext *DC,
     }
 
     void checkForTestContextIntegrity(DeclRefExpr *DRE) {
-      // No @_test?  No problem.
+      // No @test?  No problem.
       if (!DRE->getDecl()->getAttrs().hasAttribute<TestAttr>())
         return;
 

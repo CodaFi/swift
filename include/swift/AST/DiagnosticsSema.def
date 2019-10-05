@@ -5460,13 +5460,13 @@ ERROR(experimental_differentiable_programming_disabled, none,
 //------------------------------------------------------------------------------
 
 ERROR(test_attribute_invalid, none,
-      "@_test attribute cannot appear in nested function", ())
+      "@test attribute cannot appear in nested function", ())
 ERROR(test_attribute_cant_have_params, none,
-      "@_test attribute only applies to functions with no arguments", ())
+      "@test attribute only applies to functions with no arguments", ())
 ERROR(test_attribute_cant_have_generic_params, none,
-      "@_test attribute only applies functions with no generic parameters", ())
+      "@test attribute only applies functions with no generic parameters", ())
 ERROR(test_func_in_non_test_context, none,
-      "@_test function %0 cannot be used outside of @_test context", (Identifier))
+      "@test function %0 cannot be used outside of @test context", (Identifier))
 
 #ifndef DIAG_NO_UNDEF
 # if defined(DIAG)

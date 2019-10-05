@@ -2048,6 +2048,11 @@ void Remangler::mangleReabstractionThunkHelperWithSelf(Node *node) {
   Buffer << "Ty";
 }
 
+void Remangler::mangleTestThunk(Node *node) {
+  mangleChildNodesReversed(node);
+  Buffer << "TT";
+}
+
 void Remangler::mangleReadAccessor(Node *node) {
   mangleAbstractStorage(node->getFirstChild(), "r");
 }

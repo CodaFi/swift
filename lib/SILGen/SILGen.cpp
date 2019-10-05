@@ -573,7 +573,7 @@ static bool isEmittedOnDemand(SILModule &M, SILDeclRef constant) {
   if (!constant.hasDecl())
     return false;
 
-  if (constant.isForeign)
+  if (constant.isForeign || constant.isTestThunk)
     return false;
 
   auto *d = constant.getDecl();
@@ -1176,6 +1176,14 @@ void SILGenModule::emitAbstractFuncDecl(AbstractFunctionDecl *AFD) {
     auto thunk = SILDeclRef(AFD).asForeign();
     if (!hasFunction(thunk))
       emitNativeToForeignThunk(thunk);
+  }
+
+  // If the declaration is an @test instance member, we need to thunk from the
+  // Any(TestSuite) protocol to the native instance type.
+  if (AFD->getAttrs().hasAttribute<TestAttr>() && AFD->isInstanceMember()) {
+    auto thunk = SILDeclRef(AFD).asTestThunk();
+    if (!hasFunction(thunk))
+      emitTestThunk(thunk);
   }
 }
 

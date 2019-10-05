@@ -298,5 +298,8 @@ NODE(GlobalVariableOnceFunction)
 NODE(GlobalVariableOnceToken)
 NODE(GlobalVariableOnceDeclList)
 
+// Future Language Extension
+NODE(TestThunk)
+
 #undef CONTEXT_NODE
 #undef NODE

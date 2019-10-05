@@ -1833,7 +1833,8 @@ llvm::Constant *IRGenModule::emitTestSuiteMetadata() {
                             CanGenericSignature(),
                             MangledTypeRefRole::Metadata).first;
       testEntry.addRelativeAddress(ref);
-      if (Suite->isInstanceMember()) 
+      // Instance methods are always invoked via a casting thunk.
+      if (testFunc.TestFunction->isThunk())
         flags = 1 << 1; // TestCallingConventionThruInstance
       else
         flags = 1 << 0; // TestCallingConventionThruMetatype

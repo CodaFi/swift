@@ -734,6 +734,10 @@ void Remangler::mangleReabstractionThunk(Node *node) {
   Buffer << "<reabstraction-thunk>";
 }
 
+void Remangler::mangleTestThunk(Node *node) {
+  Buffer << "<test-thunk>";
+}
+
 void Remangler::mangleProtocolSelfConformanceWitness(Node *node) {
   Buffer << "TS";
   mangleSingleChildNode(node); // entity

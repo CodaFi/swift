@@ -100,6 +100,18 @@ void SILGenModule::emitNativeToForeignThunk(SILDeclRef thunk) {
   emitFunctionDefinition(thunk, getFunction(thunk, ForDefinition));
 }
 
+void SILGenModule::emitTestThunk(SILDeclRef thunk) {
+  // Thunks are always emitted by need, so don't need delayed emission.
+  assert(thunk.isTestThunk && "test thunks only");
+  SILFunction *f = getFunction(thunk, ForDefinition);
+  f->setClassSubclassScope(SubclassScope::NotApplicable);
+  PrettyStackTraceSILFunction X("silgen emitTestThunk", f);
+  f->setTestFunction(true);
+  f->setThunk(IsThunk);
+  SILGenFunction(*this, *f, SwiftModule).emitTestThunk(thunk);
+  postEmitFunction(thunk, f);
+}
+
 SILValue
 SILGenFunction::emitGlobalFunctionRef(SILLocation loc, SILDeclRef constant,
                                       SILConstantInfo constantInfo,
