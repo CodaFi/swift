@@ -96,6 +96,7 @@ bool Context::isThunkSymbol(llvm::StringRef MangledName) {
         MangledName.endswith("TR") ||  // reabstraction thunk helper function
         MangledName.endswith("Tr") ||  // reabstraction thunk
         MangledName.endswith("TW") ||  // protocol witness thunk
+        MangledName.endswith("TT") ||  // test thunk
         MangledName.endswith("fC")) {  // allocating constructor
 
       // To avoid false positives, we need to fully demangle the symbol.
@@ -113,6 +114,7 @@ bool Context::isThunkSymbol(llvm::StringRef MangledName) {
         case Node::Kind::ReabstractionThunk:
         case Node::Kind::ProtocolWitness:
         case Node::Kind::Allocator:
+        case Node::Kind::TestThunk:
           return true;
         default:
           break;

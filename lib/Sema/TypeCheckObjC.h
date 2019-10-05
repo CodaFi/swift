@@ -42,7 +42,7 @@ public:
   enum Kind {
     /// Has the '@cdecl' attribute.
     ExplicitlyCDecl,
-    /// Has the '@_test' attribute.
+    /// Has the '@test' attribute.
     ExplicitlyTest,
     /// Has the 'dynamic' modifier.
     ExplicitlyDynamic,

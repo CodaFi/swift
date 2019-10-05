@@ -689,6 +689,9 @@ public:
   /// new task.
   SILFunction *emitNativeAsyncToForeignThunk(SILDeclRef thunk);
 
+  /// Emits a thunk from an AnyTestSuite-bearing test function.
+  void emitTestThunk(SILDeclRef thunk);
+  
   /// Generate a nullary function that returns the given value.
   /// If \p emitProfilerIncrement is set, emit a profiler increment for
   /// \p value.

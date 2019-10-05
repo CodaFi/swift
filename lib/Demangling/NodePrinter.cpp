@@ -565,6 +565,7 @@ private:
     case Node::Kind::GlobalVariableOnceToken:
     case Node::Kind::CanonicalPrespecializedGenericTypeCachingOnceToken:
     case Node::Kind::AsyncFunctionPointer:
+    case Node::Kind::TestThunk:
       return false;
     }
     printer_unreachable("bad node kind");
@@ -2556,6 +2557,26 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
   case Node::Kind::AsyncFunctionPointer:
     Printer << "async function pointer to ";
     return nullptr;
+  case Node::Kind::TestThunk: {
+    if (Options.ShortenThunk) {
+      Printer << "test thunk for ";
+//      print(Node->getChild(Node->getNumChildren() - 1));
+      return nullptr;
+    }
+    Printer << "test thunk ";
+    unsigned idx = 0;
+    if (Node->getNumChildren() == 3) {
+      auto generics = Node->getChild(0);
+      idx = 1;
+      print(generics);
+      Printer << " ";
+    }
+    Printer << "from ";
+    print(Node->getChild(idx + 1));
+    Printer << " to ";
+    print(Node->getChild(idx));
+    return nullptr;
+  }
   }
   printer_unreachable("bad node kind!");
 }

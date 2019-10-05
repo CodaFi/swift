@@ -2304,10 +2304,12 @@ NodePointer Demangler::popProtocolConformance() {
                              popNode(isEntity));
     case 'R':
     case 'r':
-    case 'y': {
+    case 'y':
+    case 'T': {
       Node::Kind kind;
       if (c == 'R') kind = Node::Kind::ReabstractionThunkHelper;
       else if (c == 'y') kind = Node::Kind::ReabstractionThunkHelperWithSelf;
+      else if (c == 'T') kind = Node::Kind::TestThunk;
       else kind = Node::Kind::ReabstractionThunk;
       NodePointer Thunk = createNode(kind);
       if (NodePointer GenSig = popNode(Node::Kind::DependentGenericSignature))

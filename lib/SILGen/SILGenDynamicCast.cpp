@@ -442,6 +442,28 @@ RValue Lowering::emitUnconditionalCheckedCast(SILGenFunction &SGF,
   return emitter.emitUnconditionalCast(operandValue, C);
 }
 
+RValue Lowering::emitUnconditionalCheckedCast2(SILGenFunction &SGF,
+                                              SILLocation loc,
+                                              ManagedValue operandValue,
+                                              Type sourceType,
+                                              Type targetType,
+                                              CheckedCastKind castKind,
+                                              SGFContext C) {
+  // Handle collection downcasts directly; they have specific library
+  // entry points.
+  if (castKind == CheckedCastKind::ArrayDowncast ||
+      castKind == CheckedCastKind::DictionaryDowncast ||
+      castKind == CheckedCastKind::SetDowncast) {
+    return emitCollectionDowncastExpr(SGF, operandValue, sourceType, loc,
+                                      targetType, C,
+                                      /*conditional=*/false);
+  }
+
+  assert(operandValue.getType().getASTType() == sourceType->getCanonicalType());
+  CheckedCastEmitter emitter(SGF, loc, sourceType, targetType);
+  return emitter.emitUnconditionalCast(operandValue, C);
+}
+
 RValue Lowering::emitConditionalCheckedCast(
     SILGenFunction &SGF, SILLocation loc, ManagedValue operand,
     Type operandType, Type optTargetType, CheckedCastKind castKind,

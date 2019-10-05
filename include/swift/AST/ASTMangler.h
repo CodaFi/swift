@@ -81,6 +81,8 @@ public:
     DynamicThunk,
     SwiftAsObjCThunk,
     ObjCAsSwiftThunk,
+    DirectMethodReferenceThunk,
+    TestThunk,
   };
 
   ASTMangler(bool DWARFMangling = false)

@@ -65,14 +65,17 @@ void SILFunctionBuilder::addFunctionAttributes(SILFunction *F,
   if (Attrs.hasAttribute<SILGenNameAttr>() || Attrs.hasAttribute<CDeclAttr>())
     F->setHasCReferences(true);
 
-  if (Attrs.hasAttribute<TestAttr>()) {
-    F->setTestFunction(true);
-  }
-
   // Propagate @_dynamicReplacement(for:).
   if (constant.isNull())
     return;
   auto *decl = constant.getDecl();
+
+  // If this is a non-member @test function, we can use it without emitting a
+  // thunk.  If this is an instance function , we'll emit the thunk when we emit
+  // that function and mark the thunk @test.
+  if (Attrs.hasAttribute<TestAttr>() && !decl->isInstanceMember()) {
+    F->setTestFunction(true);
+  }
 
   // Only emit replacements for the objc entry point of objc methods.
   if (decl->isObjC() &&
