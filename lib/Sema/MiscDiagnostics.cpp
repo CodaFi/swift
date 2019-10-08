@@ -756,8 +756,8 @@ static void diagSyntacticUseRestrictions(const Expr *E, const DeclContext *DC,
         return;
 
       if (!DC->isTestContext()) {
-        TC.diagnose(DRE->getLoc(), diag::test_func_in_non_test_context,
-                    DRE->getDecl()->getBaseName().getIdentifier());
+        Ctx.Diags.diagnose(DRE->getLoc(), diag::test_func_in_non_test_context,
+                           DRE->getDecl()->getBaseName().getIdentifier());
       }
     }
     
