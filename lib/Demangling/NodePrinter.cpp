@@ -2488,23 +2488,7 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
     }
     return nullptr;
   case Node::Kind::TestThunk: {
-    if (Options.ShortenThunk) {
-      Printer << "test thunk for ";
-//      print(Node->getChild(Node->getNumChildren() - 1));
-      return nullptr;
-    }
-    Printer << "test thunk ";
-    unsigned idx = 0;
-    if (Node->getNumChildren() == 3) {
-      auto generics = Node->getChild(0);
-      idx = 1;
-      print(generics);
-      Printer << " ";
-    }
-    Printer << "from ";
-    print(Node->getChild(idx + 1));
-    Printer << " to ";
-    print(Node->getChild(idx));
+    Printer << "test thunk";
     return nullptr;
   }
   }
