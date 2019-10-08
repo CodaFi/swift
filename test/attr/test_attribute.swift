@@ -14,17 +14,16 @@
 
 class Foo: AnyTestSuite {
   let x: Int
+  static var y: Int = 42
 
   required init() { self.x = 42 }
 
   @test static func bar() {
-    print("Static")
+    print(Self.y)
   }
 
-  @test("") func foo() throws {
-    print("Enter")
-    print(self)
-    print("Exit")
+  @test("") func foo() {
+    print(self.x)
   }
 }
 
@@ -89,7 +88,6 @@ enumerateTests(
       }
       let value = type.init()
       let ptr = relativePointer(base: section, offset: 4)
-      let realPtr = unsafeBitCast(ptr, to: InstanceTest.self)
-      print("\(ptr) - \(meta)")
+      let realPtr = unsafeBitCast(meta, to: InstanceTest.self)
       try! realPtr(value as AnyTestSuite)
     })
