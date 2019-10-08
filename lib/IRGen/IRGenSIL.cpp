@@ -1864,7 +1864,13 @@ void IRGenSILFunction::emitSILFunction() {
     if (auto L = CurSILFn->getLocation()) {
       if (FuncDecl *FD = L.getAsASTNode<FuncDecl>()) {
         if (auto *TA = FD->getAttrs().getAttribute<TestAttr>()) {
-          IGM.addTestToTestSuite(dyn_cast<NominalTypeDecl>(FD->getDeclContext()), CurSILFn, TA->Name);
+          if (auto *nominal = dyn_cast<NominalTypeDecl>(FD->getDeclContext())) {
+            IGM.addTestToTestSuite(nominal, CurSILFn, TA->Name);
+          } else if (auto *ext = dyn_cast<ExtensionDecl>(FD->getDeclContext())) {
+            IGM.addTestToTestSuite(ext->getExtendedNominal(), CurSILFn, TA->Name);
+          } else {
+            IGM.addTestToTestSuite(nullptr, CurSILFn, TA->Name);
+          }
         }
       }
     }
