@@ -1479,42 +1479,12 @@ void SILGenFunction::emitTestThunk(SILDeclRef thunk) {
   // Call the native entry point.
   SILValue nativeFn = emitGlobalFunctionRef(loc, native, swiftInfo);
 
-  if (!swiftFnTy->hasErrorResult()) {
-   // Create the apply.
-   B.createApply(loc, nativeFn, subs, {converted.getValue()});
+  auto result = emitApplyWithRethrow(loc, nativeFn, nativeFn->getType(),
+                                     subs, converted.getValue());
 
-   // Leave the argument cleanup scope now.
-   argScope.pop();
-
-    B.createReturn(loc, B.createTuple(loc, {}));
-  } else {
-   SILBasicBlock *errorBB = createBasicBlock();
-   SILBasicBlock *normalBB = createBasicBlock();
-   B.createTryApply(loc, nativeFn, subs, {converted.getValue()},
-                    normalBB, errorBB);
-
-   // Emit the non-error destination.
-   {
-     B.emitBlock(normalBB);
-     normalBB->createPhiArgument(swiftResultTy, ValueOwnershipKind::Owned);
-
-     B.createReturn(loc, B.createTuple(loc, {}));
-   }
-
-   // Emit the error destination.
-   {
-     B.emitBlock(errorBB);
-     SILValue nativeError = errorBB->createPhiArgument(
-         swiftConv.getSILErrorType(), ValueOwnershipKind::Owned);
-
-     B.createThrow(loc, nativeError);
-   }
-
-   // Leave the scope now.
-   argScope.pop();
-  }
-
+  argScope.pop();
   scope.pop();
+  B.createReturn(loc, result);
 }
 
 void SILGenFunction::emitNativeToForeignThunk(SILDeclRef thunk) {
