@@ -2423,20 +2423,6 @@ public:
         }
       }
     }
-
-    // Test functions are exported via thunk like @_cdecl functions.  They're
-    // therefore subject to the same ObjC representation restriction.
-    // FIXME: This is cargo-culted nonsense.
-    if (auto TAttr = FD->getAttrs().getAttribute<swift::TestAttr>()) {
-      Optional<ForeignErrorConvention> errorConvention;
-      if (isRepresentableInObjC(FD, ObjCReason::ExplicitlyTest,
-                                errorConvention)) {
-        if (FD->hasThrows()) {
-          FD->setForeignErrorConvention(*errorConvention);
-          diagnose(TAttr->getLocation(), diag::test_throws);
-        }
-      }
-    }
   }
 
   void visitModuleDecl(ModuleDecl *) { }
