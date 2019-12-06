@@ -931,6 +931,7 @@ else()
 endif()
 
 check_symbol_exists(wait4 "sys/wait.h" HAVE_WAIT4)
+check_symbol_exists(os_signpost_emit_with_type "os/signpost.h" HAVE_OS_SIGNPOST_EMIT)
 
 check_symbol_exists(proc_pid_rusage "libproc.h" HAVE_PROC_PID_RUSAGE)
 if(HAVE_PROC_PID_RUSAGE)
