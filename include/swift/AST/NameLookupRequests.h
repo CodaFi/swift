@@ -16,10 +16,7 @@
 #ifndef SWIFT_NAME_LOOKUP_REQUESTS_H
 #define SWIFT_NAME_LOOKUP_REQUESTS_H
 
-#include "swift/AST/SimpleRequest.h"
-#include "swift/AST/ASTTypeIDs.h"
-#include "swift/Basic/Statistic.h"
-#include "llvm/ADT/Hashing.h"
+#include "swift/AST/IncrementalRequest.h"
 #include "llvm/ADT/TinyPtrVector.h"
 
 namespace swift {
@@ -374,11 +371,11 @@ SourceLoc extractNearestSourceLoc(const UnqualifiedLookupDescriptor &desc);
 
 /// Performs unqualified lookup for a DeclName from a given context.
 class UnqualifiedLookupRequest
-    : public SimpleRequest<UnqualifiedLookupRequest,
-                           LookupResult(UnqualifiedLookupDescriptor),
-                           CacheKind::Uncached> {
+    : public IncrementalRequest<UnqualifiedLookupRequest,
+                                LookupResult(UnqualifiedLookupDescriptor),
+                                CacheKind::Uncached, DependencyKind::Sink> {
 public:
-  using SimpleRequest::SimpleRequest;
+  using IncrementalRequest::IncrementalRequest;
 
 private:
   friend SimpleRequest;
@@ -392,13 +389,14 @@ using QualifiedLookupResult = SmallVector<ValueDecl *, 4>;
 
 /// Performs a lookup into a given module and its imports.
 class LookupInModuleRequest
-    : public SimpleRequest<LookupInModuleRequest,
-                           QualifiedLookupResult(
-                               const DeclContext *, DeclName, NLKind,
-                               namelookup::ResolutionKind, const DeclContext *),
-                           CacheKind::Uncached> {
+    : public IncrementalRequest<LookupInModuleRequest,
+                                QualifiedLookupResult(
+                                    const DeclContext *, DeclName, NLKind,
+                                    namelookup::ResolutionKind,
+                                    const DeclContext *),
+                                CacheKind::Uncached, DependencyKind::Sink> {
 public:
-  using SimpleRequest::SimpleRequest;
+  using IncrementalRequest::IncrementalRequest;
 
 private:
   friend SimpleRequest;
@@ -412,12 +410,12 @@ private:
 
 /// Perform \c AnyObject lookup for a given member.
 class AnyObjectLookupRequest
-    : public SimpleRequest<AnyObjectLookupRequest,
-                           QualifiedLookupResult(const DeclContext *,
-                                                 DeclNameRef, NLOptions),
-                           CacheKind::Uncached> {
+    : public IncrementalRequest<AnyObjectLookupRequest,
+                                QualifiedLookupResult(const DeclContext *,
+                                                      DeclNameRef, NLOptions),
+                                CacheKind::Uncached, DependencyKind::Sink> {
 public:
-  using SimpleRequest::SimpleRequest;
+  using IncrementalRequest::IncrementalRequest;
 
 private:
   friend SimpleRequest;
@@ -429,13 +427,13 @@ private:
 };
 
 class ModuleQualifiedLookupRequest
-    : public SimpleRequest<ModuleQualifiedLookupRequest,
-                           QualifiedLookupResult(const DeclContext *,
-                                                 ModuleDecl *, DeclNameRef,
-                                                 NLOptions),
-                           CacheKind::Uncached> {
+    : public IncrementalRequest<ModuleQualifiedLookupRequest,
+                                QualifiedLookupResult(const DeclContext *,
+                                                      ModuleDecl *, DeclNameRef,
+                                                      NLOptions),
+                                CacheKind::Uncached, DependencyKind::Sink> {
 public:
-  using SimpleRequest::SimpleRequest;
+  using IncrementalRequest::IncrementalRequest;
 
 private:
   friend SimpleRequest;
@@ -448,13 +446,14 @@ private:
 };
 
 class QualifiedLookupRequest
-    : public SimpleRequest<QualifiedLookupRequest,
-                           QualifiedLookupResult(const DeclContext *,
-                                                 SmallVector<NominalTypeDecl *, 4>,
-                                                 DeclNameRef, NLOptions),
-                           CacheKind::Uncached> {
+    : public IncrementalRequest<QualifiedLookupRequest,
+                                QualifiedLookupResult(
+                                    const DeclContext *,
+                                    SmallVector<NominalTypeDecl *, 4>,
+                                    DeclNameRef, NLOptions),
+                                CacheKind::Uncached, DependencyKind::Sink> {
 public:
-  using SimpleRequest::SimpleRequest;
+  using IncrementalRequest::IncrementalRequest;
 
 private:
   friend SimpleRequest;

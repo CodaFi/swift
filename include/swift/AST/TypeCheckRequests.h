@@ -18,11 +18,11 @@
 
 #include "swift/AST/AnyFunctionRef.h"
 #include "swift/AST/ASTTypeIDs.h"
-#include "swift/AST/GenericSignature.h"
-#include "swift/AST/Type.h"
 #include "swift/AST/Evaluator.h"
+#include "swift/AST/GenericSignature.h"
+#include "swift/AST/IncrementalRequest.h"
 #include "swift/AST/Pattern.h"
-#include "swift/AST/SimpleRequest.h"
+#include "swift/AST/Type.h"
 #include "swift/AST/TypeResolutionStage.h"
 #include "swift/Basic/AnyValue.h"
 #include "swift/Basic/Statistic.h"
@@ -1959,9 +1959,10 @@ public:
 
 class TypeCheckSourceFileRequest :
     public SimpleRequest<TypeCheckSourceFileRequest,
-                         bool (SourceFile *), CacheKind::SeparatelyCached> {
+                         bool (SourceFile *), CacheKind::SeparatelyCached,
+                         DependencyKind::Source> {
 public:
-  using SimpleRequest::SimpleRequest;
+  using IncrementalRequest::IncrementalRequest;
 
 private:
   friend SimpleRequest;
