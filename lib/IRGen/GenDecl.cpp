@@ -2074,6 +2074,7 @@ void IRGenModule::emitGlobalDecl(Decl *D) {
 
   case DeclKind::TypeAlias:
   case DeclKind::GenericTypeParam:
+  case DeclKind::ValueTypeParam:
   case DeclKind::AssociatedType:
   case DeclKind::IfConfig: 
   case DeclKind::PoundDiagnostic:
@@ -4182,6 +4183,7 @@ void IRGenModule::emitNestedTypeDecls(DeclRange members) {
 
     case DeclKind::AssociatedType:
     case DeclKind::GenericTypeParam:
+    case DeclKind::ValueTypeParam:
       // Do nothing.
       continue;
 

@@ -2438,6 +2438,32 @@ public:
   }
 
   Expected<Decl *>
+  deserializeValueTypeParamDecl(ArrayRef<uint64_t> scratch,
+                                StringRef blobData) {
+    IdentifierID nameID;
+    bool isImplicit;
+    unsigned depth;
+    unsigned index;
+
+    decls_block::ValueTypeParamDeclLayout::readRecord(scratch, nameID,
+                                                      isImplicit,
+                                                      depth,
+                                                      index);
+
+    // Always create GenericTypeParamDecls in the associated module;
+    // the real context will reparent them.
+    auto DC = MF.getAssociatedModule();
+    auto genericParam = MF.createDecl<ValueTypeParamDecl>(
+        DC, SourceLoc(), MF.getIdentifier(nameID), SourceLoc(), depth, index);
+    declOrOffset = genericParam;
+
+    if (isImplicit)
+      genericParam->setImplicit();
+
+    return genericParam;
+  }
+
+  Expected<Decl *>
   deserializeAssociatedTypeDecl(ArrayRef<uint64_t> scratch,
                                 StringRef blobData) {
     IdentifierID nameID;

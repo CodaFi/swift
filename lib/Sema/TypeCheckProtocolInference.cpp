@@ -221,6 +221,7 @@ AssociatedTypeInference::inferTypeWitnessesViaValueWitnesses(
 
       case RequirementKind::Layout:
       case RequirementKind::SameType:
+      case RequirementKind::Value:
         break;
       }
     }
@@ -304,6 +305,7 @@ AssociatedTypeInference::inferTypeWitnessesViaValueWitnesses(
               case RequirementKind::Conformance:
               case RequirementKind::Superclass:
               case RequirementKind::Layout:
+              case RequirementKind::Value:
                 break;
 
               case RequirementKind::SameType:
@@ -1020,7 +1022,8 @@ static void sanitizeProtocolRequirements(
     switch (req.getKind()) {
     case RequirementKind::Conformance:
     case RequirementKind::SameType:
-    case RequirementKind::Superclass: {
+    case RequirementKind::Superclass:
+    case RequirementKind::Value: {
       Type firstType = sanitizeType(req.getFirstType());
       Type secondType = sanitizeType(req.getSecondType());
       if (firstType && secondType) {
@@ -1485,6 +1488,7 @@ static Comparison compareDeclsForInference(DeclContext *DC, ValueDecl *decl1,
 
     case RequirementKind::SameType:
     case RequirementKind::Layout:
+    case RequirementKind::Value:
       break;
     }
   }
@@ -1516,6 +1520,7 @@ static Comparison compareDeclsForInference(DeclContext *DC, ValueDecl *decl1,
       class2 = reqt.getSecondType();
       break;
 
+    case RequirementKind::Value:
     case RequirementKind::SameType:
     case RequirementKind::Layout:
       break;

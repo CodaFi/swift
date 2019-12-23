@@ -89,6 +89,10 @@ enum class FixKind : uint8_t {
   /// and assume that types are related.
   SkipSuperclassRequirement,
 
+  /// Skip value generic requirement constraint,
+  /// and assume that types are related.
+  SkipValueRequirement,
+
   /// Fix up one of the sides of conversion to make it seem
   /// like the types are aligned.
   ContextualMismatch,
@@ -461,6 +465,30 @@ public:
   Type superclassType() { return RHS; }
 
   static SkipSuperclassRequirement *
+  create(ConstraintSystem &cs, Type lhs, Type rhs, ConstraintLocator *locator);
+};
+
+/// Skip 'value' generic requirement constraint,
+/// and assume that types are equal.
+class SkipValueRequirement final : public ConstraintFix {
+  Type LHS, RHS;
+
+  SkipValueRequirement(ConstraintSystem &cs, Type lhs, Type rhs,
+                       ConstraintLocator *locator)
+      : ConstraintFix(cs, FixKind::SkipValueRequirement, locator),
+        LHS(lhs), RHS(rhs) {}
+
+public:
+  std::string getName() const override {
+    return "skip superclass generic requirement";
+  }
+
+  bool diagnose(bool asNote = false) const override;
+
+  Type subclassType() { return LHS; }
+  Type superclassType() { return RHS; }
+
+  static SkipValueRequirement *
   create(ConstraintSystem &cs, Type lhs, Type rhs, ConstraintLocator *locator);
 };
 

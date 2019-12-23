@@ -67,6 +67,10 @@ Parser::parseGenericParametersBeforeWhere(SourceLoc LAngleLoc,
       attributes.add(new (Context) RawDocCommentAttr(Tok.getCommentRange()));
     parseDeclAttributeList(attributes);
 
+    // Parse an introducer for a value generic.
+    SourceLoc LetLoc;
+    const bool wantsValueGenerics = consumeIf(tok::kw_let, LetLoc);
+
     // Parse the name of the parameter.
     Identifier Name;
     SourceLoc NameLoc;
@@ -106,9 +110,17 @@ Parser::parseGenericParametersBeforeWhere(SourceLoc LAngleLoc,
     // We always create generic type parameters with an invalid depth.
     // Semantic analysis fills in the depth when it processes the generic
     // parameter list.
-    auto Param = new (Context) GenericTypeParamDecl(CurDeclContext, Name, NameLoc,
-                                            GenericTypeParamDecl::InvalidDepth,
-                                                    GenericParams.size());
+    GenericTypeParamDecl *Param = nullptr;
+    if (wantsValueGenerics && LetLoc.isValid()) {
+      Param = new (Context) ValueTypeParamDecl(CurDeclContext, LetLoc,
+                                               Name, NameLoc,
+                                               GenericTypeParamDecl::InvalidDepth,
+                                               GenericParams.size());
+    } else {
+      Param = new (Context) GenericTypeParamDecl(CurDeclContext, Name, NameLoc,
+                                                 GenericTypeParamDecl::InvalidDepth,
+                                                 GenericParams.size());
+    }
     if (!Inherited.empty())
       Param->setInherited(Context.AllocateCopy(Inherited));
     GenericParams.push_back(Param);

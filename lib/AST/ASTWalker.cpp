@@ -1315,6 +1315,10 @@ public:
       if (doIt(Req.getSubjectLoc()) || doIt(Req.getConstraintLoc()))
         return true;
       break;
+    case RequirementReprKind::ValueConstraint:
+      if (doIt(Req.getSubjectLoc()) || doIt(Req.getConstraintLoc()))
+        return true;
+      break;
     case RequirementReprKind::LayoutConstraint:
       if (doIt(Req.getFirstTypeLoc()))
         return true;

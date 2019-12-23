@@ -218,6 +218,9 @@ void Symbol::serializeGenericRequirement(const swift::Requirement &Req,
       case swift::RequirementKind::SameType:
         OS.attribute("kind", "sameType");
         break;
+      case swift::RequirementKind::Value:
+        OS.attribute("kind", "value");
+        break;
       case swift::RequirementKind::Layout:
         return;
     }

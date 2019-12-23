@@ -153,6 +153,7 @@ DescriptiveDeclKind Decl::getDescriptiveKind() const {
   TRIVIAL_KIND(PostfixOperator);
   TRIVIAL_KIND(TypeAlias);
   TRIVIAL_KIND(GenericTypeParam);
+  TRIVIAL_KIND(ValueTypeParam);
   TRIVIAL_KIND(AssociatedType);
   TRIVIAL_KIND(Protocol);
   TRIVIAL_KIND(Constructor);
@@ -291,6 +292,7 @@ StringRef Decl::getDescriptiveKindName(DescriptiveDeclKind K) {
   ENTRY(PostfixOperator, "postfix operator");
   ENTRY(TypeAlias, "type alias");
   ENTRY(GenericTypeParam, "generic parameter");
+  ENTRY(ValueTypeParam, "generic value parameter");
   ENTRY(AssociatedType, "associated type");
   ENTRY(Type, "type");
   ENTRY(Enum, "enum");
@@ -412,6 +414,7 @@ bool Decl::isInvalid() const {
   case DeclKind::OpaqueType:
   case DeclKind::TypeAlias:
   case DeclKind::GenericTypeParam:
+  case DeclKind::ValueTypeParam:
   case DeclKind::AssociatedType:
   case DeclKind::Module:
   case DeclKind::Var:
@@ -442,6 +445,7 @@ void Decl::setInvalid() {
   case DeclKind::OpaqueType:
   case DeclKind::TypeAlias:
   case DeclKind::GenericTypeParam:
+  case DeclKind::ValueTypeParam:
   case DeclKind::AssociatedType:
   case DeclKind::Module:
   case DeclKind::Var:
@@ -926,6 +930,15 @@ GenericParamList::clone(DeclContext *dc) const {
           second.clone(ctx));
       break;
     }
+    case RequirementReprKind::ValueConstraint: {
+      auto first = reqt.getSubjectLoc();
+      auto second = reqt.getConstraintLoc();
+      reqt = RequirementRepr::getValueConstraint(
+          first.clone(ctx),
+          reqt.getSeparatorLoc(),
+          second.clone(ctx));
+      break;
+    }
     case RequirementReprKind::SameType: {
       auto first = reqt.getFirstTypeLoc();
       auto second = reqt.getSecondTypeLoc();
@@ -1116,6 +1129,7 @@ ImportKind ImportDecl::getBestImportKind(const ValueDecl *VD) {
   case DeclKind::Constructor:
   case DeclKind::Destructor:
   case DeclKind::GenericTypeParam:
+  case DeclKind::ValueTypeParam:
   case DeclKind::Subscript:
   case DeclKind::EnumElement:
   case DeclKind::Param:
@@ -2407,6 +2421,7 @@ bool ValueDecl::isInstanceMember() const {
   case DeclKind::Struct:
   case DeclKind::TypeAlias:
   case DeclKind::GenericTypeParam:
+  case DeclKind::ValueTypeParam:
   case DeclKind::AssociatedType:
   case DeclKind::OpaqueType:
     // Types are not instance members.

@@ -298,6 +298,7 @@ static void doDynamicLookup(VisibleDeclConsumer &Consumer,
 
       // Types cannot be found by dynamic lookup.
       case DeclKind::GenericTypeParam:
+      case DeclKind::ValueTypeParam:
       case DeclKind::AssociatedType:
       case DeclKind::TypeAlias:
       case DeclKind::Enum:

@@ -148,6 +148,13 @@ void RequirementRepr::printImpl(ASTPrinter &out, bool AsWritten) const {
     printTy(getConstraintLoc());
     break;
 
+  case RequirementReprKind::ValueConstraint:
+    out << "let ";
+    printTy(getSubjectLoc());
+    out << " : ";
+    printTy(getConstraintLoc());
+    break;
+
   case RequirementReprKind::SameType:
     printTy(getFirstTypeLoc());
     out << " == ";
@@ -648,6 +655,12 @@ namespace {
 
     void visitGenericTypeParamDecl(GenericTypeParamDecl *decl) {
       printAbstractTypeParamCommon(decl, "generic_type_param");
+      OS << " depth=" << decl->getDepth() << " index=" << decl->getIndex();
+      PrintWithColorRAII(OS, ParenthesisColor) << ')';
+    }
+
+    void visitValueTypeParamDecl(ValueTypeParamDecl *decl) {
+      printAbstractTypeParamCommon(decl, "value_type_param");
       OS << " depth=" << decl->getDepth() << " index=" << decl->getIndex();
       PrintWithColorRAII(OS, ParenthesisColor) << ')';
     }

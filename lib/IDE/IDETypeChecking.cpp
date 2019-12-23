@@ -333,6 +333,9 @@ struct SynthesizedExtensionAnalyzer::Implementation {
           }
           break;
 
+        case RequirementKind::Value:
+          MergeInfo.addRequirement(GenericSig, First, Second, Kind);
+          break;
         case RequirementKind::Layout:
           llvm_unreachable("Handled above");
         }

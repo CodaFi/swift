@@ -342,6 +342,7 @@ void TypeChecker::checkReferencedGenericParams(GenericContext *dc) {
       LLVM_FALLTHROUGH;
 
     case RequirementKind::Conformance:
+    case RequirementKind::Value:
     case RequirementKind::Layout:
       first = req.getFirstType();
       break;
@@ -861,6 +862,16 @@ RequirementCheckResult TypeChecker::checkGenericArguments(
           requirementFailure = true;
         }
         break;
+
+      case RequirementKind::Value: {
+        // Value generics.
+        if (secondType->isTypeParameter()) {
+          diagnostic = diag::value_generic_not_concrete;
+          diagnosticNote = diag::value_generic_not_concrete_note;
+          requirementFailure = true;
+        }
+      }
+        break;
       }
 
       if (!requirementFailure)
@@ -937,6 +948,12 @@ RequirementRequest::evaluate(Evaluator &evaluator,
                          ? RequirementKind::Superclass
                          : RequirementKind::Conformance,
                        subject, constraint);
+  }
+
+  case RequirementReprKind::ValueConstraint: {
+    Type subject = resolveType(reqRepr.getSubjectLoc());
+    Type constraint = resolveType(reqRepr.getConstraintLoc());
+    return Requirement(RequirementKind::Value, subject, constraint);
   }
 
   case RequirementReprKind::SameType:

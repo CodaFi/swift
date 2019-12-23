@@ -4481,6 +4481,8 @@ GenericRequirementsMetadata irgen::addGenericRequirements(
     ++metadata.NumRequirements;
 
     switch (auto kind = requirement.getKind()) {
+    case RequirementKind::Value:
+      llvm_unreachable("");
     case RequirementKind::Layout:
       switch (auto layoutKind =
                 requirement.getLayoutConstraint()->getKind()) {

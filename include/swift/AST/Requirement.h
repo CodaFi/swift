@@ -35,6 +35,10 @@ enum class RequirementKind : unsigned {
   /// on a generic parameter and C is a concrete class type which T must
   /// equal or be a subclass of.
   Superclass,
+  /// A value requirement X : T, where T is a cnocrete type that the parameter
+  /// X must check at.
+  Value,
+
   /// A same-type requirement T == U, where T and U are types that shall be
   /// equivalent.
   SameType,
@@ -108,6 +112,8 @@ public:
         return None;
       return Requirement(getKind(), newFirst, newSecond);
     }
+    case RequirementKind::Value:
+      return Requirement(getKind(), newFirst, getSecondType());
     case RequirementKind::Layout:
       return Requirement(getKind(), newFirst, getLayoutConstraint());
     }
@@ -142,6 +148,7 @@ public:
     case RequirementKind::Conformance:
     case RequirementKind::Superclass:
     case RequirementKind::SameType:
+    case RequirementKind::Value:
       second = hash_value(requirement.getSecondType());
       break;
 
@@ -162,6 +169,7 @@ public:
     case RequirementKind::Conformance:
     case RequirementKind::Superclass:
     case RequirementKind::SameType:
+    case RequirementKind::Value:
       return lhs.getSecondType().getPointer() ==
           rhs.getSecondType().getPointer();
 

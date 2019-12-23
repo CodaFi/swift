@@ -164,6 +164,7 @@ PrintOptions PrintOptions::printSwiftInterfaceFile(bool preferTypeRepr,
             return false;
 
           switch (req.getKind()) {
+          case RequirementKind::Value:
           case RequirementKind::Conformance:
           case RequirementKind::Superclass:
           case RequirementKind::SameType:
@@ -1267,6 +1268,7 @@ bestRequirementPrintLocation(ProtocolDecl *proto, const Requirement &req) {
   bool inWhereClause;
 
   switch (req.getKind()) {
+  case RequirementKind::Value:
   case RequirementKind::Conformance:
   case RequirementKind::Superclass:
   case RequirementKind::Layout: {
@@ -1358,6 +1360,7 @@ static unsigned getDepthOfRequirement(const Requirement &req) {
   switch (req.getKind()) {
   case RequirementKind::Conformance:
   case RequirementKind::Layout:
+  case RequirementKind::Value:
     return getDepthOfType(req.getFirstType());
 
   case RequirementKind::Superclass:
@@ -1543,6 +1546,7 @@ void PrintAST::printSingleDepthOfGenericSignature(
           req.getLayoutConstraint()->print(Printer, Options);
           break;
 
+        case RequirementKind::Value:
         case RequirementKind::Conformance:
         case RequirementKind::Superclass:
           printType(second);
@@ -1574,6 +1578,7 @@ void PrintAST::printRequirement(const Requirement &req) {
     Printer << " : ";
     req.getLayoutConstraint()->print(Printer, Options);
     return;
+  case RequirementKind::Value:
   case RequirementKind::Conformance:
   case RequirementKind::Superclass:
     Printer << " : ";
@@ -2362,6 +2367,15 @@ void PrintAST::visitTypeAliasDecl(TypeAliasDecl *decl) {
 
 void PrintAST::visitGenericTypeParamDecl(GenericTypeParamDecl *decl) {
   recordDeclLoc(decl, [&] {
+    Printer.printName(decl->getName(), PrintNameContext::GenericParameter);
+  });
+
+  printInherited(decl);
+}
+
+void PrintAST::visitValueTypeParamDecl(ValueTypeParamDecl *decl) {
+  recordDeclLoc(decl, [&] {
+    Printer << tok::kw_let << " ";
     Printer.printName(decl->getName(), PrintNameContext::GenericParameter);
   });
 
@@ -4581,6 +4595,9 @@ void Requirement::dump(raw_ostream &out) const {
     break;
   case RequirementKind::SameType:
     out << "same_type: ";
+    break;
+  case RequirementKind::Value:
+    out << "value: ";
     break;
   }
 

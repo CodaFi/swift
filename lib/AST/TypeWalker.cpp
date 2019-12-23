@@ -105,6 +105,7 @@ class Traversal : public TypeVisitor<Traversal, bool>
       case RequirementKind::SameType:
       case RequirementKind::Conformance:
       case RequirementKind::Superclass:
+      case RequirementKind::Value:
         if (doIt(req.getSecondType()))
           return true;
         break;

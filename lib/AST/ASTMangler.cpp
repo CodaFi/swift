@@ -2209,7 +2209,8 @@ void ASTMangler::appendRequirement(const Requirement &reqt) {
     appendProtocolName(SecondTy->castTo<ProtocolType>()->getDecl());
   } break;
   case RequirementKind::Superclass:
-  case RequirementKind::SameType: {
+  case RequirementKind::SameType:
+  case RequirementKind::Value: {
     Type SecondTy = reqt.getSecondType();
     appendType(SecondTy->getCanonicalType());
   } break;
@@ -2219,16 +2220,18 @@ void ASTMangler::appendRequirement(const Requirement &reqt) {
     bool isAssocTypeAtDepth = false;
     if (tryMangleTypeSubstitution(DT)) {
       switch (reqt.getKind()) {
-        case RequirementKind::Conformance:
-          return appendOperator("RQ");
-        case RequirementKind::Layout:
-          appendOperator("RL");
-          appendOpParamForLayoutConstraint(reqt.getLayoutConstraint());
-          return;
-        case RequirementKind::Superclass:
-          return appendOperator("RB");
-        case RequirementKind::SameType:
-          return appendOperator("RS");
+      case RequirementKind::Conformance:
+        return appendOperator("RQ");
+      case RequirementKind::Layout:
+        appendOperator("RL");
+        appendOpParamForLayoutConstraint(reqt.getLayoutConstraint());
+        return;
+      case RequirementKind::Superclass:
+        return appendOperator("RB");
+      case RequirementKind::SameType:
+        return appendOperator("RS");
+      case RequirementKind::Value:
+        llvm_unreachable("Cannot have dependent member type here");
       }
       llvm_unreachable("bad requirement type");
     }
@@ -2236,19 +2239,21 @@ void ASTMangler::appendRequirement(const Requirement &reqt) {
     addTypeSubstitution(DT);
     assert(gpBase);
     switch (reqt.getKind()) {
-      case RequirementKind::Conformance:
-        return appendOpWithGenericParamIndex(isAssocTypeAtDepth ? "RP" : "Rp",
-                                             gpBase);
-      case RequirementKind::Layout:
-        appendOpWithGenericParamIndex(isAssocTypeAtDepth ? "RM" : "Rm", gpBase);
-        appendOpParamForLayoutConstraint(reqt.getLayoutConstraint());
-        return;
-      case RequirementKind::Superclass:
-        return appendOpWithGenericParamIndex(isAssocTypeAtDepth ? "RC" : "Rc",
-                                             gpBase);
-      case RequirementKind::SameType:
-        return appendOpWithGenericParamIndex(isAssocTypeAtDepth ? "RT" : "Rt",
-                                             gpBase);
+    case RequirementKind::Conformance:
+      return appendOpWithGenericParamIndex(isAssocTypeAtDepth ? "RP" : "Rp",
+                                           gpBase);
+    case RequirementKind::Layout:
+      appendOpWithGenericParamIndex(isAssocTypeAtDepth ? "RM" : "Rm", gpBase);
+      appendOpParamForLayoutConstraint(reqt.getLayoutConstraint());
+      return;
+    case RequirementKind::Superclass:
+      return appendOpWithGenericParamIndex(isAssocTypeAtDepth ? "RC" : "Rc",
+                                           gpBase);
+    case RequirementKind::SameType:
+      return appendOpWithGenericParamIndex(isAssocTypeAtDepth ? "RT" : "Rt",
+                                           gpBase);
+    case RequirementKind::Value:
+      llvm_unreachable("Cannot have dependent member type here");
     }
     llvm_unreachable("bad requirement type");
   }
@@ -2264,6 +2269,8 @@ void ASTMangler::appendRequirement(const Requirement &reqt) {
       return appendOpWithGenericParamIndex("Rb", gpBase);
     case RequirementKind::SameType:
       return appendOpWithGenericParamIndex("Rs", gpBase);
+    case RequirementKind::Value:
+      return appendOpWithGenericParamIndex("Rv", gpBase);
   }
   llvm_unreachable("bad requirement type");
 }
@@ -2739,6 +2746,7 @@ void ASTMangler::appendConcreteProtocolConformance(
   bool firstRequirement = true;
   for (const auto &conditionalReq : conformance->getConditionalRequirements()) {
     switch (conditionalReq.getKind()) {
+    case RequirementKind::Value:
     case RequirementKind::Layout:
     case RequirementKind::SameType:
     case RequirementKind::Superclass:

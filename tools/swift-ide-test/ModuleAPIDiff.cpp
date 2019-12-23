@@ -754,6 +754,7 @@ public:
                 convertToTypeName(Req.getFirstType()),
                 convertToTypeName(Req.getSecondType())});
         break;
+      case RequirementKind::Value:
       case RequirementKind::Layout:
         // FIXME
         assert(false && "Not implemented");

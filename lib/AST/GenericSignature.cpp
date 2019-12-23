@@ -180,10 +180,11 @@ bool GenericSignatureImpl::isCanonical() const {
 /// Determine the canonical ordering of requirements.
 static unsigned getRequirementKindOrder(RequirementKind kind) {
   switch (kind) {
-  case RequirementKind::Conformance: return 2;
   case RequirementKind::Superclass: return 0;
-  case RequirementKind::SameType: return 3;
   case RequirementKind::Layout: return 1;
+  case RequirementKind::Conformance: return 2;
+  case RequirementKind::SameType: return 3;
+  case RequirementKind::Value: return 4;
   }
   llvm_unreachable("unhandled kind");
 }
@@ -254,6 +255,13 @@ CanGenericSignature::getCanonical(TypeArrayView<GenericTypeParamType> params,
              "Left-hand side must be a type parameter");
       assert(isa<ProtocolType>(reqt.getSecondType().getPointer()) &&
              "Right-hand side of conformance isn't a protocol type");
+      break;
+
+    case RequirementKind::Value:
+      assert(reqt.getFirstType()->isTypeParameter() &&
+             "Left-hand side must be a type parameter");
+      assert(!reqt.getSecondType()->isTypeParameter() &&
+             "Right-hand side of value constraint isn't a concrete type");
       break;
     }
 
@@ -546,6 +554,13 @@ bool GenericSignatureImpl::isRequirementSatisfied(Requirement requirement) {
     else
       return (bool)GSB->lookupConformance(/*dependentType=*/CanType(),
                                           canFirstType, protocol);
+  }
+
+  case RequirementKind::Value: {
+    auto canSecondType = getCanonicalTypeInContext(requirement.getSecondType());
+    if (canSecondType.getAnyGeneric())
+      return false;
+    return true;
   }
 
   case RequirementKind::SameType: {
@@ -1043,6 +1058,7 @@ bool GenericSignature::hasTypeVariable(ArrayRef<Requirement> requirements) {
     case RequirementKind::Layout:
       break;
 
+    case RequirementKind::Value:
     case RequirementKind::Conformance:
     case RequirementKind::SameType:
     case RequirementKind::Superclass:
@@ -1081,6 +1097,7 @@ bool Requirement::isCanonical() const {
   case RequirementKind::Conformance:
   case RequirementKind::SameType:
   case RequirementKind::Superclass:
+  case RequirementKind::Value:
     if (getSecondType() && !getSecondType()->isCanonical())
       return false;
     break;
@@ -1102,7 +1119,8 @@ Requirement Requirement::getCanonical() const {
   switch (getKind()) {
   case RequirementKind::Conformance:
   case RequirementKind::SameType:
-  case RequirementKind::Superclass: {
+  case RequirementKind::Superclass:
+  case RequirementKind::Value: {
     Type secondType = getSecondType();
     if (secondType)
       secondType = secondType->getCanonicalType();

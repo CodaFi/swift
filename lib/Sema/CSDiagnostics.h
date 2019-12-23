@@ -418,6 +418,30 @@ protected:
   }
 };
 
+class ValueRequirementFailure final : public RequirementFailure {
+public:
+  ValueRequirementFailure(ConstraintSystem &cs, Type lhs,
+                          Type rhs, ConstraintLocator *locator)
+      : RequirementFailure(cs, lhs, rhs, locator) {
+    auto reqElt = locator->castLastElementTo<LocatorPathElt::AnyRequirement>();
+    assert(reqElt.getRequirementKind() == RequirementKind::Value);
+  }
+
+protected:
+  DiagOnDecl getDiagnosticOnDecl() const override {
+    return diag::types_not_inherited_decl;
+  }
+
+  DiagInReference getDiagnosticInRereference() const override {
+    return diag::types_not_inherited_in_decl_ref;
+  }
+
+  DiagAsNote getDiagnosticAsNote() const override {
+    return diag::candidate_types_inheritance_requirement;
+  }
+};
+
+
 /// Diagnose errors associated with missing, extraneous
 /// or incorrect labels supplied by arguments, e.g.
 /// ```swift

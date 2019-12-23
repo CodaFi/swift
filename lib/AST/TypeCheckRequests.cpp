@@ -451,6 +451,15 @@ Optional<Requirement> RequirementRequest::getCachedResult() const {
                        reqRepr.getSubject(),
                        reqRepr.getConstraint());
 
+  case RequirementReprKind::ValueConstraint:
+    if (!reqRepr.getSubjectLoc().wasValidated() ||
+        !reqRepr.getConstraintLoc().wasValidated())
+      return None;
+
+    return Requirement(RequirementKind::Value,
+                       reqRepr.getSubject(),
+                       reqRepr.getConstraint());
+
   case RequirementReprKind::SameType:
     if (!reqRepr.getFirstTypeLoc().wasValidated() ||
         !reqRepr.getSecondTypeLoc().wasValidated())
@@ -474,6 +483,7 @@ void RequirementRequest::cacheResult(Requirement value) const {
   switch (value.getKind()) {
   case RequirementKind::Conformance:
   case RequirementKind::Superclass:
+  case RequirementKind::Value:
     reqRepr.getSubjectLoc().setType(value.getFirstType());
     reqRepr.getConstraintLoc().setType(value.getSecondType());
     break;

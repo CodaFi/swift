@@ -4927,6 +4927,16 @@ ERROR(experimental_differentiable_programming_disabled, none,
       "differentiable programming is an experimental feature that is "
       "currently disabled", ())
 
+//------------------------------------------------------------------------------
+// MARK: value generics
+//------------------------------------------------------------------------------
+
+ERROR(value_generic_not_concrete,none,
+      "%0 must have concrete type as a constraint but %2 is a generic parameter",
+      (Type, Type, Type))
+NOTE(value_generic_not_concrete_note,none,
+     "requirement specified as let %0: %1%2", (Type, Type, StringRef))
+
 #ifndef DIAG_NO_UNDEF
 # if defined(DIAG)
 #  undef DIAG

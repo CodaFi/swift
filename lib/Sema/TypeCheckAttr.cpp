@@ -1886,6 +1886,7 @@ void AttributeChecker::visitSpecializeAttr(SpecializeAttr *attr) {
         case RequirementKind::Conformance:
         case RequirementKind::SameType:
         case RequirementKind::Superclass:
+        case RequirementKind::Value:
           collectUsedGenericParameters(req.getSecondType(),
                                        constrainedGenericParams);
           LLVM_FALLTHROUGH;
@@ -1925,6 +1926,7 @@ void AttributeChecker::visitSpecializeAttr(SpecializeAttr *attr) {
           break;
         }
 
+        case RequirementKind::Value:
         case RequirementKind::Superclass:
           diagnose(attr->getLocation(),
                    diag::specialize_attr_non_protocol_type_constraint_req)
@@ -3643,6 +3645,7 @@ bool resolveDifferentiableAttrDerivativeGenericSignature(
             TypeResolutionStage::Structural,
             [&](const Requirement &req, RequirementRepr *reqRepr) {
               switch (req.getKind()) {
+              case RequirementKind::Value:
               case RequirementKind::SameType:
               case RequirementKind::Superclass:
               case RequirementKind::Conformance:

@@ -199,6 +199,7 @@ SymbolInfo index::getSymbolInfoForDecl(const Decl *D) {
       info.SubKind = SymbolSubKind::SwiftAssociatedType;
       break;
     case DeclKind::GenericTypeParam:
+    case DeclKind::ValueTypeParam:
       info.Kind = SymbolKind::TypeAlias;
       info.SubKind = SymbolSubKind::SwiftGenericTypeParam;
       break;

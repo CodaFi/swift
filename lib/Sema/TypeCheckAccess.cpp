@@ -53,6 +53,7 @@ static void forAllRequirementTypes(
     case RequirementKind::Conformance:
     case RequirementKind::SameType:
     case RequirementKind::Superclass:
+    case RequirementKind::Value:
       callback(req.getFirstType(),
                RequirementRepr::getFirstTypeRepr(reqRepr));
       callback(req.getSecondType(),
@@ -445,6 +446,7 @@ public:
   UNREACHABLE(PoundDiagnostic, "does not have access control")
   UNREACHABLE(Param, "does not have access control")
   UNREACHABLE(GenericTypeParam, "does not have access control")
+  UNREACHABLE(ValueTypeParam, "does not have access control")
   UNREACHABLE(MissingMember, "does not have access control")
 #undef UNREACHABLE
 
@@ -1033,6 +1035,7 @@ public:
 
   UNREACHABLE(Param, "does not have access control")
   UNREACHABLE(GenericTypeParam, "does not have access control")
+  UNREACHABLE(ValueTypeParam, "does not have access control")
   UNREACHABLE(MissingMember, "does not have access control")
 #undef UNREACHABLE
 
@@ -1731,6 +1734,7 @@ public:
 
   UNREACHABLE(Param, "handled by the enclosing declaration")
   UNREACHABLE(GenericTypeParam, "handled by the enclosing declaration")
+  UNREACHABLE(ValueTypeParam, "handled by the enclosing declaration")
   UNREACHABLE(MissingMember, "handled by the enclosing declaration")
 #undef UNREACHABLE
 

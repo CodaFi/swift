@@ -307,6 +307,7 @@ void ProvidesEmitter::emitTopLevelDecl(const Decl *const D,
 
   case DeclKind::EnumCase:
   case DeclKind::GenericTypeParam:
+  case DeclKind::ValueTypeParam:
   case DeclKind::AssociatedType:
   case DeclKind::Param:
   case DeclKind::Subscript:

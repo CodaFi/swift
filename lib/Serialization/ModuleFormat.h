@@ -406,7 +406,8 @@ enum GenericRequirementKind : uint8_t {
   Conformance = 0,
   SameType    = 1,
   Superclass  = 2,
-  Layout = 3,
+  Layout      = 3,
+  Value       = 4,
 };
 using GenericRequirementKindField = BCFixed<2>;
 
@@ -1090,6 +1091,14 @@ namespace decls_block {
   >;
 
   using GenericTypeParamDeclLayout = BCRecordLayout<
+    GENERIC_TYPE_PARAM_DECL,
+    IdentifierIDField,  // name
+    BCFixed<1>,         // implicit flag
+    BCVBR<4>,           // depth
+    BCVBR<4>            // index
+  >;
+
+  using ValueTypeParamDeclLayout = BCRecordLayout<
     GENERIC_TYPE_PARAM_DECL,
     IdentifierIDField,  // name
     BCFixed<1>,         // implicit flag

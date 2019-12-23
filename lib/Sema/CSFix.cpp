@@ -243,6 +243,19 @@ SkipSuperclassRequirement::create(ConstraintSystem &cs, Type lhs, Type rhs,
       SkipSuperclassRequirement(cs, lhs, rhs, locator);
 }
 
+bool SkipValueRequirement::diagnose(bool asNote) const {
+  ValueRequirementFailure failure(getConstraintSystem(), LHS, RHS,
+                                  getLocator());
+  return failure.diagnose(asNote);
+}
+
+SkipValueRequirement *
+SkipValueRequirement::create(ConstraintSystem &cs, Type lhs, Type rhs,
+                             ConstraintLocator *locator) {
+  return new (cs.getAllocator())
+      SkipValueRequirement(cs, lhs, rhs, locator);
+}
+
 bool ContextualMismatch::diagnose(bool asNote) const {
   auto failure = ContextualFailure(getConstraintSystem(), getFromType(),
                                    getToType(), getLocator());

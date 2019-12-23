@@ -1861,6 +1861,9 @@ public:
   void visitGenericTypeParamDecl(GenericTypeParamDecl *D) {
     // No lowering support needed.
   }
+  void visitValueTypeParamDecl(ValueTypeParamDecl *D) {
+    // No lowering support needed.
+  }
   void visitAssociatedTypeDecl(AssociatedTypeDecl *D) {
     // No lowering support needed.
   }

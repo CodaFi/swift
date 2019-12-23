@@ -140,6 +140,7 @@ enum class DescriptiveDeclKind : uint8_t {
   PrecedenceGroup,
   TypeAlias,
   GenericTypeParam,
+  ValueTypeParam,
   AssociatedType,
   Type,
   Enum,
@@ -972,6 +973,10 @@ enum class RequirementReprKind : unsigned {
   /// supertype or a protocol to which T must conform.
   TypeConstraint,
 
+  /// A  type bound let X : T where T is a concrete type with known constant values as
+  /// inhabitants and X is the name associated with a particular value of type T.
+  ValueConstraint,
+
   /// A same-type requirement T == U, where T and U are types that shall be
   /// equivalent.
   SameType,
@@ -1034,6 +1039,19 @@ public:
                                            SourceLoc ColonLoc,
                                            TypeLoc Constraint) {
     return { ColonLoc, RequirementReprKind::TypeConstraint, Subject, Constraint };
+  }
+
+    /// Construct a new value-constraint requirement.
+  ///
+  /// \param Subject The value parameter that must have a type matching the constraint.
+  /// \param ColonLoc The location of the ':', or an invalid location if
+  /// this requirement was implied.
+  /// \param Constraint The concrete type the subject must check at.
+  static RequirementRepr getValueConstraint(TypeLoc Subject,
+                                            SourceLoc ColonLoc,
+                                            TypeLoc Constraint) {
+    return { ColonLoc, RequirementReprKind::ValueConstraint,
+             Subject, Constraint };
   }
 
   /// Construct a new same-type requirement.
@@ -3122,6 +3140,26 @@ public:
 
   static bool classof(const Decl *D) {
     return D->getKind() == DeclKind::GenericTypeParam;
+  }
+};
+
+class ValueTypeParamDecl : public GenericTypeParamDecl {
+  SourceLoc IntroducerLoc;
+public:
+  ValueTypeParamDecl(DeclContext *dc, SourceLoc IntroLoc,
+                     Identifier name, SourceLoc nameLoc,
+                     unsigned depth, unsigned index)
+    : GenericTypeParamDecl(dc, name, nameLoc, depth, index),
+      IntroducerLoc(IntroLoc) {};
+
+  SourceLoc getStartLoc() const {
+    if (IntroducerLoc.isValid())
+      return IntroducerLoc;
+    return getNameLoc();
+  }
+
+  static bool classof(const Decl *D) {
+    return D->getKind() == DeclKind::ValueTypeParam;
   }
 };
 

@@ -1281,6 +1281,7 @@ void ConstraintSystem::openGenericRequirements(
     }
     case RequirementKind::Superclass:
     case RequirementKind::SameType:
+    case RequirementKind::Value:
       openedReq = Requirement(kind, openedFirst, substFn(req.getSecondType()));
       break;
     case RequirementKind::Layout:

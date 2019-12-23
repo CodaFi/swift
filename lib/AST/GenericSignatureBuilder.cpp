@@ -88,6 +88,9 @@ STATISTIC(NumConcreteTypeConstraints,
 STATISTIC(NumSuperclassConstraints, "# of superclass constraints tracked");
 STATISTIC(NumSuperclassConstraintsExtra,
           "# of superclass constraints that add no information");
+STATISTIC(NumValueConstraints, "# of value constraints tracked");
+STATISTIC(NumValueConstraintsExtra,
+          "# of value constraints that add no information");
 STATISTIC(NumLayoutConstraints, "# of layout constraints tracked");
 STATISTIC(NumLayoutConstraintsExtra,
           "# of layout constraints  that add no information");
@@ -2190,6 +2193,7 @@ void DelayedRequirement::dump(llvm::raw_ostream &out) const {
     lhs.get<swift::Type>().print(out);
 
   switch (kind) {
+  case Value:
   case Type:
   case Layout:
     out << ": ";
@@ -2227,6 +2231,10 @@ ConstraintResult GenericSignatureBuilder::handleUnresolvedRequirement(
   case RequirementKind::Conformance:
   case RequirementKind::Superclass:
     delayedKind = DelayedRequirement::Type;
+    break;
+
+  case RequirementKind::Value:
+    delayedKind = DelayedRequirement::Value;
     break;
 
   case RequirementKind::Layout:
@@ -4459,6 +4467,109 @@ ConstraintResult GenericSignatureBuilder::addTypeRequirement(
                                         source);
 }
 
+ConstraintResult GenericSignatureBuilder::addValueRequirement(
+    UnresolvedType subject, UnresolvedType constraint,
+    FloatingRequirementSource source, UnresolvedHandlingKind unresolvedHandling,
+    ModuleDecl *inferForModule) {
+  auto resolvedConstraint = resolve(constraint, source);
+  if (!resolvedConstraint) {
+    return handleUnresolvedRequirement(RequirementKind::Value, subject,
+                                       toUnresolvedRequirementRHS(constraint),
+                                       source,
+                                       resolvedConstraint.getUnresolvedEquivClass(),
+                                       unresolvedHandling);
+  }
+
+  Type constraintType = resolvedConstraint.getAsConcreteType();
+  if (!constraintType) {
+    Impl->HadAnyError = true;
+    return ConstraintResult::Conflicting;
+  }
+
+  if (constraintType->isTypeParameter()) {
+    Impl->HadAnyError = true;
+    return ConstraintResult::Conflicting;
+  }
+
+  // Resolve the subject. If we can't, delay the constraint.
+  // FIXME: There should never be a reason to delay a value constraint...
+  auto resolvedSubject = resolve(subject, source);
+  if (!resolvedSubject) {
+    auto recordedKind = RequirementKind::Value;
+    return handleUnresolvedRequirement(
+                               recordedKind, subject, constraintType,
+                               source,
+                               resolvedSubject.getUnresolvedEquivClass(),
+                               unresolvedHandling);
+  }
+
+  return addValueRequirementDirect(resolvedSubject, constraintType, source);
+}
+
+ConstraintResult GenericSignatureBuilder::addValueRequirementDirect(
+                                            ResolvedType type,
+                                            Type bound,
+                                            FloatingRequirementSource source) {
+  auto resolvedSource =
+    source.getSource(*this, type.getDependentType(*this));
+
+  // Record the constraint.
+  auto equivClass = type.getEquivalenceClass(*this);
+  equivClass->valueConstraints.push_back(
+    ConcreteConstraint{type.getUnresolvedType(), bound, resolvedSource});
+  equivClass->modified(*this);
+  ++NumValueConstraints;
+
+  // Update the equivalence class with the constraint.
+  if (!updateSuperclass(type, bound, source))
+    ++NumValueConstraintsExtra;
+
+  return ConstraintResult::Resolved;
+}
+
+bool GenericSignatureBuilder::updateValue(ResolvedType type,
+                                          Type bound,
+                                          FloatingRequirementSource source) {
+  auto equivClass = type.getEquivalenceClass(*this);
+
+  // Local function to handle the update of superclass conformances
+  // when the superclass constraint changes.
+  auto updateSuperclassConformances = [&] {
+    for (const auto &conforms : equivClass->conformsTo) {
+      (void)resolveSuperConformance(type, conforms.first);
+    }
+  };
+
+  // If we haven't yet recorded a superclass constraint for this equivalence
+  // class, do so now.
+  if (!equivClass->valueType) {
+    equivClass->valueType = bound;
+    updateSuperclassConformances();
+
+    // Presence of a value constraint to a class implies a _Class layout
+    // constraint.
+    auto layoutReqSource =
+      source.getSource(*this,
+                       type.getDependentType(*this))->viaDerived(*this);
+    addLayoutRequirementDirect(type,
+                         LayoutConstraint::getLayoutConstraint(
+                             bound->getClassOrBoundGenericClass()->isObjC()
+                                 ? LayoutConstraintKind::Class
+                                 : LayoutConstraintKind::NativeClass,
+                             getASTContext()),
+                         layoutReqSource);
+    return true;
+  }
+
+  // T already has a value bound; make sure it's related.
+  auto existingSuperclass = equivClass->valueType;
+  if (existingSuperclass->isEqual(bound)) {
+    return true;
+  }
+
+  return false;
+}
+
 void GenericSignatureBuilder::addedNestedType(PotentialArchetype *nestedPA) {
   // If there was already another type with this name within the parent
   // potential archetype, equate this type with that one.
@@ -4963,6 +5074,19 @@ GenericSignatureBuilder::addRequirement(const Requirement &req,
 
   auto firstType = subst(req.getFirstType());
   switch (req.getKind()) {
+  case RequirementKind::Value: {
+    auto secondType = subst(req.getSecondType());
+
+    if (inferForModule) {
+      inferRequirements(*inferForModule, secondType,
+                        source.asInferred(
+                          RequirementRepr::getSecondTypeRepr(reqRepr)));
+    }
+
+    return addValueRequirement(firstType, secondType, source,
+                               UnresolvedHandlingKind::GenerateConstraints,
+                               inferForModule);
+  }
   case RequirementKind::Superclass:
   case RequirementKind::Conformance: {
     auto secondType = subst(req.getSecondType());
@@ -5573,6 +5697,13 @@ void GenericSignatureBuilder::processDelayedRequirements() {
             addTypeRequirement(req.lhs, asUnresolvedType(req.rhs), req.source,
                                UnresolvedHandlingKind::GenerateUnresolved,
                                /*inferForModule=*/nullptr);
+        break;
+
+      case DelayedRequirement::Value:
+        reqResult =
+            addValueRequirement(req.lhs, asUnresolvedType(req.rhs), req.source,
+                                UnresolvedHandlingKind::GenerateUnresolved,
+                                /*inferForModule=*/nullptr);
         break;
 
       case DelayedRequirement::Layout:
@@ -7057,6 +7188,7 @@ void GenericSignatureBuilder::dump(llvm::raw_ostream &out) {
                             RequirementRHS constraint,
                             const RequirementSource *source) {
     switch (kind) {
+    case RequirementKind::Value:
     case RequirementKind::Conformance:
     case RequirementKind::Superclass:
       out << "\n  ";

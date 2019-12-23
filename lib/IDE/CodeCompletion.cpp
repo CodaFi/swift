@@ -460,6 +460,7 @@ CodeCompletionResult::getCodeCompletionDeclKind(const Decl *D) {
   case DeclKind::AssociatedType:
     return CodeCompletionDeclKind::AssociatedType;
   case DeclKind::GenericTypeParam:
+  case DeclKind::ValueTypeParam:
     return CodeCompletionDeclKind::GenericTypeParam;
   case DeclKind::Enum:
     return CodeCompletionDeclKind::Enum;

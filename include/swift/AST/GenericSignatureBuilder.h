@@ -144,6 +144,12 @@ public:
     /// Superclass constraints written within this equivalence class.
     std::vector<ConcreteConstraint> superclassConstraints;
 
+    /// Value constraint.
+    Type valueType;
+
+    /// Value constraints written within this equivalence class.
+    std::vector<ConcreteConstraint> valueConstraints;
+
     /// \The layout constraint for this equivalence class.
     LayoutConstraint layout;
 
@@ -416,6 +422,14 @@ public:
                          UnresolvedHandlingKind unresolvedHandling,
                          llvm::function_ref<void(Type, Type)> diagnoseMismatch);
 
+private:
+  /// Add a new superclass requirement specifying that the given
+  /// potential archetype has the given type as an ancestor.
+  ConstraintResult addSuperclassRequirementDirect(
+                                              ResolvedType type,
+                                              Type superclass,
+                                              FloatingRequirementSource source);
+
   /// Update the superclass for the equivalence class of \c T.
   ///
   /// This assumes that the constraint has already been recorded.
@@ -425,14 +439,6 @@ public:
   bool updateSuperclass(ResolvedType type,
                         Type superclass,
                         FloatingRequirementSource source);
-
-private:
-  /// Add a new superclass requirement specifying that the given
-  /// potential archetype has the given type as an ancestor.
-  ConstraintResult addSuperclassRequirementDirect(
-                                              ResolvedType type,
-                                              Type superclass,
-                                              FloatingRequirementSource source);
 
   /// Add a new type requirement specifying that the given
   /// type conforms-to or is a superclass of the second type.
@@ -444,6 +450,33 @@ private:
                                       FloatingRequirementSource source,
                                       UnresolvedHandlingKind unresolvedHandling,
                                       ModuleDecl *inferForModule);
+
+  /// Add a new value requirement specifying that the given
+  /// value generic may be instantiated by values of the second type.
+  ///
+  /// \param inferForModule Infer additional requirements from the types
+  /// relative to the given module.
+  ConstraintResult addValueRequirement(UnresolvedType subject,
+                                      UnresolvedType constraint,
+                                      FloatingRequirementSource source,
+                                      UnresolvedHandlingKind unresolvedHandling,
+                                      ModuleDecl *inferForModule);
+
+  /// Add a new superclass requirement specifying that the given
+  /// potential archetype has the given type as an ancestor.
+  ConstraintResult addValueRequirementDirect(ResolvedType type,
+                                             Type bound,
+                                             FloatingRequirementSource source);
+
+  /// Update the value bound for the equivalence class of \c T.
+  ///
+  /// This assumes that the constraint has already been recorded.
+  ///
+  /// \returns true if anything in the equivalence class changed, false
+  /// otherwise.
+  bool updateValue(ResolvedType type,
+                   Type superclass,
+                   FloatingRequirementSource source);
 
   /// Note that we have added the nested type nestedPA
   void addedNestedType(PotentialArchetype *nestedPA);
@@ -1709,6 +1742,9 @@ public:
     /// A type requirement, which may be a conformance or a superclass
     /// requirement.
     Type,
+
+    /// A value requirement.
+    Value,
 
     /// A layout requirement.
     Layout,

@@ -837,6 +837,7 @@ public:
   VISIT_AND_IGNORE(PrefixOperatorDecl)
   VISIT_AND_IGNORE(PostfixOperatorDecl)
   VISIT_AND_IGNORE(GenericTypeParamDecl)
+  VISIT_AND_IGNORE(ValueTypeParamDecl)
   VISIT_AND_IGNORE(AssociatedTypeDecl)
   VISIT_AND_IGNORE(ModuleDecl)
   VISIT_AND_IGNORE(ParamDecl)

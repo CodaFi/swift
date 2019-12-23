@@ -814,6 +814,7 @@ static void checkProtocolSelfRequirements(ProtocolDecl *proto,
 
           return false;
 
+        case RequirementKind::Value:
         case RequirementKind::SameType:
           return false;
         }
@@ -1228,7 +1229,11 @@ public:
   void visitGenericTypeParamDecl(GenericTypeParamDecl *D) {
     llvm_unreachable("cannot reach here");
   }
-  
+
+  void visitValueTypeParamDecl(ValueTypeParamDecl *D) {
+    llvm_unreachable("cannot reach here");
+  }
+
   void visitImportDecl(ImportDecl *ID) {
     TypeChecker::checkDeclAttributes(ID);
   }

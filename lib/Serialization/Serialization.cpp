@@ -1137,6 +1137,7 @@ static uint8_t getRawStableRequirementKind(RequirementKind kind) {
   CASE(Superclass)
   CASE(SameType)
   CASE(Layout)
+  CASE(Value)
   }
 #undef CASE
 
@@ -1507,6 +1508,7 @@ static bool shouldSerializeMember(Decl *D) {
   case DeclKind::Subscript:
   case DeclKind::TypeAlias:
   case DeclKind::GenericTypeParam:
+  case DeclKind::ValueTypeParam:
   case DeclKind::AssociatedType:
   case DeclKind::Enum:
   case DeclKind::Struct:
@@ -3019,6 +3021,18 @@ public:
                                 genericParam->isImplicit(),
                                 genericParam->getDepth(),
                                 genericParam->getIndex());
+  }
+
+  void visitValueTypeParamDecl(const ValueTypeParamDecl *genericParam) {
+    using namespace decls_block;
+    verifyAttrSerializable(genericParam);
+
+    unsigned abbrCode = S.DeclTypeAbbrCodes[GenericTypeParamDeclLayout::Code];
+    ValueTypeParamDeclLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
+                              S.addDeclBaseNameRef(genericParam->getName()),
+                              genericParam->isImplicit(),
+                              genericParam->getDepth(),
+                              genericParam->getIndex());
   }
 
   void visitAssociatedTypeDecl(const AssociatedTypeDecl *assocType) {

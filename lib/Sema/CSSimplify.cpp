@@ -2458,6 +2458,10 @@ static ConstraintFix *fixRequirementFailure(ConstraintSystem &cs, Type type1,
     return SkipSuperclassRequirement::create(cs, type1, type2, reqLoc);
   }
 
+  case RequirementKind::Value: {
+    return SkipValueRequirement::create(cs, type1, type2, reqLoc);
+  }
+
   case RequirementKind::Layout:
   case RequirementKind::Conformance:
     return MissingConformance::forRequirement(cs, type1, type2, reqLoc);
@@ -8922,7 +8926,8 @@ ConstraintSystem::SolutionKind ConstraintSystem::simplifyFixConstraint(
 
   case FixKind::AddConformance:
   case FixKind::SkipSameTypeRequirement:
-  case FixKind::SkipSuperclassRequirement: {
+  case FixKind::SkipSuperclassRequirement:
+  case FixKind::SkipValueRequirement: {
     return recordFix(fix, assessRequirementFailureImpact(*this, type1,
                                                          fix->getLocator()))
                ? SolutionKind::Error
@@ -9206,6 +9211,9 @@ void ConstraintSystem::addConstraint(Requirement req,
   case RequirementKind::SameType:
     kind = ConstraintKind::Bind;
     break;
+  case RequirementKind::Value:
+    // Value constraints are trivial.
+    return;
   case RequirementKind::Layout:
     // Only a class constraint can be modeled as a constraint, and only that can
     // appear outside of a @_specialize at the moment anyway.

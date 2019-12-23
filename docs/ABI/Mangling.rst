@@ -546,6 +546,7 @@ Types
   type ::= type-list 't'                     // tuple
   type ::= type generic-signature 'u'        // generic type
   type ::= 'x'                               // generic param, depth=0, idx=0
+  type ::= 'v'                               // value param, depth=0, idx=0
   type ::= 'q' GENERIC-PARAM-INDEX           // dependent generic parameter
   type ::= type assoc-type-name 'qa'         // associated type of non-generic param
   type ::= assoc-type-name 'Qy' GENERIC-PARAM-INDEX  // associated type
@@ -751,6 +752,7 @@ now codified into the ABI; the index 0 is therefore reserved.
   requirement ::= type assoc-type-name 'Rm' GENERIC-PARAM-INDEX LAYOUT-CONSTRAINT    // layout requirement on associated type
   requirement ::= type assoc-type-list 'RM' GENERIC-PARAM-INDEX LAYOUT-CONSTRAINT    // layout requirement on associated type at depth
   requirement ::= type substitution 'RM' LAYOUT-CONSTRAINT                           // layout requirement with substitution
+  requirement ::= type 'Rv' GENERIC-PARAM-INDEX                     // value generic requirement
 
   GENERIC-PARAM-INDEX ::= 'z'                // depth = 0,   idx = 0
   GENERIC-PARAM-INDEX ::= INDEX              // depth = 0,   idx = N+1

@@ -838,6 +838,7 @@ TypeDeclsFromWhereClauseRequest::evaluate(Evaluator &evaluator,
     };
 
     switch (req.getKind()) {
+    case RequirementReprKind::ValueConstraint:
     case RequirementReprKind::TypeConstraint:
       resolve(req.getSubjectLoc());
       resolve(req.getConstraintLoc());
