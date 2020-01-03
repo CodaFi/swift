@@ -17,7 +17,8 @@
 #ifndef SWIFT_BASIC_STABLEPATH_H
 #define SWIFT_BASIC_STABLEPATH_H
 
-#include "llvm/ADT/Hashing.h"
+#include "swift/Basic/StableHasher.h"
+#include "llvm/ADT/StringRef.h"
 
 namespace swift {
 
@@ -46,39 +47,27 @@ private:
   Component Kind;
   StringRef Data;
 
-  struct StableHasher {
-    llvm::MD5 MD5;
-
-    StableHasher() = default;
-
-    StablePath::ID finalize() {
-      llvm::MD5::MD5Result Result;
-      MD5.final(Result);
-      return StablePath::ID { Result.low() };
-    }
-  };
-
   void stableHash(StableHasher &hasher) const {
     // Mangle in a discriminator.
     switch (Kind) {
     case Component::Module:
-      hasher.MD5.update(static_cast<uint8_t>(Kind));
-      hasher.MD5.update(Data);
+      hasher.append(static_cast<uint8_t>(Kind));
+      hasher.append(Data);
       break;
     case Component::Container: {
       uint8_t buf[sizeof(ID::value_type)];
       std::memcpy(buf, &Parent.Fingerprint, sizeof(ID::value_type));
-      hasher.MD5.update(buf);
-      hasher.MD5.update(static_cast<uint8_t>(Kind));
-      hasher.MD5.update(Data);
+      hasher.append(buf);
+      hasher.append(static_cast<uint8_t>(Kind));
+      hasher.append(Data);
     }
       break;
     case Component::Name: {
       uint8_t buf[sizeof(ID::value_type)];
       std::memcpy(buf, &Parent.Fingerprint, sizeof(ID::value_type));
-      hasher.MD5.update(buf);
-      hasher.MD5.update(static_cast<uint8_t>(Kind));
-      hasher.MD5.update(Data);
+      hasher.append(buf);
+      hasher.append(static_cast<uint8_t>(Kind));
+      hasher.append(Data);
     }
       break;
     }
@@ -104,7 +93,7 @@ public:
   StablePath::ID fingerprint() const {
     StableHasher hasher;
     stableHash(hasher);
-    return hasher.finalize();
+    return std::move(hasher).finalize();
   }
 };
 
