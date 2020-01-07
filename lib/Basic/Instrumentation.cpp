@@ -13,47 +13,43 @@
 //===----------------------------------------------------------------------===//
 
 #include "swift/Basic/Instrumentation.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/Support/raw_ostream.h"
 
-using namespace swift;
-
-//#if HAVE_OS_SIGNPOST_EMIT
+#if HAVE_OS_SIGNPOST_EMIT
 #include <os/base.h>
 #include <os/log.h>
 #include <os/signpost.h>
-#include <thread>
 #include <mutex>
+#endif
 
-std::once_flag globalRequestOnceToken;
-void *globalRequestLog = nullptr;
+using namespace swift;
 
-static void *getGlobalRequestLog() {
+void *OSLog::requestLog() {
+#if HAVE_OS_SIGNPOST_EMIT
+  static std::once_flag GlobalRequestOnceToken;
+  static void *GlobalRequestLog = nullptr;
   if (__builtin_available(macOS 10.14, *)) {
-    std::call_once(globalRequestOnceToken, [](){
-      globalRequestLog = os_log_create("com.apple.swift.requests", "");
+    std::call_once(GlobalRequestOnceToken, [](){
+      GlobalRequestLog = os_log_create("com.apple.swift.requests", "");
     });
-    return globalRequestLog;
-  } else {
-    return nullptr;
   }
+  return GlobalRequestLog;
+#endif
+
+  return nullptr;
 }
 
-RequestInstrumenterRAII::RequestInstrumenterRAII(std::string desc)
-  : Description(std::move(desc)), OpaqueLog(getGlobalRequestLog())
-{
+void OSLog::setUp(std::string &&desc) {
   if (__builtin_available(macOS 10.14, *)) {
-    SignpostID = os_signpost_id_generate((os_log_t)OpaqueLog);
-    os_signpost_interval_begin((os_log_t)OpaqueLog, SignpostID,
+    Description = std::move(desc);
+    SignpostID = os_signpost_id_generate((os_log_t)OSLog::requestLog());
+    os_signpost_interval_begin((os_log_t)OSLog::requestLog(), SignpostID,
                                "Request", "%{public}s", Description.data());
   }
 }
 
-RequestInstrumenterRAII::~RequestInstrumenterRAII() {
+void OSLog::tearDown() {
   if (__builtin_available(macOS 10.14, *)) {
-    os_signpost_interval_end((os_log_t)OpaqueLog, SignpostID,
+    os_signpost_interval_end((os_log_t)OSLog::requestLog(), SignpostID,
                              "Request", "%{public}s", Description.data());
   }
 }
-
-//#endif // HAVE_OS_SIGNPOST_EMIT

@@ -102,12 +102,7 @@ template <typename Request>
 typename Request::OutputType
 evaluateOrDefault(
   Evaluator &eval, Request req, typename Request::OutputType def) {
-  std::string desc;
-  {
-    llvm::raw_string_ostream out(desc);
-    simple_display(out, req);
-  }
-  RequestInstrumenterRAII instrumenter{desc};
+  RequestInstrumenterRAII<Request> instrumenter{req};
 
   auto result = eval(req);
   if (auto err = result.takeError()) {

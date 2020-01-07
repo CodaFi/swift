@@ -15,21 +15,58 @@
 #ifndef SWIFT_BASIC_INSTRUMENTATION_H
 #define SWIFT_BASIC_INSTRUMENTATION_H
 
-#include <string>
-#include <cassert>
-#include <cstdint>
+#include "swift/Config.h"
+
+#include "llvm/Support/raw_ostream.h"
 
 namespace swift {
-  class RequestInstrumenterRAII {
-  public:
-    RequestInstrumenterRAII(std::string desc);
-    ~RequestInstrumenterRAII();
 
-  private:
-    std::string Description;
-    uint64_t SignpostID;
-    void *OpaqueLog;
-  };
+void *getGlobalRequestLog();
+
+struct OSLog {
+private:
+  std::string Description;
+  uint64_t SignpostID;
+
+public:
+  OSLog() : Description(), SignpostID(0) {}
+
+  void setUp(std::string &&desc);
+  void tearDown();
+
+private:
+  static void *requestLog();
+};
+
+template<typename Request>
+class RequestInstrumenterRAII {
+public:
+  RequestInstrumenterRAII(const Request &req);
+  ~RequestInstrumenterRAII();
+
+private:
+  OSLog data;
+};
+
+template<typename Request>
+inline RequestInstrumenterRAII<Request>::RequestInstrumenterRAII(const Request &req) {
+#if HAVE_OS_SIGNPOST_EMIT
+  std::string Description;
+  {
+    llvm::raw_string_ostream out(Description);
+    simple_display(out, req);
+  }
+  data.setUp(std::move(Description));
+#endif
+}
+
+template<typename Request>
+inline RequestInstrumenterRAII<Request>::~RequestInstrumenterRAII() {
+#if HAVE_OS_SIGNPOST_EMIT
+  data.tearDown();
+#endif
+}
+
 } // end namespace swift
 
 #endif // SWIFT_BASIC_INSTRUMENTATION_H
