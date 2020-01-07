@@ -1331,8 +1331,10 @@ void swift::printContext(raw_ostream &os, DeclContext *dc) {
     break;
 
   case DeclContextKind::ExtensionDecl:
-    if (auto extendedNominal = cast<ExtensionDecl>(dc)->getExtendedNominal()) {
-      printName(os, extendedNominal->getName());
+    if (cast<ExtensionDecl>(dc)->hasBeenBound()) {
+      if (auto extendedNominal = cast<ExtensionDecl>(dc)->getExtendedNominal()) {
+        printName(os, extendedNominal->getName());
+      }
     }
     os << " extension";
     break;

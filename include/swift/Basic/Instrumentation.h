@@ -16,7 +16,7 @@
 #define SWIFT_BASIC_INSTRUMENTATION_H
 
 #include "swift/Config.h"
-
+#include "swift/Basic/TypeID.h"
 #include "llvm/Support/raw_ostream.h"
 
 namespace swift {
@@ -25,13 +25,13 @@ void *getGlobalRequestLog();
 
 struct OSLog {
 private:
-  std::string Description;
+  llvm::StringRef Description;
   uint64_t SignpostID;
 
 public:
   OSLog() : Description(), SignpostID(0) {}
 
-  void setUp(std::string &&desc);
+  void setUp(llvm::StringRef desc);
   void tearDown();
 
 private:
@@ -51,12 +51,12 @@ private:
 template<typename Request>
 inline RequestInstrumenterRAII<Request>::RequestInstrumenterRAII(const Request &req) {
 #if HAVE_OS_SIGNPOST_EMIT
-  std::string Description;
-  {
-    llvm::raw_string_ostream out(Description);
-    simple_display(out, req);
-  }
-  data.setUp(std::move(Description));
+//  std::string Description;
+//  {
+//    llvm::raw_string_ostream out(Description);
+//    simple_display(out, req);
+//  }
+  data.setUp(TypeID<Request>::getName());
 #endif
 }
 

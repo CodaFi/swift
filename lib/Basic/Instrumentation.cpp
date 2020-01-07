@@ -38,9 +38,9 @@ void *OSLog::requestLog() {
   return nullptr;
 }
 
-void OSLog::setUp(std::string &&desc) {
+void OSLog::setUp(llvm::StringRef str) {
   if (__builtin_available(macOS 10.14, *)) {
-    Description = std::move(desc);
+    Description = str;
     SignpostID = os_signpost_id_generate((os_log_t)OSLog::requestLog());
     os_signpost_interval_begin((os_log_t)OSLog::requestLog(), SignpostID,
                                "Request", "%{public}s", Description.data());
