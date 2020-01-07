@@ -102,8 +102,6 @@ template <typename Request>
 typename Request::OutputType
 evaluateOrDefault(
   Evaluator &eval, Request req, typename Request::OutputType def) {
-  RequestInstrumenterRAII<Request> instrumenter{req};
-
   auto result = eval(req);
   if (auto err = result.takeError()) {
     llvm::handleAllErrors(std::move(err),
@@ -378,6 +376,7 @@ private:
     PrettyStackTraceRequest<Request> prettyStackTrace(request);
 
     // Trace and/or count statistics.
+    RequestInstrumenterRAII<Request> instrumenter{request};
     FrontendStatsTracer statsTracer = make_tracer(stats, request);
     if (stats) reportEvaluatedRequest(*stats, request);
 
