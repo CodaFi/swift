@@ -23,6 +23,7 @@
 #include "swift/Basic/Debug.h"
 #include "swift/Basic/Defer.h"
 #include "swift/Basic/Statistic.h"
+#include "swift/Basic/Instrumentation.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SetVector.h"
@@ -101,6 +102,13 @@ template <typename Request>
 typename Request::OutputType
 evaluateOrDefault(
   Evaluator &eval, Request req, typename Request::OutputType def) {
+  std::string desc;
+  {
+    llvm::raw_string_ostream out(desc);
+    simple_display(out, req);
+  }
+  RequestInstrumenterRAII instrumenter{desc};
+
   auto result = eval(req);
   if (auto err = result.takeError()) {
     llvm::handleAllErrors(std::move(err),

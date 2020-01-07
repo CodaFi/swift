@@ -13,24 +13,47 @@
 //===----------------------------------------------------------------------===//
 
 #include "swift/Basic/Instrumentation.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace swift;
 
-#if HAVE_OS_SIGNPOST_EMIT
+//#if HAVE_OS_SIGNPOST_EMIT
 #include <os/base.h>
 #include <os/log.h>
 #include <os/signpost.h>
+#include <thread>
+#include <mutex>
 
-static os_log_t getGlobalRequestLog() {
-  return os_log_create("com.apple.swift.requests", "");
+std::once_flag globalRequestOnceToken;
+void *globalRequestLog = nullptr;
+
+static void *getGlobalRequestLog() {
+  if (__builtin_available(macOS 10.14, *)) {
+    std::call_once(globalRequestOnceToken, [](){
+      globalRequestLog = os_log_create("com.apple.swift.requests", "");
+    });
+    return globalRequestLog;
+  } else {
+    return nullptr;
+  }
 }
 
-SignpostToken swift::beginSignpostInterval(StringRef buf) {
-  os_signpost_interval_begin(_textSelectionLog, token.opaque, "Request", "%{public}s", buf.data());
+RequestInstrumenterRAII::RequestInstrumenterRAII(std::string desc)
+  : Description(std::move(desc)), OpaqueLog(getGlobalRequestLog())
+{
+  if (__builtin_available(macOS 10.14, *)) {
+    SignpostID = os_signpost_id_generate((os_log_t)OpaqueLog);
+    os_signpost_interval_begin((os_log_t)OpaqueLog, SignpostID,
+                               "Request", "%{public}s", Description.data());
+  }
 }
 
-void swift::endSignpostInterval(SignpostToken token, StringRef buf) {
-  os_signpost_interval_end(_textSelectionLog, token.opaque, "Request", "%{public}s", buf.data());
+RequestInstrumenterRAII::~RequestInstrumenterRAII() {
+  if (__builtin_available(macOS 10.14, *)) {
+    os_signpost_interval_end((os_log_t)OpaqueLog, SignpostID,
+                             "Request", "%{public}s", Description.data());
+  }
 }
 
-#endif // HAVE_OS_SIGNPOST_EMIT
+//#endif // HAVE_OS_SIGNPOST_EMIT

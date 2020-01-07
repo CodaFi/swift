@@ -15,16 +15,21 @@
 #ifndef SWIFT_BASIC_INSTRUMENTATION_H
 #define SWIFT_BASIC_INSTRUMENTATION_H
 
+#include <string>
 #include <cassert>
 #include <cstdint>
 
 namespace swift {
-  struct SignpostToken {
+  class RequestInstrumenterRAII {
+  public:
+    RequestInstrumenterRAII(std::string desc);
+    ~RequestInstrumenterRAII();
+
   private:
-    uint64_t opaque;
+    std::string Description;
+    uint64_t SignpostID;
+    void *OpaqueLog;
   };
-
-
 } // end namespace swift
 
 #endif // SWIFT_BASIC_INSTRUMENTATION_H
