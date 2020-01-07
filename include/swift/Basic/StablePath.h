@@ -43,57 +43,54 @@ public:
   };
 
 private:
+  using StableHasher = swift::SipHasher;
+
   StablePath::ID Parent;
   Component Kind;
-  StringRef Data;
-
-  void stableHash(StableHasher &hasher) const {
-    // Mangle in a discriminator.
-    switch (Kind) {
-    case Component::Module:
-      hasher.append(static_cast<uint8_t>(Kind));
-      hasher.append(Data);
-      break;
-    case Component::Container: {
-      uint8_t buf[sizeof(ID::value_type)];
-      std::memcpy(buf, &Parent.Fingerprint, sizeof(ID::value_type));
-      hasher.append(buf);
-      hasher.append(static_cast<uint8_t>(Kind));
-      hasher.append(Data);
-    }
-      break;
-    case Component::Name: {
-      uint8_t buf[sizeof(ID::value_type)];
-      std::memcpy(buf, &Parent.Fingerprint, sizeof(ID::value_type));
-      hasher.append(buf);
-      hasher.append(static_cast<uint8_t>(Kind));
-      hasher.append(Data);
-    }
-      break;
-    }
-  }
+  uint64_t ExtraData;
 
 private:
-  StablePath(StablePath::ID parent, Component kind, StringRef data)
-    : Parent(parent), Kind(kind), Data(data) {}
+  StablePath(StablePath::ID parent, Component kind, uint64_t data)
+    : Parent(parent), Kind(kind), ExtraData(data) {}
+
+  template <typename ...T>
+  static uint64_t hash_all(const T &...args) {
+    auto hasher = StableHasher::defaultHasher();
+    hasher.combine(std::forward<T>(args)...);
+    return std::move(hasher).finalize();
+  }
 
 public:
-  static StablePath root(StringRef name) {
-    return StablePath { ID(0), Component::Module, name };
+  template <typename ...T>
+  static StablePath root(const T &...extras) {
+    return StablePath { ID(0), Component::Module, hash_all(extras...) };
   }
 
-  static StablePath container(StablePath parent, StringRef name) {
-    return StablePath { parent.fingerprint(), Component::Container, name };
+  template <typename ...T>
+  static StablePath container(StablePath parent, const T &...extras) {
+    return StablePath { parent.fingerprint(), Component::Container, hash_all(extras...) };
   }
 
-  static StablePath name(StablePath parent, StringRef name) {
-    return StablePath { parent.fingerprint(), Component::Container, name };
+  template <typename ...T>
+  static StablePath name(StablePath parent, const T &...extras) {
+    return StablePath { parent.fingerprint(), Component::Container, hash_all(extras...) };
   }
 
   StablePath::ID fingerprint() const {
-    StableHasher hasher;
-    stableHash(hasher);
-    return std::move(hasher).finalize();
+    auto hasher = StableHasher::defaultHasher();
+    // Mangle in a discriminator.
+    switch (Kind) {
+    case Component::Module:
+      hasher.combine(Kind, ExtraData);
+      break;
+    case Component::Container:
+      hasher.combine(Parent.Fingerprint, Kind, ExtraData);
+      break;
+    case Component::Name:
+      hasher.combine(Parent.Fingerprint, Kind, ExtraData);
+      break;
+    }
+    return StablePath::ID{std::move(hasher).finalize()};
   }
 };
 

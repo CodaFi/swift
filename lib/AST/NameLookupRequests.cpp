@@ -206,6 +206,22 @@ SourceLoc swift::extractNearestSourceLoc(const DirectLookupDescriptor &desc) {
   return extractNearestSourceLoc(desc.DC);
 }
 
+//----------------------------------------------------------------------------//
+// StablePathRequest computation.
+//----------------------------------------------------------------------------//
+
+Optional<StablePath> StablePathRequest::getCachedResult() const {
+  auto *decl = std::get<0>(getStorage());
+  auto &ctx = decl->getASTContext();
+  return ctx.getStablePath(decl);
+}
+
+void StablePathRequest::cacheResult(StablePath path) const {
+  auto *decl = std::get<0>(getStorage());
+  auto &ctx = decl->getASTContext();
+  ctx.setStablePath(decl, path);
+}
+
 // Define request evaluation functions for each of the name lookup requests.
 static AbstractRequestFunction *nameLookupRequestFunctions[] = {
 #define SWIFT_REQUEST(Zone, Name, Sig, Caching, LocOptions)                    \

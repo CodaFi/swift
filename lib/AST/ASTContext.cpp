@@ -46,6 +46,7 @@
 #include "swift/AST/TypeCheckerDebugConsumer.h"
 #include "swift/Basic/Compiler.h"
 #include "swift/Basic/SourceManager.h"
+#include "swift/Basic/StablePath.h"
 #include "swift/Basic/Statistic.h"
 #include "swift/Basic/StringExtras.h"
 #include "swift/Syntax/References.h"
@@ -264,6 +265,9 @@ struct ASTContext::Implementation {
 
   /// Map from Swift declarations to brief comments.
   llvm::DenseMap<const Decl *, StringRef> BriefComments;
+
+  /// Map from Swift declarations to Stable Paths.
+  llvm::DenseMap<const Decl *, StablePath> StablePaths;
 
   /// Map from declarations to foreign error conventions.
   /// This applies to both actual imported functions and to @objc functions.
@@ -1851,6 +1855,18 @@ void ASTContext::setBriefComment(const Decl *D, StringRef Comment) {
   getImpl().BriefComments[D] = Comment;
 }
 
+Optional<StablePath> ASTContext::getStablePath(const Decl *D) {
+  auto Known = getImpl().StablePaths.find(D);
+  if (Known == getImpl().StablePaths.end())
+    return None;
+
+  return Known->second;
+}
+
+void ASTContext::setStablePath(const Decl *D, StablePath path) {
+  getImpl().StablePaths[D] = path;
+}
+
 NormalProtocolConformance *
 ASTContext::getConformance(Type conformingType,
                            ProtocolDecl *protocol,
@@ -2073,6 +2089,7 @@ size_t ASTContext::getTotalMemory() const {
     llvm::capacity_in_bytes(getImpl().ModuleLoaders) +
     llvm::capacity_in_bytes(getImpl().RawComments) +
     llvm::capacity_in_bytes(getImpl().BriefComments) +
+    llvm::capacity_in_bytes(getImpl().StablePaths) +
     llvm::capacity_in_bytes(getImpl().ModuleTypes) +
     llvm::capacity_in_bytes(getImpl().GenericParamTypes) +
     // getImpl().GenericFunctionTypes ?

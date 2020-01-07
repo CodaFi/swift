@@ -514,6 +514,27 @@ private:
   evaluate(Evaluator &evaluator, DirectLookupDescriptor desc) const;
 };
 
+class StablePathRequest
+    : public SimpleRequest<StablePathRequest,
+                           StablePath (const Decl *),
+                           CacheKind::SeparatelyCached> {
+public:
+  using SimpleRequest::SimpleRequest;
+
+private:
+  friend SimpleRequest;
+
+  // Evaluation.
+  llvm::Expected<StablePath>
+  evaluate(Evaluator &evaluator, const Decl *decl) const;
+
+public:
+  // Separate caching.
+  bool isCached() const { return true; }
+  Optional<StablePath> getCachedResult() const;
+  void cacheResult(StablePath value) const;
+};
+
 #define SWIFT_TYPEID_ZONE NameLookup
 #define SWIFT_TYPEID_HEADER "swift/AST/NameLookupTypeIDZone.def"
 #include "swift/Basic/DefineTypeIDZone.h"

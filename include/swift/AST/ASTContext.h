@@ -986,6 +986,10 @@ private:
   Optional<StringRef> getBriefComment(const Decl *D);
   void setBriefComment(const Decl *D, StringRef Comment);
 
+  friend class StablePathRequest;
+  Optional<StablePath> getStablePath(const Decl *D);
+  void setStablePath(const Decl *D, StablePath path);
+
   friend TypeBase;
   friend ArchetypeType;
   friend OpaqueTypeDecl;

@@ -14,8 +14,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SWIFT_BASIC_STABLEPATH_H
-#define SWIFT_BASIC_STABLEPATH_H
+#ifndef SWIFT_BASIC_STABLEHASHER_H
+#define SWIFT_BASIC_STABLEHASHER_H
 
 #include "llvm/ADT/Hashing.h"
 #include "swift/Basic/StableHasher.h"
@@ -65,16 +65,33 @@ public:
   uint64_t finalize() &&;
 
   template<uint64_t N>
-  void append(uint8_t bits[N]);
+  void combine(uint8_t bits[N]);
 
   template<typename T>
-  void append(typename std::enable_if<std::is_integral<T>::value>::type bits) {
+  typename std::enable_if<std::is_integral<T>::value>::type
+  combine(T bits) {
     uint8_t buf[sizeof(T)] = { 0 };
     std::memcpy(buf, &bits, sizeof(T));
-    append<sizeof(T)>(buf);
+    combine<sizeof(T)>(buf);
+  }
+
+  template <typename T, typename ...Ts>
+  void combine(const T &arg, const Ts &...args) {
+    return combine_many(arg, args...);
+  }
+
+private:
+  // base case.
+  void combine_many() { }
+
+  // recursive case
+  template <typename T, typename ...Ts>
+  void combine_many(const T &arg, const Ts &...args) {
+    combine(arg);
+    return combine_many(args...);
   }
 };
 
 } // namespace swift
 
-#endif // SWIFT_BASIC_STABLEPATH_H
+#endif // SWIFT_BASIC_STABLEHASHER_H

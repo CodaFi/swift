@@ -62,7 +62,7 @@ uint64_t SipHasher::finalize() && {
 }
 
 template<uint64_t N>
-void SipHasher::append(uint8_t bits[N]) {
+void SipHasher::combine(uint8_t bits[N]) {
   static_assert(N > 0, "Cannot append VLA");
   static_assert(N <= 8, "Can only append up to 64 bits at a time");
 

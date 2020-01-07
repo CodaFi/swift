@@ -22,6 +22,7 @@
 #include "swift/AST/SimpleRequest.h"
 #include "swift/Basic/Statistic.h"
 #include "llvm/ADT/Hashing.h"
+#include "swift/Basic/StablePath.h"
 
 namespace swift {
 

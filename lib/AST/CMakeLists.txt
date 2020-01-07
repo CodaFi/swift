@@ -69,6 +69,8 @@ add_swift_host_library(swiftAST STATIC
   RequirementEnvironment.cpp
   SyntaxASTMap.cpp
   SILLayout.cpp
+  SourceFileDepGraphConstructor.cpp
+  StablePathBuilder.cpp
   Stmt.cpp
   SubstitutionMap.cpp
   SwiftNameTranslation.cpp
