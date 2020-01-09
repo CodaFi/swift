@@ -18,6 +18,7 @@
 #define SWIFT_BASIC_STABLEPATH_H
 
 #include "swift/Basic/StableHasher.h"
+#include "llvm/ADT/DenseMapInfo.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/StringRef.h"
 
@@ -71,6 +72,14 @@ public:
   StablePath &operator=(const StablePath &) = default;
   constexpr StablePath(StablePath &&) = default;
   StablePath &operator=(StablePath &&) = default;
+
+private:
+  template <typename T>
+  static uint64_t hash_all(const T &arg) {
+    auto hasher = StableHasher::defaultHasher();
+    hasher.combine(std::forward<T>(arg));
+    return std::move(hasher).finalize();
+  }
 
   template <typename T, typename ...Ts>
   static uint64_t hash_all(const T &arg, const Ts &...args) {

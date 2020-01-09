@@ -19,9 +19,29 @@
 #include "swift/AST/NameLookupRequests.h"
 #include "swift/AST/Evaluator.h"
 #include "swift/AST/Decl.h"
+#include "swift/AST/Expr.h"
 #include "swift/AST/Module.h"
 
 using namespace swift;
+
+
+namespace swift {
+
+template<>
+struct SipHasher::Combiner<Identifier> {
+  static void combine(SipHasher &hasher, const Identifier &ident) {
+    hasher.combine(ident.str().begin(), ident.str().end());
+  }
+};
+
+template<>
+struct SipHasher::Combiner<StringRef> {
+  static void combine(SipHasher &hasher, const StringRef &str) {
+    hasher.combine(str.begin(), str.end());
+  }
+};
+
+} // namespace llvm
 
 llvm::Expected<StablePath>
 StablePathRequest::evaluate(Evaluator &evaluator, const Decl *decl) const {
@@ -102,7 +122,7 @@ StablePathRequest::evaluate(Evaluator &evaluator, const Decl *decl) const {
   case DeclKind::PoundDiagnostic:
     return StablePath::name(parentPath,
                             cast<PoundDiagnosticDecl>(decl)->getKind(),
-                            cast<PoundDiagnosticDecl>(decl)->getMessage());
+                            cast<PoundDiagnosticDecl>(decl)->getMessage()->getValue());
   case DeclKind::PrecedenceGroup:
     return StablePath::name(parentPath,
                             cast<PrecedenceGroupDecl>(decl)->getAssociativity(),

@@ -61,6 +61,12 @@ private:
   void compress(uint64_t value);
 
 public:
+  template<typename T>
+  struct Combiner {
+    //static void combine(SipHasher &hasher, const T &Val);
+  };
+
+public:
   /// Consume this stable hasher and compute the final 64-bit stable hash value.
   uint64_t finalize() &&;
 
@@ -73,6 +79,14 @@ public:
     uint8_t buf[sizeof(T)] = { 0 };
     std::memcpy(buf, &bits, sizeof(T));
     combine<sizeof(T)>(buf);
+  }
+
+  template<
+    typename EnumType,
+    typename std::enable_if<std::is_enum<EnumType>::value>::type* = nullptr>
+  void combine(EnumType value) {
+    using Underlying = typename std::underlying_type<EnumType>::type;
+    return combine<Underlying>(static_cast<Underlying>(value));
   }
 
   template <typename T>
@@ -93,15 +107,21 @@ public:
     return combine_range(arg.begin(), arg.end());
   }
 
+  template <typename T,
+            decltype(SipHasher::Combiner<T>::combine) * = nullptr>
+  void combine(const T &val) {
+    return SipHasher::Combiner<T>::combine(*this, val);
+  }
+
   template <typename ValueT>
   void combine_range(ValueT *first, ValueT *last) {
     if (first == last) {
       return combine(0);
     }
 
-    while (first != last) {
+    do {
       combine(first++);
-    }
+    } while (first != last);
   }
 
   template <typename ...Ts>
@@ -110,8 +130,6 @@ public:
   }
 
 private:
-
-
   template <typename ...Ts, unsigned ...Indices>
   void combine_tuple(const std::tuple<Ts...> &arg,
                      llvm::UnsignedConstantIndexSet<Indices...> indices) {
