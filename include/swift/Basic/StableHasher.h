@@ -75,12 +75,49 @@ public:
     combine<sizeof(T)>(buf);
   }
 
+  template <typename T>
+  auto combine(const T *ptr) -> decltype("Cannot hash-combine pointers!") {};
+
   template <typename T, typename ...Ts>
   void combine(const T &arg, const Ts &...args) {
     return combine_many(arg, args...);
   }
 
+  template <typename T, typename U>
+  void combine(const std::pair<T, U> &arg) {
+    return combine_many(arg.first, arg.second);
+  }
+
+  template <typename T>
+  void combine(const std::basic_string<T> &arg) {
+    return combine_range(arg.begin(), arg.end());
+  }
+
+  template <typename ValueT>
+  void combine_range(ValueT *first, ValueT *last) {
+    if (first == last) {
+      return combine(0);
+    }
+
+    while (first != last) {
+      combine(first++);
+    }
+  }
+
+  template <typename ...Ts>
+  void combine(const std::tuple<Ts...> &arg) {
+    return combine_tuple(arg, typename llvm::MakeUnsignedConstantIndexSet<0, sizeof...(Ts)>::Type());
+  }
+
 private:
+
+
+  template <typename ...Ts, unsigned ...Indices>
+  void combine_tuple(const std::tuple<Ts...> &arg,
+                     llvm::UnsignedConstantIndexSet<Indices...> indices) {
+    return combine_many(hash_value(std::get<Indices>(arg))...);
+  }
+
   // base case.
   void combine_many() { }
 

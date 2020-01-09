@@ -18,22 +18,32 @@
 #define SWIFT_BASIC_STABLEPATH_H
 
 #include "swift/Basic/StableHasher.h"
+#include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/StringRef.h"
 
 namespace swift {
 
-struct StablePath {
+class StablePath final {
 public:
   enum class Component : uint8_t {
-    Module    = 0,
-    Container = 1,
-    Name      = 2,
+    Tombstone = 0,
+    Module    = 1,
+    Container = 2,
+    Name      = 3,
   };
 
   struct ID {
     using value_type = uint64_t;
 
     friend StablePath;
+
+  public:
+    bool operator==(ID RHS) const {
+      return Fingerprint == RHS.Fingerprint;
+    }
+    bool operator!=(ID RHS) const { return !(*this == RHS); }
+
+    friend llvm::DenseMapInfo<swift::StablePath>;
 
   private:
     explicit ID(value_type fp) : Fingerprint(fp) {};
@@ -53,33 +63,44 @@ private:
   StablePath(StablePath::ID parent, Component kind, uint64_t data)
     : Parent(parent), Kind(kind), ExtraData(data) {}
 
-  template <typename ...T>
-  static uint64_t hash_all(const T &...args) {
+public:
+  // Special tombstone value.
+  StablePath() : Parent(0), Kind(Component::Tombstone), ExtraData(0) {}
+
+  constexpr StablePath(const StablePath &) = default;
+  StablePath &operator=(const StablePath &) = default;
+  constexpr StablePath(StablePath &&) = default;
+  StablePath &operator=(StablePath &&) = default;
+
+  template <typename T, typename ...Ts>
+  static uint64_t hash_all(const T &arg, const Ts &...args) {
     auto hasher = StableHasher::defaultHasher();
-    hasher.combine(std::forward<T>(args)...);
+    hasher.combine(std::forward<T>(arg), std::forward<Ts>(args)...);
     return std::move(hasher).finalize();
   }
 
 public:
   template <typename ...T>
   static StablePath root(const T &...extras) {
-    return StablePath { ID(0), Component::Module, hash_all(extras...) };
+    return StablePath { ID(0), Component::Module, StablePath::hash_all(extras...) };
   }
 
   template <typename ...T>
   static StablePath container(StablePath parent, const T &...extras) {
-    return StablePath { parent.fingerprint(), Component::Container, hash_all(extras...) };
+    return StablePath { parent.fingerprint(), Component::Container, StablePath::hash_all(extras...) };
   }
 
   template <typename ...T>
   static StablePath name(StablePath parent, const T &...extras) {
-    return StablePath { parent.fingerprint(), Component::Container, hash_all(extras...) };
+    return StablePath { parent.fingerprint(), Component::Container, StablePath::hash_all(extras...) };
   }
 
   StablePath::ID fingerprint() const {
     auto hasher = StableHasher::defaultHasher();
     // Mangle in a discriminator.
     switch (Kind) {
+    case Component::Tombstone:
+      llvm_unreachable("Tried to fingerprint a tombstone!");
     case Component::Module:
       hasher.combine(Kind, ExtraData);
       break;
@@ -92,8 +113,35 @@ public:
     }
     return StablePath::ID{std::move(hasher).finalize()};
   }
+
+  bool operator==(StablePath RHS) const {
+    return Parent == RHS.Parent &&
+           Kind == RHS.Kind &&
+           ExtraData == RHS.ExtraData;
+  }
+  bool operator!=(StablePath RHS) const { return !(*this == RHS); }
 };
 
 } // namespace swift
+
+namespace llvm {
+
+template<>
+struct DenseMapInfo<swift::StablePath> {
+  static inline swift::StablePath getEmptyKey() {
+    return swift::StablePath();
+  }
+  static inline swift::StablePath getTombstoneKey() {
+    return swift::StablePath();
+  }
+  static inline unsigned getHashValue(swift::StablePath ref) {
+    return (unsigned)ref.fingerprint().Fingerprint;
+  }
+  static bool isEqual(swift::StablePath a, swift::StablePath b) {
+    return a == b;
+  }
+};
+
+} // namespace llvm
 
 #endif // SWIFT_BASIC_STABLEPATH_H

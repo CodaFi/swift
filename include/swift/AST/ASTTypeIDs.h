@@ -51,6 +51,7 @@ class ProtocolDecl;
 class Requirement;
 enum class ResilienceExpansion : unsigned;
 class SourceFile;
+class StablePath;
 class Type;
 class ValueDecl;
 class VarDecl;
