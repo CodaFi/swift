@@ -19,6 +19,7 @@
 #include "swift/AST/NameLookupRequests.h"
 #include "swift/AST/Evaluator.h"
 #include "swift/AST/Decl.h"
+#include "swift/AST/Module.h"
 
 using namespace swift;
 
@@ -30,97 +31,99 @@ StablePathRequest::evaluate(Evaluator &evaluator, const Decl *decl) const {
                                       StablePathRequest{DC->getAsDecl()},
                                       StablePath::root());
   switch (decl->getKind()) {
+  // MARK: Ignored
+  case DeclKind::TopLevelCode:
+    return parentPath;
+  case DeclKind::IfConfig:
+    return parentPath;
+
   // MARK: Roots
   case DeclKind::Module:
-    return StablePath::root(<#const T &extras...#>);
+    return StablePath::root(cast<ModuleDecl>(decl)->getName());
 
   // MARK: Containers
   case DeclKind::Enum:
     return StablePath::container(parentPath,
-                                 <#const T &extras...#>);
+                                 cast<EnumDecl>(decl)->getName());
   case DeclKind::Struct:
     return StablePath::container(parentPath,
-                                 <#const T &extras...#>);
+                                 cast<StructDecl>(decl)->getName());
   case DeclKind::Class:
     return StablePath::container(parentPath,
-                                 <#const T &extras...#>);
+                                 cast<ClassDecl>(decl)->getName());
   case DeclKind::Protocol:
     return StablePath::container(parentPath,
-                                 <#const T &extras...#>);
-
+                                 cast<ProtocolDecl>(decl)->getName());
   case DeclKind::Extension:
     return StablePath::container(parentPath,
-                                 <#const T &extras...#>);
-  case DeclKind::TopLevelCode:
+                                 cast<ExtensionDecl>(decl)->getExtendedType()->getString());
+  case DeclKind::EnumCase:
     return StablePath::container(parentPath,
-                                 <#const T &extras...#>);
-  case DeclKind::IfConfig:
-    return StablePath::container(parentPath,
-                                 <#const T &extras...#>);
+                                 cast<EnumCaseDecl>(decl)->getElements().size());
 
   // MARK: Names
   case DeclKind::OpaqueType:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<OpaqueTypeDecl>(decl)->getName());
   case DeclKind::TypeAlias:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<TypeAliasDecl>(decl)->getName());
   case DeclKind::GenericTypeParam:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<GenericTypeParamDecl>(decl)->getName());
   case DeclKind::AssociatedType:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<AssociatedTypeDecl>(decl)->getName());
   case DeclKind::Var:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<VarDecl>(decl)->getName());
   case DeclKind::Param:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<ParamDecl>(decl)->getName());
   case DeclKind::Subscript:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<SubscriptDecl>(decl)->getFullName());
   case DeclKind::Constructor:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<ConstructorDecl>(decl)->getFullName());
   case DeclKind::Destructor:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<DestructorDecl>(decl)->getFullName());
   case DeclKind::Func:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<FuncDecl>(decl)->getFullName());
   case DeclKind::Accessor:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
-  case DeclKind::EnumElement:
-    return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<AccessorDecl>(decl)->getKind(),
+                            cast<AccessorDecl>(decl)->getFullName());
   case DeclKind::Import:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<ImportDecl>(decl)->getDeclPath());
   case DeclKind::PoundDiagnostic:
     return StablePath::name(parentPath,
-                            <#const T &extras...#>);
+                            cast<PoundDiagnosticDecl>(decl)->getKind(),
+                            cast<PoundDiagnosticDecl>(decl)->getMessage());
   case DeclKind::PrecedenceGroup:
     return StablePath::name(parentPath,
-                        <#const T &extras...#>);
+                            cast<PrecedenceGroupDecl>(decl)->getAssociativity(),
+                            cast<PrecedenceGroupDecl>(decl)->getName());
   case DeclKind::MissingMember:
     return StablePath::name(parentPath,
-                        <#const T &extras...#>);
+                            cast<MissingMemberDecl>(decl)->getFullName());
   case DeclKind::PatternBinding:
     return StablePath::name(parentPath,
-                        <#const T &extras...#>);
-  case DeclKind::EnumCase:
-    return StablePath::name(parentPath,
-                        <#const T &extras...#>);
+                            cast<PatternBindingDecl>(decl)->getStaticSpelling());
   case DeclKind::InfixOperator:
     return StablePath::name(parentPath,
-                        <#const T &extras...#>);
+                            cast<InfixOperatorDecl>(decl)->getName());
   case DeclKind::PrefixOperator:
     return StablePath::name(parentPath,
-                        <#const T &extras...#>);
+                            cast<PrefixOperatorDecl>(decl)->getName());
   case DeclKind::PostfixOperator:
     return StablePath::name(parentPath,
-                        <#const T &extras...#>);
+                            cast<PostfixOperatorDecl>(decl)->getName());
+  case DeclKind::EnumElement:
+    return StablePath::name(parentPath,
+                            cast<EnumElementDecl>(decl)->getFullName());
   }
 };
