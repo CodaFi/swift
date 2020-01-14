@@ -36,11 +36,36 @@ enum class DependencyKind {
 template<typename Derived, typename Signature, CacheKind Caching, DependencyKind Kind>
 class IncrementalRequest;
 
-template <typename Derived, CacheKind Caching, DependencyKind Kind, typename Output, typename ...Inputs>
-class IncrementalRequest<Derived, Output(Inputs...), Caching, Kind> : public SimpleRequest<Derived, Output(Inputs...), Caching> {
+template <typename Derived, CacheKind Caching, typename Output, typename ...Inputs>
+class IncrementalRequest<Derived, Output(Inputs...), Caching, DependencyKind::Sink> : public SimpleRequest<Derived, Output(Inputs...), Caching> {
 public:
+  static const bool isNeutral = false;
+
+  static const bool isSource = false;
+  static const bool isSink = true;
+
   explicit IncrementalRequest(const Inputs& ...inputs)
     : SimpleRequest<Derived, Output(Inputs...), Caching>(inputs...) { }
+
+  void recordDependency(SourceFile *SF) const {
+    return static_cast<Derived *>(this)->recordDependency(SF);
+  }
+};
+
+template <typename Derived, CacheKind Caching, typename Output, typename ...Inputs>
+class IncrementalRequest<Derived, Output(Inputs...), Caching, DependencyKind::Source> : public SimpleRequest<Derived, Output(Inputs...), Caching> {
+public:
+  static const bool isNeutral = false;
+
+  static const bool isSource = true;
+  static const bool isSink = false;
+
+  explicit IncrementalRequest(const Inputs& ...inputs)
+    : SimpleRequest<Derived, Output(Inputs...), Caching>(inputs...) { }
+
+  SourceFile *getSourceFile() const {
+    return static_cast<Derived *>(this)->getSourceFile();
+  }
 };
 
 } // namespace swift

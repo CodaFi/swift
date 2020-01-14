@@ -3623,6 +3623,7 @@ void swift::verify(SourceFile &SF) {
 #if !(defined(NDEBUG) || defined(SWIFT_DISABLE_AST_VERIFIER))
   Verifier verifier(SF, &SF);
   SF.walk(verifier);
+  SF.verifyReferencedNameTrackers();
 #endif
 }
 

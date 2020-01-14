@@ -2050,7 +2050,89 @@ void SourceFile::setTypeRefinementContext(TypeRefinementContext *Root) {
 
 void SourceFile::createReferencedNameTracker() {
   assert(!ReferencedNames && "This file already has a name tracker.");
+  assert(!ReferencedNamesRequests && "This file already has a name tracker.");
   ReferencedNames.emplace(ReferencedNameTracker());
+  ReferencedNamesRequests.emplace(ReferencedNameTracker());
+}
+
+template<typename ManualRange, typename AutomaticRange,
+         typename std::enable_if<std::is_same<typename ManualRange::key_type, ReferencedNameTracker::MemberPair>::value>::type * = nullptr>
+static void reportMissingEdges(ManualRange left, AutomaticRange right) {
+  SmallVector<ReferencedNameTracker::MemberPair, 8> forgottenAutoPairs;
+  for (const auto &p: left) {
+    auto known = right.find(p.first);
+    if (known == right.end())
+      forgottenAutoPairs.push_back(p.first);
+  }
+
+  for (auto &pair : forgottenAutoPairs) {
+    llvm::errs() << "automatic dependency trackers missed manually-added edge "
+                 << "from: " << pair.first->getBaseName()
+                 << " <-> to: " << pair.second
+                 << "\n";
+  }
+
+  SmallVector<ReferencedNameTracker::MemberPair, 8> forgottenManualPairs;
+  for (const auto &p: right) {
+    auto known = left.find(p.first);
+    if (known == left.end())
+      forgottenManualPairs.push_back(p.first);
+  }
+
+
+  for (auto &pair : forgottenManualPairs) {
+    llvm::errs() << "manual dependency trackers missed automatically-added edge "
+                 << "from: " << pair.first->getBaseName()
+                 << " <-> to: " << pair.second
+                 << "\n";
+  }
+}
+
+template<typename ManualRange, typename AutomaticRange,
+         typename std::enable_if<std::is_same<typename ManualRange::key_type, DeclBaseName>::value>::type * = nullptr>
+static void reportMissingEdges(ManualRange left, AutomaticRange right) {
+  SmallVector<DeclBaseName, 8> forgottenAutoPairs;
+  for (const auto &p: left) {
+    auto known = right.find(p.first);
+    if (known == right.end())
+      forgottenAutoPairs.push_back(p.first);
+  }
+
+  for (auto &name : forgottenAutoPairs) {
+    llvm::errs() << "automatic dependency trackers missed manually-added edge: "
+                 << name
+                 << "\n";
+  }
+
+  SmallVector<DeclBaseName, 8> forgottenManualPairs;
+  for (const auto &p: right) {
+    auto known = left.find(p.first);
+    if (known == left.end())
+      forgottenManualPairs.push_back(p.first);
+  }
+
+
+  for (auto &name : forgottenManualPairs) {
+    llvm::errs() << "manual dependency trackers missed automatically-added edge "
+                 << name
+                 << "\n";
+  }
+}
+
+void SourceFile::verifyReferencedNameTrackers() {
+  auto *manualTracker = getReferencedNameTracker();
+  auto *automaticTracker = getReferencedNameTracker();
+  assert(!!manualTracker == !!automaticTracker
+         && "Forgot to create a tracker");
+  if (!manualTracker || !automaticTracker)
+    return;
+
+  reportMissingEdges(manualTracker->getUsedMembers(),
+                     automaticTracker->getUsedMembers());
+  reportMissingEdges(manualTracker->getTopLevelNames(),
+                     automaticTracker->getTopLevelNames());
+  reportMissingEdges(manualTracker->getDynamicLookupNames(),
+                     automaticTracker->getDynamicLookupNames());
 }
 
 ArrayRef<OpaqueTypeDecl *> SourceFile::getOpaqueReturnTypeDecls() {

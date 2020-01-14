@@ -1306,3 +1306,7 @@ void TypeCheckSourceFileRequest::cacheResult(bool result) const {
 #endif
   }
 }
+
+SourceFile *TypeCheckSourceFileRequest::getSourceFile() const {
+  return std::get<0>(getStorage());
+}

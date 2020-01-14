@@ -17,6 +17,8 @@
 #include "swift/AST/Evaluator.h"
 #include "swift/AST/Decl.h"
 #include "swift/AST/Module.h"
+#include "swift/AST/ReferencedNameTracker.h"
+#include "swift/AST/SourceFile.h"
 
 using namespace swift;
 
@@ -186,6 +188,148 @@ void swift::simple_display(llvm::raw_ostream &out,
 SourceLoc
 swift::extractNearestSourceLoc(const UnqualifiedLookupDescriptor &desc) {
   return extractNearestSourceLoc(desc.DC);
+}
+
+void UnqualifiedLookupRequest::recordDependency(SourceFile *SF) const {
+  // Nothing to do.  A downstream request will handle this.
+  // FIXME: Then this isn't a dependency sink, now is it.
+}
+
+//----------------------------------------------------------------------------//
+// LookupInModuleRequest computation.
+//----------------------------------------------------------------------------//
+
+void LookupInModuleRequest::recordDependency(SourceFile *SF) const {
+  auto *DC = std::get<0>(getStorage());
+  auto name = std::get<1>(getStorage());
+
+  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  if (!refTracker)
+    return;
+
+  // FIXME: Awful conservative of you
+  refTracker->addTopLevelName(name.getBaseName(), /*isCascadingUse*/true);
+}
+
+
+//----------------------------------------------------------------------------//
+// AnyObjectLookupRequest computation.
+//----------------------------------------------------------------------------//
+
+void AnyObjectLookupRequest::recordDependency(SourceFile *SF) const {
+  auto *DC = std::get<0>(getStorage());
+  auto name = std::get<1>(getStorage());
+  auto options = std::get<2>(getStorage());
+
+  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  if (!refTracker)
+    return;
+
+  auto checkLookupCascading = [DC, options]() -> Optional<bool> {
+    switch (static_cast<unsigned>(options & NL_KnownDependencyMask)) {
+    case 0:
+      return DC->isCascadingContextForLookup(
+               /*functionsAreNonCascading=*/false);
+    case NL_KnownNonCascadingDependency:
+      return false;
+    case NL_KnownCascadingDependency:
+      return true;
+    case NL_KnownNoDependency:
+      return None;
+    default:
+      // FIXME: Use llvm::CountPopulation_64 when that's declared constexpr.
+#if defined(__clang__) || defined(__GNUC__)
+      static_assert(__builtin_popcountll(NL_KnownDependencyMask) == 2,
+                    "mask should only include four values");
+#endif
+      llvm_unreachable("mask only includes four values");
+    }
+  };
+
+  if (auto cascade = checkLookupCascading()) {
+    refTracker->addDynamicLookupName(name.getBaseName(), *cascade);
+  }
+}
+
+//----------------------------------------------------------------------------//
+// ModuleQualifiedLookupRequest computation.
+//----------------------------------------------------------------------------//
+
+void ModuleQualifiedLookupRequest::recordDependency(SourceFile *SF) const {
+  auto *DC = std::get<0>(getStorage());
+  auto name = std::get<2>(getStorage());
+  auto options = std::get<3>(getStorage());
+
+  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  if (!refTracker)
+    return;
+
+  auto checkLookupCascading = [DC, options]() -> Optional<bool> {
+    switch (static_cast<unsigned>(options & NL_KnownDependencyMask)) {
+    case 0:
+      return DC->isCascadingContextForLookup(
+               /*functionsAreNonCascading=*/false);
+    case NL_KnownNonCascadingDependency:
+      return false;
+    case NL_KnownCascadingDependency:
+      return true;
+    case NL_KnownNoDependency:
+      return None;
+    default:
+      // FIXME: Use llvm::CountPopulation_64 when that's declared constexpr.
+#if defined(__clang__) || defined(__GNUC__)
+      static_assert(__builtin_popcountll(NL_KnownDependencyMask) == 2,
+                    "mask should only include four values");
+#endif
+      llvm_unreachable("mask only includes four values");
+    }
+  };
+
+  if (auto cascade = checkLookupCascading())
+    refTracker->addTopLevelName(name.getBaseName(), *cascade);
+}
+
+//----------------------------------------------------------------------------//
+// QualifiedLookupRequest computation.
+//----------------------------------------------------------------------------//
+
+void QualifiedLookupRequest::recordDependency(SourceFile *SF) const {
+  auto *DC = std::get<0>(getStorage());
+  auto typeDecls = std::get<1>(getStorage());
+  auto name = std::get<2>(getStorage());
+  auto options = std::get<3>(getStorage());
+
+  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  if (!refTracker)
+    return;
+
+  auto checkLookupCascading = [DC, options]() -> Optional<bool> {
+    switch (static_cast<unsigned>(options & NL_KnownDependencyMask)) {
+    case 0:
+      return DC->isCascadingContextForLookup(
+               /*functionsAreNonCascading=*/false);
+    case NL_KnownNonCascadingDependency:
+      return false;
+    case NL_KnownCascadingDependency:
+      return true;
+    case NL_KnownNoDependency:
+      return None;
+    default:
+      // FIXME: Use llvm::CountPopulation_64 when that's declared constexpr.
+#if defined(__clang__) || defined(__GNUC__)
+      static_assert(__builtin_popcountll(NL_KnownDependencyMask) == 2,
+                    "mask should only include four values");
+#endif
+      llvm_unreachable("mask only includes four values");
+    }
+  };
+
+  if (auto cascade = checkLookupCascading()) {
+    for (auto nominal : typeDecls) {
+      refTracker->addUsedMember({nominal, name.getBaseName()},
+                                *cascade);
+     }
+  }
 }
 
 //----------------------------------------------------------------------------//

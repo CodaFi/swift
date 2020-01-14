@@ -1975,6 +1975,10 @@ public:
   bool isCached() const { return true; }
   Optional<bool> getCachedResult() const;
   void cacheResult(bool result) const;
+
+public:
+  // Dependency source
+  SourceFile *getSourceFile() const;
 };
 
 /// Computes whether the specified type or a super-class/super-protocol has the

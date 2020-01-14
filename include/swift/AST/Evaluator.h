@@ -96,22 +96,6 @@ public:
 template <typename Request>
 char CyclicalRequestError<Request>::ID = '\0';
 
-/// Evaluates a given request or returns a default value if a cycle is detected.
-template <typename Request>
-typename Request::OutputType
-evaluateOrDefault(
-  Evaluator &eval, Request req, typename Request::OutputType def) {
-  auto result = eval(req);
-  if (auto err = result.takeError()) {
-    llvm::handleAllErrors(std::move(err),
-      [](const CyclicalRequestError<Request> &E) {
-        // cycle detected
-      });
-    return def;
-  }
-  return *result;
-}
-
 /// Report that a request of the given kind is being evaluated, so it
 /// can be recorded by the stats reporter.
 template<typename Request>
@@ -209,6 +193,8 @@ class Evaluator {
   /// A vector containing all of the active evaluation requests, which
   /// is treated as a stack and is used to detect cycles.
   llvm::SetVector<ActiveRequest> activeRequests;
+
+  llvm::SmallVector<SourceFile *, 2> activeSources;
 
   /// A cache that stores the results of requests.
   llvm::DenseMap<AnyRequest, AnyValue> cache;
@@ -417,6 +403,29 @@ private:
   }
 
 public:
+  template<
+    typename Request,
+    typename std::enable_if<Request::isSource> * = nullptr>
+  void pushDependencySource(const Request &request) {
+    activeSources.push_back(request.getSourceFile());
+  }
+
+  template<
+    typename Request,
+    typename std::enable_if<Request::isSource> * = nullptr>
+  void popDependencySource() {
+    activeSources.pop_back();
+  }
+
+  template<
+    typename Request,
+    typename std::enable_if<Request::isSink> * = nullptr>
+  SourceFile *getDependencySource() const {
+    assert(!activeSources.empty());
+    return activeSources.back();
+  }
+
+public:
   /// Print the dependencies of the given request as a tree.
   ///
   /// This is the core printing operation; most callers will want to use
@@ -449,6 +458,61 @@ public:
 
   SWIFT_DEBUG_DUMPER(dumpDependenciesGraphviz());
 };
+
+/// Evaluates a given request or returns a default value if a cycle is detected.
+template <typename Request,
+          typename std::enable_if<Request::isNeutral>::type * = nullptr>
+typename Request::OutputType
+evaluateOrDefault(
+  Evaluator &eval, Request req, typename Request::OutputType def) {
+  auto result = eval(req);
+  if (auto err = result.takeError()) {
+    llvm::handleAllErrors(std::move(err),
+      [](const CyclicalRequestError<Request> &E) {
+        // cycle detected
+      });
+    return def;
+  }
+  return *result;
+}
+
+/// Evaluates a given incremental request or returns a default value if a cycle is detected.
+template <typename Request,
+          typename std::enable_if<Request::isSource>::type * = nullptr>
+typename Request::OutputType
+evaluateOrDefault(
+  Evaluator &eval, Request req, typename Request::OutputType def) {
+  eval.Evaluator::template pushDependencySource<Request>(req);
+  auto result = eval(req);
+  if (auto err = result.takeError()) {
+    llvm::handleAllErrors(std::move(err),
+      [](const CyclicalRequestError<Request> &E) {
+        // cycle detected
+      });
+    return def;
+  }
+  eval.Evaluator::template popDependencySource<Request>();
+  return *result;
+}
+
+/// Evaluates a given incremental request or returns a default value if a cycle is detected.
+template <typename Request,
+          typename std::enable_if<Request::isSink>::type * = nullptr>
+typename Request::OutputType
+evaluateOrDefault(
+  Evaluator &eval, Request req, typename Request::OutputType def) {
+  auto result = eval(req);
+  if (auto err = result.takeError()) {
+    llvm::handleAllErrors(std::move(err),
+      [](const CyclicalRequestError<Request> &E) {
+        // cycle detected
+      });
+    return def;
+  }
+  auto *source = eval.template getDependencySource<Request>();
+  req.recordDependency(source);
+  return *result;
+}
 
 template <typename Request>
 void CyclicalRequestError<Request>::log(llvm::raw_ostream &out) const {

@@ -109,6 +109,7 @@ private:
 
   /// If non-null, used to track name lookups that happen within this file.
   Optional<ReferencedNameTracker> ReferencedNames;
+  Optional<ReferencedNameTracker> ReferencedNamesRequests;
 
   /// The class in this file marked \@NS/UIApplicationMain.
   ClassDecl *MainClass = nullptr;
@@ -387,6 +388,15 @@ public:
   const ReferencedNameTracker *getReferencedNameTracker() const {
     return ReferencedNames ? ReferencedNames.getPointer() : nullptr;
   }
+
+  ReferencedNameTracker *getReferencedNameTrackerForRequests() {
+    return ReferencedNamesRequests ? ReferencedNamesRequests.getPointer() : nullptr;
+  }
+  const ReferencedNameTracker *getReferencedNameTrackerForRequests() const {
+    return ReferencedNamesRequests ? ReferencedNamesRequests.getPointer() : nullptr;
+  }
+
+  void verifyReferencedNameTrackers();
 
   void createReferencedNameTracker();
 

@@ -383,6 +383,10 @@ private:
   // Evaluation.
   llvm::Expected<LookupResult> evaluate(Evaluator &evaluator,
                                         UnqualifiedLookupDescriptor desc) const;
+
+public:
+  // Dependency sink
+  void recordDependency(SourceFile *SF) const;
 };
 
 using QualifiedLookupResult = SmallVector<ValueDecl *, 4>;
@@ -406,6 +410,11 @@ private:
   evaluate(Evaluator &evaluator, const DeclContext *moduleOrFile, DeclName name,
            NLKind lookupKind, namelookup::ResolutionKind resolutionKind,
            const DeclContext *moduleScopeContext) const;
+
+
+public:
+  // Dependency sink
+  void recordDependency(SourceFile *SF) const;
 };
 
 /// Perform \c AnyObject lookup for a given member.
@@ -424,6 +433,10 @@ private:
                                                  const DeclContext *dc,
                                                  DeclNameRef name,
                                                  NLOptions options) const;
+
+public:
+  // Dependency sink
+  void recordDependency(SourceFile *SF) const;
 };
 
 class ModuleQualifiedLookupRequest
@@ -443,6 +456,10 @@ private:
                                                  const DeclContext *DC,
                                                  ModuleDecl *mod, DeclNameRef name,
                                                  NLOptions opts) const;
+
+public:
+  // Dependency sink
+  void recordDependency(SourceFile *SF) const;
 };
 
 class QualifiedLookupRequest
@@ -464,6 +481,10 @@ private:
            SmallVector<NominalTypeDecl *, 4> decls,
            DeclNameRef name,
            NLOptions opts) const;
+
+public:
+  // Dependency sink
+  void recordDependency(SourceFile *SF) const;
 };
 
 /// The input type for a direct lookup request.

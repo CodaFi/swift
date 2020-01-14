@@ -205,6 +205,8 @@ protected:
   const std::tuple<Inputs...> &getStorage() const { return storage; }
 
 public:
+  static const bool isNeutral = true;
+  
   static const bool isEverCached = (Caching != CacheKind::Uncached);
   static const bool hasExternalCache = (Caching == CacheKind::SeparatelyCached);
 
