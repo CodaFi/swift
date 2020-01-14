@@ -103,8 +103,9 @@ class ConformanceLookupTable {
     /// The given declaration context (nominal type declaration or
     /// extension thereof) explicitly specifies conformance to the
     /// protocol.
-    static ConformanceSource forExplicit(DeclContext *dc) {
-      return ConformanceSource(dc, ConformanceEntryKind::Explicit);
+    static ConformanceSource forExplicit(const DeclContext *dc) {
+      return ConformanceSource(const_cast<DeclContext *>(dc),
+                               ConformanceEntryKind::Explicit);
     }
 
     /// Create an implied conformance.
@@ -159,9 +160,9 @@ class ConformanceLookupTable {
 
     /// For an explicit conformance, retrieve the declaration context
     /// that specifies the conformance.
-    DeclContext *getExplicitDeclContext() const {
+    const DeclContext *getExplicitDeclContext() const {
       assert(getKind() == ConformanceEntryKind::Explicit);
-      return static_cast<DeclContext *>(Storage.getPointer());      
+      return static_cast<const DeclContext *>(Storage.getPointer());
     }
 
     /// For a synthesized conformance, retrieve the nominal type decl
@@ -180,7 +181,7 @@ class ConformanceLookupTable {
 
     /// Get the declaration context that this conformance will be
     /// associated with.
-    DeclContext *getDeclContext() const;
+    const DeclContext *getDeclContext() const;
   };
 
   /// An entry in the conformance table.
@@ -253,7 +254,7 @@ class ConformanceLookupTable {
     }
 
     /// Retrieve the declaration context associated with this conformance.
-    DeclContext *getDeclContext() const {
+    const DeclContext *getDeclContext() const {
       return Source.getDeclContext();
     }
 
@@ -307,12 +308,12 @@ class ConformanceLookupTable {
 
   /// List of all of the protocols to which a given context declares
   /// conformance, both explicitly and implicitly.
-  llvm::MapVector<DeclContext *, SmallVector<ConformanceEntry *, 4>>
+  llvm::MapVector<const DeclContext *, SmallVector<ConformanceEntry *, 4>>
     AllConformances;
 
   /// The complete set of diagnostics about erroneously superseded
   /// protocol conformances.
-  llvm::SmallDenseMap<DeclContext *, std::vector<ConformanceEntry *> >
+  llvm::SmallDenseMap<const DeclContext *, std::vector<ConformanceEntry *> >
     AllSupersededDiagnostics;
 
   /// Associates a conforming decl to its protocol conformance decls.
@@ -332,7 +333,8 @@ class ConformanceLookupTable {
                          ConformanceSource source);
 
   /// Expand the implied conformances for the given DeclContext.
-  void expandImpliedConformances(NominalTypeDecl *nominal, DeclContext *dc);
+  void expandImpliedConformances(NominalTypeDecl *nominal,
+                                 const DeclContext *dc);
 
   /// A three-way ordering
   enum class Ordering {
@@ -359,8 +361,8 @@ class ConformanceLookupTable {
   /// Retrieve the declaration context that provides the
   /// (non-inherited) conformance described by the given conformance
   /// entry.
-  DeclContext *getConformingContext(NominalTypeDecl *nominal,
-                                    ConformanceEntry *entry);
+  const DeclContext *getConformingContext(NominalTypeDecl *nominal,
+                                          ConformanceEntry *entry);
 
   /// Resolve the given conformance entry to an actual protocol conformance.
   ProtocolConformance *getConformance(NominalTypeDecl *nominal,
@@ -406,7 +408,7 @@ class ConformanceLookupTable {
 
   /// Load all of the protocol conformances for the given (serialized)
   /// declaration context.
-  void loadAllConformances(DeclContext *dc,
+  void loadAllConformances(const DeclContext *dc,
                            ArrayRef<ProtocolConformance *> conformances);
 
 public:
@@ -437,11 +439,14 @@ public:
 
   /// Look for all of the conformances within the given declaration context.
   void lookupConformances(NominalTypeDecl *nominal,
-                          DeclContext *dc,
+                          const DeclContext *dc,
                           ConformanceLookupKind lookupKind,
                           SmallVectorImpl<ProtocolDecl *> *protocols,
-                          SmallVectorImpl<ProtocolConformance *> *conformances,
-                          SmallVectorImpl<ConformanceDiagnostic> *diagnostics);
+                          SmallVectorImpl<ProtocolConformance *> *conformances);
+
+  std::vector<ConformanceDiagnostic>
+  lookupConformanceDiagnostics(NominalTypeDecl *nominal,
+                               const DeclContext *dc);
 
   /// Retrieve the complete set of protocols to which this nominal
   /// type conforms.

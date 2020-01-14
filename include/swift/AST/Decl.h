@@ -3322,6 +3322,7 @@ class NominalTypeDecl : public GenericTypeDecl, public IterableDeclContext {
   friend class ASTContext;
   friend class MemberLookupTable;
   friend class ConformanceLookupTable;
+  friend class ConformanceDiagnosticsRequest;
   friend class ExtensionDecl;
   friend class DeclContext;
   friend class IterableDeclContext;

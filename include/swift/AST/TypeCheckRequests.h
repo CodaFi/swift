@@ -2020,6 +2020,24 @@ public:
   }
 };
 
+class ConformanceDiagnosticsRequest
+    : public SimpleRequest<ConformanceDiagnosticsRequest,
+                           std::vector<ConformanceDiagnostic>(const DeclContext *),
+                           CacheKind::Uncached> {
+public:
+  using SimpleRequest::SimpleRequest;
+
+private:
+  friend SimpleRequest;
+
+  // Evaluation.
+  llvm::Expected<std::vector<ConformanceDiagnostic>>
+  evaluate(Evaluator &evaluator, const DeclContext *DC) const;
+
+public:
+  bool isCached() const { return true; }
+};
+
 // Allow AnyValue to compare two Type values, even though Type doesn't
 // support ==.
 template<>

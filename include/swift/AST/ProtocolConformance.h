@@ -114,7 +114,7 @@ public:
 
   /// Get the declaration context that contains the conforming extension or
   /// nominal type declaration.
-  DeclContext *getDeclContext() const;
+  const DeclContext *getDeclContext() const;
 
   /// Retrieve the state of this conformance.
   ProtocolConformanceState getState() const;
@@ -418,7 +418,7 @@ class NormalProtocolConformance : public RootProtocolConformance,
   /// NominalTypeDecl that declared the conformance.
   ///
   /// Also stores the "invalid" bit.
-  llvm::PointerIntPair<DeclContext *, 1, bool> ContextAndInvalid;
+  llvm::PointerIntPair<const DeclContext *, 1, bool> ContextAndInvalid;
 
   /// The reason that this conformance exists.
   ///
@@ -468,7 +468,7 @@ class NormalProtocolConformance : public RootProtocolConformance,
   friend class ASTContext;
 
   NormalProtocolConformance(Type conformingType, ProtocolDecl *protocol,
-                            SourceLoc loc, DeclContext *dc,
+                            SourceLoc loc, const DeclContext *dc,
                             ProtocolConformanceState state)
     : RootProtocolConformance(ProtocolConformanceKind::Normal, conformingType),
       ProtocolAndState(protocol, state), Loc(loc), ContextAndInvalid(dc, false)
@@ -490,7 +490,7 @@ public:
 
   /// Get the declaration context that contains the conforming extension or
   /// nominal type declaration.
-  DeclContext *getDeclContext() const {
+  const DeclContext *getDeclContext() const {
     return ContextAndInvalid.getPointer();
   }
 
@@ -663,7 +663,7 @@ public:
   }
 
   static void Profile(llvm::FoldingSetNodeID &ID, ProtocolDecl *protocol,
-                      DeclContext *dc) {
+                      const DeclContext *dc) {
     ID.AddPointer(protocol);
     ID.AddPointer(dc);
   }
@@ -845,7 +845,7 @@ public:
 
   /// Get the declaration context that contains the conforming extension or
   /// nominal type declaration.
-  DeclContext *getDeclContext() const {
+  const DeclContext *getDeclContext() const {
     return GenericConformance->getDeclContext();
   }
 
@@ -953,7 +953,7 @@ public:
 
   /// Get the declaration context that contains the conforming extension or
   /// nominal type declaration.
-  DeclContext *getDeclContext() const {
+  const DeclContext *getDeclContext() const {
     auto bgc = getType()->getClassOrBoundGenericClass();
 
     // In some cases, we may not have a BGC handy, in which case we should

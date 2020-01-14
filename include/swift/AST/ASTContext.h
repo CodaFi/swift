@@ -783,7 +783,7 @@ public:
   getConformance(Type conformingType,
                  ProtocolDecl *protocol,
                  SourceLoc loc,
-                 DeclContext *dc,
+                 const DeclContext *dc,
                  ProtocolConformanceState state);
 
   /// Produce a self-conformance for the given protocol.

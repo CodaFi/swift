@@ -16,6 +16,7 @@
 //===----------------------------------------------------------------------===//
 
 SWIFT_TYPEID(AncestryFlags)
+SWIFT_TYPEID(ConformanceDiagnostic)
 SWIFT_TYPEID(CtorInitializerKind)
 SWIFT_TYPEID(FunctionBuilderClosurePreCheck)
 SWIFT_TYPEID(GenericSignature)

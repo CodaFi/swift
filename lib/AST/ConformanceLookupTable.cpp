@@ -22,13 +22,15 @@
 #include "swift/AST/Module.h"
 #include "swift/AST/NameLookup.h"
 #include "swift/AST/SourceFile.h"
+#include "swift/AST/TypeCheckRequests.h"
 #include "swift/AST/ProtocolConformance.h"
 #include "swift/AST/ProtocolConformanceRef.h"
 #include "llvm/Support/SaveAndRestore.h"
 
 using namespace swift;
 
-DeclContext *ConformanceLookupTable::ConformanceSource::getDeclContext() const {
+const DeclContext *
+ConformanceLookupTable::ConformanceSource::getDeclContext() const {
   switch (getKind()) {
   case ConformanceEntryKind::Inherited:
     return getInheritingClass();
@@ -395,7 +397,7 @@ void ConformanceLookupTable::updateLookupTable(NominalTypeDecl *nominal,
 }
 
 void ConformanceLookupTable::loadAllConformances(
-       DeclContext *dc,
+       const DeclContext *dc,
        ArrayRef<ProtocolConformance*> conformances) {
   // If this declaration context came from source, there's nothing to
   // do here.
@@ -410,7 +412,7 @@ void ConformanceLookupTable::loadAllConformances(
 
 bool ConformanceLookupTable::addProtocol(ProtocolDecl *protocol, SourceLoc loc,
                                          ConformanceSource source) {
-  DeclContext *dc = source.getDeclContext();
+  auto *dc = source.getDeclContext();
   ASTContext &ctx = dc->getASTContext();
 
   // Determine the kind of conformance.
@@ -476,7 +478,7 @@ void ConformanceLookupTable::addInheritedProtocols(
 }
 
 void ConformanceLookupTable::expandImpliedConformances(NominalTypeDecl *nominal,
-                                                       DeclContext *dc) {
+                                                       const DeclContext *dc) {
   // Note: recursive type-checking implies that AllConformances
   // may be reallocated during this traversal, so pay the lookup cost
   // during each iteration.
@@ -677,7 +679,7 @@ ConformanceLookupTable::Ordering ConformanceLookupTable::compareConformances(
 bool ConformanceLookupTable::resolveConformances(ProtocolDecl *protocol) {
   // Find any entries that are superseded by other entries.
   ConformanceEntries &entries = Conformances[protocol];
-  llvm::SmallPtrSet<DeclContext *, 4> knownConformances;
+  llvm::SmallPtrSet<const DeclContext *, 4> knownConformances;
   bool anySuperseded = false;
   for (auto entry : entries) {
     // If this entry has a conformance associated with it, note that.
@@ -736,7 +738,8 @@ bool ConformanceLookupTable::resolveConformances(ProtocolDecl *protocol) {
   return anySuperseded;
 }
 
-DeclContext *ConformanceLookupTable::getConformingContext(
+const DeclContext *
+ConformanceLookupTable::getConformingContext(
                NominalTypeDecl *nominal,
                ConformanceEntry *entry) {
   ProtocolDecl *protocol = entry->getProtocol();
@@ -791,7 +794,7 @@ ConformanceLookupTable::getConformance(NominalTypeDecl *nominal,
   // FIXME: This is a hack to ensure that inherited conformances are
   // always "single step", which is bad for resilience but is assumed
   // elsewhere in the compiler.
-  DeclContext *conformingDC = getConformingContext(nominal, entry);
+  auto *conformingDC = getConformingContext(nominal, entry);
   if (!conformingDC)
     return nullptr;
 
@@ -951,13 +954,70 @@ bool ConformanceLookupTable::lookupConformance(
   return !conformances.empty();
 }
 
+llvm::Expected<std::vector<ConformanceDiagnostic>>
+ConformanceDiagnosticsRequest::evaluate(Evaluator &evaluator,
+                                        const DeclContext *DC) const {
+  using RetTy = llvm::Expected<std::vector<ConformanceDiagnostic>>;
+
+  NominalTypeDecl *nominal = DC->getSelfNominalTypeDecl();
+  if (!nominal)
+    return RetTy{std::vector<ConformanceDiagnostic>{}};
+
+  // Protocols only have self-conformances.
+  if (isa<ProtocolDecl>(nominal))
+    return RetTy{std::vector<ConformanceDiagnostic>{}};
+
+  nominal->prepareConformanceTable();
+  return nominal->ConformanceTable->lookupConformanceDiagnostics(nominal, DC);
+}
+
+std::vector<ConformanceDiagnostic>
+ConformanceLookupTable::lookupConformanceDiagnostics(
+       NominalTypeDecl *nominal,
+       const DeclContext *dc) {
+  std::vector<ConformanceDiagnostic> diagnostics;
+
+  // We need to expand all implied conformances before we can find
+  // those conformances that pertain to this declaration context.
+  updateLookupTable(nominal, ConformanceStage::ExpandedImplied);
+
+  /// Resolve conformances for each of the protocols to which this
+  /// declaration may provide a conformance. Only some of these will
+  /// result in conformances that are attributed to this declaration
+  /// context.
+  auto &potentialConformances = AllConformances[dc];
+  for (const auto &potential : potentialConformances) {
+    resolveConformances(potential->getProtocol());
+  }
+
+  // Gather any diagnostics we've produced.
+  auto knownDiags = AllSupersededDiagnostics.find(dc);
+  if (knownDiags != AllSupersededDiagnostics.end()) {
+    for (const auto *entry : knownDiags->second) {
+      ConformanceEntry *supersededBy = entry->getSupersededBy();
+
+      diagnostics.push_back({entry->getProtocol(),
+                             entry->getDeclaredLoc(),
+                             entry->getKind(),
+                             entry->getDeclaredConformance()->getProtocol(),
+                             supersededBy->getDeclContext(),
+                             supersededBy->getKind(),
+                             supersededBy->getDeclaredConformance()
+                               ->getProtocol()});
+    }
+
+    // We have transferred these diagnostics; erase them.
+    AllSupersededDiagnostics.erase(knownDiags);
+  }
+  return diagnostics;
+}
+
 void ConformanceLookupTable::lookupConformances(
        NominalTypeDecl *nominal,
-       DeclContext *dc,
+       const DeclContext *dc,
        ConformanceLookupKind lookupKind,
        SmallVectorImpl<ProtocolDecl *> *protocols,
-       SmallVectorImpl<ProtocolConformance *> *conformances,
-       SmallVectorImpl<ConformanceDiagnostic> *diagnostics) {
+       SmallVectorImpl<ProtocolConformance *> *conformances) {
   // We need to expand all implied conformances before we can find
   // those conformances that pertain to this declaration context.
   updateLookupTable(nominal, ConformanceStage::ExpandedImplied);
@@ -1017,28 +1077,6 @@ void ConformanceLookupTable::lookupConformances(
                      return false;
                    }),
     potentialConformances.end());
-
-  // Gather any diagnostics we've produced.
-  if (diagnostics) {
-    auto knownDiags = AllSupersededDiagnostics.find(dc);
-    if (knownDiags != AllSupersededDiagnostics.end()) {
-      for (const auto *entry : knownDiags->second) {
-        ConformanceEntry *supersededBy = entry->getSupersededBy();
-
-        diagnostics->push_back({entry->getProtocol(), 
-                                entry->getDeclaredLoc(),
-                                entry->getKind(),
-                                entry->getDeclaredConformance()->getProtocol(),
-                                supersededBy->getDeclContext(),
-                                supersededBy->getKind(),
-                                supersededBy->getDeclaredConformance()
-                                  ->getProtocol()});
-      }
-
-      // We have transferred these diagnostics; erase them.
-      AllSupersededDiagnostics.erase(knownDiags);
-    }
-  }
 }
 
 void ConformanceLookupTable::getAllProtocols(

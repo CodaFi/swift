@@ -227,7 +227,7 @@ ProtocolDecl *ProtocolConformance::getProtocol() const {
   CONFORMANCE_SUBCLASS_DISPATCH(getProtocol, ())
 }
 
-DeclContext *ProtocolConformance::getDeclContext() const {
+const DeclContext *ProtocolConformance::getDeclContext() const {
   CONFORMANCE_SUBCLASS_DISPATCH(getDeclContext, ())
 }
 
@@ -1327,10 +1327,7 @@ NominalTypeDecl::getSatisfiedProtocolRequirementsForMember(
 }
 
 SmallVector<ProtocolDecl *, 2>
-DeclContext::getLocalProtocols(
-  ConformanceLookupKind lookupKind,
-  SmallVectorImpl<ConformanceDiagnostic> *diagnostics) const
-{
+DeclContext::getLocalProtocols(ConformanceLookupKind lookupKind) const {
   SmallVector<ProtocolDecl *, 2> result;
 
   // Dig out the nominal type.
@@ -1345,17 +1342,13 @@ DeclContext::getLocalProtocols(
     const_cast<DeclContext *>(this),
     lookupKind,
     &result,
-    nullptr,
-    diagnostics);
+    nullptr);
 
   return result;
 }
 
 SmallVector<ProtocolConformance *, 2>
-DeclContext::getLocalConformances(
-  ConformanceLookupKind lookupKind,
-  SmallVectorImpl<ConformanceDiagnostic> *diagnostics) const
-{
+DeclContext::getLocalConformances(ConformanceLookupKind lookupKind) const {
   SmallVector<ProtocolConformance *, 2> result;
 
   // Dig out the nominal type.
@@ -1377,8 +1370,7 @@ DeclContext::getLocalConformances(
     const_cast<DeclContext *>(this),
     lookupKind,
     nullptr,
-    &result,
-    diagnostics);
+    &result);
 
   return result;
 }

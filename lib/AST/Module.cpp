@@ -877,7 +877,7 @@ ProtocolConformanceRef ModuleDecl::lookupConformance(Type type,
   if (type->isSpecialized()) {
     // Figure out the type that's explicitly conforming to this protocol.
     Type explicitConformanceType = conformance->getType();
-    DeclContext *explicitConformanceDC = conformance->getDeclContext();
+    const DeclContext *explicitConformanceDC = conformance->getDeclContext();
 
     // If the explicit conformance is associated with a type that is different
     // from the type we're checking, retrieve generic conformance.

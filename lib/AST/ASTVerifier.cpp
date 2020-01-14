@@ -190,11 +190,11 @@ class Verifier : public ASTWalker {
   SmallVector<DeclContext *, 4> Functions;
 
   /// The stack of scopes we're visiting.
-  using ScopeLike = llvm::PointerUnion<DeclContext *, BraceStmt *>;
+  using ScopeLike = llvm::PointerUnion<const DeclContext *, BraceStmt *>;
   SmallVector<ScopeLike, 4> Scopes;
 
   /// The stack of generic contexts.
-  using GenericLike = llvm::PointerUnion<DeclContext *, GenericSignature>;
+  using GenericLike = llvm::PointerUnion<const DeclContext *, GenericSignature>;
   SmallVector<GenericLike, 2> Generics;
 
   /// The stack of optional evaluations active at this point.
@@ -225,12 +225,13 @@ class Verifier : public ASTWalker {
   /// ("canonicalized") local DeclContext* and a flag for whether to
   /// use the explicit closure sequence (false) or the implicit
   /// closure sequence (true).
-  typedef llvm::PointerIntPair<DeclContext *, 1, bool> ClosureDiscriminatorKey;
+  typedef llvm::PointerIntPair<const DeclContext *, 1, bool>
+      ClosureDiscriminatorKey;
   llvm::DenseMap<ClosureDiscriminatorKey, SmallBitVector>
       ClosureDiscriminators;
-  DeclContext *CanonicalTopLevelContext = nullptr;
+  const DeclContext *CanonicalTopLevelContext = nullptr;
 
-  Verifier(PointerUnion<ModuleDecl *, SourceFile *> M, DeclContext *DC)
+  Verifier(PointerUnion<ModuleDecl *, SourceFile *> M, const DeclContext *DC)
       : M(M),
         Ctx(M.is<ModuleDecl *>() ? M.get<ModuleDecl *>()->getASTContext()
                                  : M.get<SourceFile *>()->getASTContext()),
@@ -239,9 +240,9 @@ class Verifier : public ASTWalker {
   }
 
 public:
-  Verifier(ModuleDecl *M, DeclContext *DC)
+  Verifier(ModuleDecl *M, const DeclContext *DC)
       : Verifier(PointerUnion<ModuleDecl *, SourceFile *>(M), DC) {}
-  Verifier(SourceFile &SF, DeclContext *DC) : Verifier(&SF, DC) {}
+  Verifier(SourceFile &SF, const DeclContext *DC) : Verifier(&SF, DC) {}
 
   static Verifier forDecl(const Decl *D) {
     DeclContext *DC = D->getDeclContext();
@@ -631,7 +632,7 @@ public:
 
           auto genericCtx = Generics.back();
           GenericSignature genericSig;
-          if (auto *genericDC = genericCtx.dyn_cast<DeclContext *>())
+          if (auto *genericDC = genericCtx.dyn_cast<const DeclContext *>())
             genericSig = genericDC->getGenericSignatureOfContext();
           else
             genericSig = genericCtx.get<GenericSignature>();
@@ -695,7 +696,7 @@ public:
 
     // Specialized verifiers.
 
-    void pushScope(DeclContext *scope) {
+    void pushScope(const DeclContext *scope) {
       Scopes.push_back(scope);
       Generics.push_back(scope);
     }
@@ -703,8 +704,8 @@ public:
       Scopes.push_back(scope);
     }
     void popScope(DeclContext *scope) {
-      assert(Scopes.back().get<DeclContext*>() == scope);
-      assert(Generics.back().get<DeclContext*>() == scope);
+      assert(Scopes.back().get<const DeclContext *>() == scope);
+      assert(Generics.back().get<const DeclContext *>() == scope);
       Scopes.pop_back();
       Generics.pop_back();
     }
@@ -903,7 +904,7 @@ public:
     /// Canonicalize the given DeclContext pointer, in terms of
     /// producing something that can be looked up in
     /// ClosureDiscriminators.
-    DeclContext *getCanonicalDeclContext(DeclContext *DC) {
+    const DeclContext *getCanonicalDeclContext(DeclContext *DC) {
       // All we really need to do is use a single TopLevelCodeDecl.
       if (auto topLevel = dyn_cast<TopLevelCodeDecl>(DC)) {
         if (!CanonicalTopLevelContext)
@@ -1192,7 +1193,7 @@ public:
     void verifyChecked(AbstractClosureExpr *E) {
       PrettyStackTraceExpr debugStack(Ctx, "verifying closure", E);
 
-      assert(Scopes.back().get<DeclContext*>() == E);
+      assert(Scopes.back().get<const DeclContext *>() == E);
       assert(E->getParent()->isLocalContext() &&
              "closure expression was not in local context!");
 
@@ -1215,7 +1216,7 @@ public:
       // then the closure should be parented by an Initializer.  Otherwise,
       // it should be parented by the innermost function.
       auto enclosingScope = Scopes[Scopes.size() - 2];
-      auto enclosingDC = enclosingScope.dyn_cast<DeclContext*>();
+      auto enclosingDC = enclosingScope.dyn_cast<const DeclContext *>();
       if (enclosingDC && !isa<AbstractClosureExpr>(enclosingDC)
           && !(isa<SourceFile>(enclosingDC)
                && cast<SourceFile>(enclosingDC)->Kind == SourceFileKind::REPL)){

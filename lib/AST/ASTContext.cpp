@@ -1843,7 +1843,7 @@ NormalProtocolConformance *
 ASTContext::getConformance(Type conformingType,
                            ProtocolDecl *protocol,
                            SourceLoc loc,
-                           DeclContext *dc,
+                           const DeclContext *dc,
                            ProtocolConformanceState state) {
   assert(dc->isTypeContext());
 

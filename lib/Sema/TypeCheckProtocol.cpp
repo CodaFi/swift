@@ -4890,9 +4890,7 @@ void TypeChecker::checkConformancesInContext(DeclContext *dc,
     tracker = SF->getReferencedNameTracker();
 
   // Check each of the conformances associated with this context.
-  SmallVector<ConformanceDiagnostic, 4> diagnostics;
-  auto conformances = dc->getLocalConformances(ConformanceLookupKind::All,
-                                               &diagnostics);
+  auto conformances = dc->getLocalConformances(ConformanceLookupKind::All);
 
   // The conformance checker bundle that checks all conformances in the context.
   auto &Context = dc->getASTContext();
@@ -4948,6 +4946,8 @@ void TypeChecker::checkConformancesInContext(DeclContext *dc,
     unsatisfiedReqs(groupChecker.getUnsatisfiedRequirements().begin(),
                     groupChecker.getUnsatisfiedRequirements().end());
 
+  auto diagnostics = evaluateOrDefault(Context.evaluator,
+                                       ConformanceDiagnosticsRequest{dc}, {});
   // Diagnose any conflicts attributed to this declaration context.
   for (const auto &diag : diagnostics) {
     // Figure out the declaration of the existing conformance.

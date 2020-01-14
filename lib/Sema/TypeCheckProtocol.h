@@ -722,7 +722,7 @@ class AssociatedTypeInference {
 
   /// The declaration context in which conformance to the protocol is
   /// declared.
-  DeclContext *dc;
+  const DeclContext *dc;
 
   /// The type that is adopting the protocol.
   Type adoptee;
