@@ -86,6 +86,10 @@ FRONTEND_STATISTIC(Frontend, NumInstructionsExecuted)
 /// Maximum number of bytes allocated via malloc.
 FRONTEND_STATISTIC(Frontend, MaxMallocUsage)
 
+#define SWIFT_REQUEST(ZONE, NAME, Sig, Caching, LocOptions) FRONTEND_STATISTIC(FrontendTool, NAME)
+#include "swift/AST/FrontendToolTypeIDZone.def"
+#undef SWIFT_REQUEST
+
 /// Number of source buffers visible in the source manager.
 FRONTEND_STATISTIC(AST, NumSourceBuffers)
 

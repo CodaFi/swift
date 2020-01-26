@@ -45,6 +45,7 @@ add_swift_host_library(swiftAST STATIC
   Expr.cpp
   FineGrainedDependencies.cpp
   FineGrainedDependenciesSourceFileDepGraphConstructor.cpp
+  FrontendToolRequests.cpp
   GenericEnvironment.cpp
   GenericSignature.cpp
   GenericSignatureBuilder.cpp

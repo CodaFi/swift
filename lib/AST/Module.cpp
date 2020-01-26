@@ -1895,6 +1895,12 @@ void FileUnit::getTopLevelDeclsWhereAttributesMatch(
   Results.erase(newEnd, Results.end());
 }
 
+void swift::simple_display(llvm::raw_ostream &out, const FileUnit *unit) {}
+
+SourceLoc swift::extractNearestSourceLoc(const FileUnit *unit) {
+  return SourceLoc();
+}
+
 StringRef LoadedFile::getFilename() const {
   return "";
 }

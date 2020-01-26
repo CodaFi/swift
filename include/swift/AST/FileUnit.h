@@ -267,6 +267,9 @@ public:
                      unsigned Alignment = alignOfFileUnit());
 };
 
+void simple_display(llvm::raw_ostream &out, const FileUnit *unit);
+SourceLoc extractNearestSourceLoc(const FileUnit *unit);
+
 static inline unsigned alignOfFileUnit() {
   return alignof(FileUnit&);
 }

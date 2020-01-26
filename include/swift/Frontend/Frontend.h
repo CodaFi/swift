@@ -383,6 +383,9 @@ public:
                               bool moduleIsPublic) const;
 };
 
+void simple_display(llvm::raw_ostream &out, const CompilerInvocation *invoke);
+SourceLoc extractNearestSourceLoc(const CompilerInvocation *invoke);
+
 /// A class which manages the state and execution of the compiler.
 /// This owns the primary compiler singletons, such as the ASTContext,
 /// as well as various build products such as the SILModule.
@@ -694,6 +697,9 @@ public:
                           const SourceFile *primaryFile,
                           StringRef outputPath) const;
 };
+
+void simple_display(llvm::raw_ostream &out, const CompilerInstance *instance);
+SourceLoc extractNearestSourceLoc(const CompilerInstance *instance);
 
 } // namespace swift
 

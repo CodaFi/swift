@@ -584,6 +584,7 @@ ASTContext::ASTContext(LangOptions &langOpts, TypeCheckerOptions &typeckOpts,
     getImpl().SearchPathsSet[framepath.Path] |= SearchPathKind::Framework;
 
   // Register any request-evaluator functions available at the AST layer.
+  registerFrontendToolRequestFunctions(evaluator);
   registerAccessRequestFunctions(evaluator);
   registerNameLookupRequestFunctions(evaluator);
 }

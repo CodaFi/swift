@@ -1623,3 +1623,17 @@ CompilerInvocation::setUpInputForSILTool(
   }
   return fileBufOrErr;
 }
+
+void swift::simple_display(llvm::raw_ostream &out,
+                           const CompilerInvocation *invoke) {}
+
+SourceLoc swift::extractNearestSourceLoc(const CompilerInvocation *invoke) {
+  return SourceLoc();
+}
+
+void swift::simple_display(llvm::raw_ostream &out,
+                           const CompilerInstance *instance) {}
+
+SourceLoc swift::extractNearestSourceLoc(const CompilerInstance *instance) {
+  return SourceLoc();
+}

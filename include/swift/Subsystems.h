@@ -359,6 +359,11 @@ namespace swift {
     Implementation &Impl;
   };
 
+  /// Register FrontendTool-level request functions with the evaluator.
+  ///
+  /// The ASTContext will automatically call these upon construction.
+  void registerFrontendToolRequestFunctions(Evaluator &evaluator);
+
   /// Register AST-level request functions with the evaluator.
   ///
   /// The ASTContext will automatically call these upon construction.
