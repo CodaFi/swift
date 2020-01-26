@@ -25,15 +25,15 @@
 #include "ReferenceDependencies.h"
 #include "TBD.h"
 
-#include "swift/Subsystems.h"
+#include "swift/AST/ASTMangler.h"
 #include "swift/AST/DiagnosticsFrontend.h"
 #include "swift/AST/DiagnosticsSema.h"
 #include "swift/AST/FileSystem.h"
 #include "swift/AST/FineGrainedDependencies.h"
+#include "swift/AST/FrontendToolRequests.h"
 #include "swift/AST/GenericSignatureBuilder.h"
 #include "swift/AST/IRGenOptions.h"
 #include "swift/AST/NameLookup.h"
-#include "swift/AST/ASTMangler.h"
 #include "swift/AST/ReferencedNameTracker.h"
 #include "swift/AST/TypeRefinementContext.h"
 #include "swift/Basic/Dwarf.h"
@@ -50,19 +50,20 @@
 #include "swift/Basic/UUID.h"
 #include "swift/Frontend/DiagnosticVerifier.h"
 #include "swift/Frontend/Frontend.h"
-#include "swift/Frontend/PrintingDiagnosticConsumer.h"
-#include "swift/Frontend/SerializedDiagnosticConsumer.h"
 #include "swift/Frontend/ModuleInterfaceLoader.h"
 #include "swift/Frontend/ModuleInterfaceSupport.h"
+#include "swift/Frontend/PrintingDiagnosticConsumer.h"
+#include "swift/Frontend/SerializedDiagnosticConsumer.h"
 #include "swift/Immediate/Immediate.h"
 #include "swift/Index/IndexRecord.h"
-#include "swift/Option/Options.h"
 #include "swift/Migrator/FixitFilter.h"
 #include "swift/Migrator/Migrator.h"
+#include "swift/Option/Options.h"
 #include "swift/PrintAsObjC/PrintAsObjC.h"
+#include "swift/SILOptimizer/PassManager/Passes.h"
 #include "swift/Serialization/SerializationOptions.h"
 #include "swift/Serialization/SerializedModuleLoader.h"
-#include "swift/SILOptimizer/PassManager/Passes.h"
+#include "swift/Subsystems.h"
 #include "swift/Syntax/Serialization/SyntaxSerialization.h"
 #include "swift/Syntax/SyntaxNodes.h"
 #include "swift/TBDGen/TBDGen.h"
@@ -1074,6 +1075,25 @@ static bool writeLdAddCFileIfNeeded(const CompilerInvocation &Invocation,
   return false;
 }
 
+llvm::Expected<SILModule *>
+GenerateSILRequest::evaluate(Evaluator &evaluator,
+                             const CompilerInvocation *Invocation,
+                             CompilerInstance *Instance) const {
+  assert(!Invocation->getFrontendOptions().InputsAndOutputs.hasPrimaryInputs());
+  return performSILGeneration(Instance->getMainModule(),
+                              Instance->getSILTypes(),
+                              Invocation->getSILOptions())
+      .release();
+}
+
+llvm::Expected<SILModule *> GenerateSILForSourceFileRequest::evaluate(
+    Evaluator &evaluator, FileUnit *fileUnit,
+    const CompilerInvocation *Invocation, CompilerInstance *Instance) const {
+  return performSILGeneration(*fileUnit, Instance->getSILTypes(),
+                              Invocation->getSILOptions())
+      .release();
+}
+
 static bool performCompileStepsPostSILGen(
     CompilerInstance &Instance, const CompilerInvocation &Invocation,
     std::unique_ptr<SILModule> SM, bool astGuaranteedToCorrespondToSIL,
@@ -1097,8 +1117,8 @@ performCompileStepsPostSema(const CompilerInvocation &Invocation,
                                          ReturnValue, observer, Stats);
   }
 
-  const SILOptions &SILOpts = Invocation.getSILOptions();
   const FrontendOptions &opts = Invocation.getFrontendOptions();
+  auto &ctx = mod->getASTContext();
   auto fileIsSIB = [](const FileUnit *File) -> bool {
     auto SASTF = dyn_cast<SerializedASTFile>(File);
     return SASTF && SASTF->isSIB();
@@ -1107,15 +1127,16 @@ performCompileStepsPostSema(const CompilerInvocation &Invocation,
   if (!opts.InputsAndOutputs.hasPrimaryInputs()) {
     // If there are no primary inputs the compiler is in WMO mode and builds one
     // SILModule for the entire module.
-    auto SM = performSILGeneration(mod, Instance.getSILTypes(), SILOpts);
+    auto SM = evaluateOrDefault(
+        ctx.evaluator, GenerateSILRequest{&Invocation, &Instance}, nullptr);
     const PrimarySpecificPaths PSPs =
         Instance.getPrimarySpecificPathsForWholeModuleOptimizationMode();
     bool astGuaranteedToCorrespondToSIL =
         llvm::none_of(mod->getFiles(), fileIsSIB);
-    return performCompileStepsPostSILGen(Instance, Invocation, std::move(SM),
-                                         astGuaranteedToCorrespondToSIL,
-                                         mod, PSPs, moduleIsPublic,
-                                         ReturnValue, observer, Stats);
+    return performCompileStepsPostSILGen(
+        Instance, Invocation, std::unique_ptr<SILModule>{SM},
+        astGuaranteedToCorrespondToSIL, mod, PSPs, moduleIsPublic, ReturnValue,
+        observer, Stats);
   }
   // If there are primary source files, build a separate SILModule for
   // each source file, and run the remaining SILOpt-Serialize-IRGen-LLVM
@@ -1123,13 +1144,16 @@ performCompileStepsPostSema(const CompilerInvocation &Invocation,
   if (!Instance.getPrimarySourceFiles().empty()) {
     bool result = false;
     for (auto *PrimaryFile : Instance.getPrimarySourceFiles()) {
-      auto SM = performSILGeneration(*PrimaryFile, Instance.getSILTypes(), SILOpts);
+      auto SM = evaluateOrDefault(
+          ctx.evaluator,
+          GenerateSILForSourceFileRequest{PrimaryFile, &Invocation, &Instance},
+          nullptr);
       const PrimarySpecificPaths PSPs =
           Instance.getPrimarySpecificPathsForSourceFile(*PrimaryFile);
-      result |= performCompileStepsPostSILGen(Instance, Invocation, std::move(SM),
-                                              /*ASTGuaranteedToCorrespondToSIL*/true,
-                                              PrimaryFile, PSPs, moduleIsPublic,
-                                              ReturnValue, observer, Stats);
+      result |= performCompileStepsPostSILGen(
+          Instance, Invocation, std::unique_ptr<SILModule>{SM},
+          /*ASTGuaranteedToCorrespondToSIL*/ true, PrimaryFile, PSPs,
+          moduleIsPublic, ReturnValue, observer, Stats);
     }
 
     return result;
@@ -1142,13 +1166,16 @@ performCompileStepsPostSema(const CompilerInvocation &Invocation,
     if (auto SASTF = dyn_cast<SerializedASTFile>(fileUnit))
       if (Invocation.getFrontendOptions().InputsAndOutputs.isInputPrimary(
               SASTF->getFilename())) {
-        auto SM = performSILGeneration(*SASTF, Instance.getSILTypes(), SILOpts);
+        auto SM = evaluateOrDefault(
+            ctx.evaluator,
+            GenerateSILForSourceFileRequest{SASTF, &Invocation, &Instance},
+            nullptr);
         const PrimarySpecificPaths &PSPs =
             Instance.getPrimarySpecificPathsForPrimary(SASTF->getFilename());
-        result |= performCompileStepsPostSILGen(Instance, Invocation, std::move(SM),
-                                                !fileIsSIB(SASTF),
-                                                mod, PSPs, moduleIsPublic,
-                                                ReturnValue, observer, Stats);
+        result |= performCompileStepsPostSILGen(
+            Instance, Invocation, std::unique_ptr<SILModule>{SM},
+            !fileIsSIB(SASTF), mod, PSPs, moduleIsPublic, ReturnValue, observer,
+            Stats);
       }
   }
 
