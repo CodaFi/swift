@@ -2,7 +2,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2019 Apple Inc. and the Swift project authors
+// Copyright (c) 2020 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -20,7 +20,7 @@
 using namespace swift;
 
 namespace swift {
-// Implement the FrontendTool type zone (zone 12).
+// Implement the FrontendTool type zone (zone 20).
 #define SWIFT_TYPEID_ZONE FrontendTool
 #define SWIFT_TYPEID_HEADER "swift/AST/FrontendToolTypeIDZone.def"
 #include "swift/Basic/ImplementTypeIDZone.h"
@@ -29,7 +29,7 @@ namespace swift {
 } // end namespace swift
 
 // Define request evaluation functions for each of the FrontendTool requests.
-static AbstractRequestFunction *FrontendToolRequestFunctions[] = {
+static AbstractRequestFunction *frontendToolRequestFunctions[] = {
 #define SWIFT_REQUEST(Zone, Name, Sig, Caching, LocOptions)                    \
   reinterpret_cast<AbstractRequestFunction *>(&Name::evaluateRequest),
 #include "swift/AST/FrontendToolTypeIDZone.def"
@@ -38,5 +38,5 @@ static AbstractRequestFunction *FrontendToolRequestFunctions[] = {
 
 void swift::registerFrontendToolRequestFunctions(Evaluator &evaluator) {
   evaluator.registerRequestFunctions(Zone::FrontendTool,
-                                     FrontendToolRequestFunctions);
+                                     frontendToolRequestFunctions);
 }
