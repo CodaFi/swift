@@ -30,14 +30,14 @@ namespace swift {
 template<>
 struct SipHasher::Combiner<Identifier> {
   static void combine(SipHasher &hasher, const Identifier &ident) {
-    hasher.combine(ident.str().begin(), ident.str().end());
+    hasher.combine_range(ident.str().begin(), ident.str().end());
   }
 };
 
 template<>
 struct SipHasher::Combiner<StringRef> {
   static void combine(SipHasher &hasher, const StringRef &str) {
-    hasher.combine(str.begin(), str.end());
+    hasher.combine_range(str.begin(), str.end());
   }
 };
 
@@ -49,7 +49,7 @@ StablePathRequest::evaluate(Evaluator &evaluator, const Decl *decl) const {
 
   auto parentPath = evaluateOrDefault(evaluator,
                                       StablePathRequest{DC->getAsDecl()},
-                                      StablePath::root());
+                                      StablePath::root(StringRef()));
   switch (decl->getKind()) {
   // MARK: Ignored
   case DeclKind::TopLevelCode:

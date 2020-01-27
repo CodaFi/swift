@@ -77,14 +77,14 @@ private:
   template <typename T>
   static uint64_t hash_all(const T &arg) {
     auto hasher = StableHasher::defaultHasher();
-    hasher.combine(std::forward<T>(arg));
+    hasher.combine(arg);
     return std::move(hasher).finalize();
   }
 
   template <typename T, typename ...Ts>
   static uint64_t hash_all(const T &arg, const Ts &...args) {
     auto hasher = StableHasher::defaultHasher();
-    hasher.combine(std::forward<T>(arg), std::forward<Ts>(args)...);
+    hasher.combine(arg, args...);
     return std::move(hasher).finalize();
   }
 

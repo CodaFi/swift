@@ -222,10 +222,6 @@ bool CompilerInstance::setUpASTContextIfNeeded() {
   registerSILGenRequestFunctions(Context->evaluator);
   registerTBDGenRequestFunctions(Context->evaluator);
 
-  if (FrontendOptions::doesActionGenerateSIL(Invocation.getFrontendOptions().RequestedAction)) {
-    registerSILGenRequestFunctions(Context->evaluator);
-  }
-
   // Migrator, indexing and typo correction need some IDE requests.
   // The integrated REPL needs IDE requests for completion.
   if (Invocation.getMigratorOptions().shouldRunMigrator() ||

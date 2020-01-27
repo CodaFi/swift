@@ -53,7 +53,6 @@ namespace swift {
   class SILParserTUStateBase;
   class ScopeInfo;
   class SourceManager;
-  class StablePathBuilder;
   class TupleType;
   struct TypeLoc;
   

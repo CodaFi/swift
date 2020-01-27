@@ -17,6 +17,7 @@
 #define SWIFT_NAME_LOOKUP_REQUESTS_H
 
 #include "swift/AST/IncrementalRequest.h"
+#include "swift/AST/Decl.h"
 #include "llvm/ADT/TinyPtrVector.h"
 
 namespace swift {
@@ -535,6 +536,7 @@ private:
   llvm::Expected<TinyPtrVector<ValueDecl *>>
   evaluate(Evaluator &evaluator, DirectLookupDescriptor desc) const;
 
+public:
   // Dependency sink
   void recordDependency(SourceFile *SF) const;
 };

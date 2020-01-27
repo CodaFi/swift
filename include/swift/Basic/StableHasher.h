@@ -114,25 +114,25 @@ public:
   }
 
   template <typename ValueT>
-  void combine_range(ValueT *first, ValueT *last) {
+  void combine_range(ValueT first, ValueT last) {
     if (first == last) {
       return combine(0);
     }
 
     do {
-      combine(first++);
+      combine(*first++);
     } while (first != last);
   }
 
   template <typename ...Ts>
   void combine(const std::tuple<Ts...> &arg) {
-    return combine_tuple(arg, typename llvm::MakeUnsignedConstantIndexSet<0, sizeof...(Ts)>::Type());
+    return combine_tuple(arg, typename std::index_sequence_for<Ts...>{});
   }
 
 private:
   template <typename ...Ts, unsigned ...Indices>
   void combine_tuple(const std::tuple<Ts...> &arg,
-                     llvm::UnsignedConstantIndexSet<Indices...> indices) {
+                     std::index_sequence<Indices...> indices) {
     return combine_many(hash_value(std::get<Indices>(arg))...);
   }
 
