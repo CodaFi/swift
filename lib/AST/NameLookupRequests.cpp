@@ -350,6 +350,16 @@ SourceLoc swift::extractNearestSourceLoc(const DirectLookupDescriptor &desc) {
   return extractNearestSourceLoc(desc.DC);
 }
 
+void DirectLookupRequest::recordDependency(SourceFile *SF) const {
+  auto &desc = std::get<0>(getStorage());
+  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  if (!refTracker)
+    return;
+
+  refTracker->addUsedMember({desc.DC, desc.Name.getBaseName()},
+                            /*cascade*/ true);
+}
+
 //----------------------------------------------------------------------------//
 // StablePathRequest computation.
 //----------------------------------------------------------------------------//

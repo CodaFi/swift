@@ -521,11 +521,12 @@ void simple_display(llvm::raw_ostream &out, const DirectLookupDescriptor &desc);
 SourceLoc extractNearestSourceLoc(const DirectLookupDescriptor &desc);
 
 class DirectLookupRequest
-    : public SimpleRequest<DirectLookupRequest,
-                           TinyPtrVector<ValueDecl *>(DirectLookupDescriptor),
-                           CacheKind::Uncached> {
+    : public IncrementalRequest<DirectLookupRequest,
+                                TinyPtrVector<ValueDecl *>(
+                                    DirectLookupDescriptor),
+                                CacheKind::Uncached, DependencyKind::Sink> {
 public:
-  using SimpleRequest::SimpleRequest;
+  using IncrementalRequest::IncrementalRequest;
 
 private:
   friend SimpleRequest;
@@ -533,6 +534,9 @@ private:
   // Evaluation.
   llvm::Expected<TinyPtrVector<ValueDecl *>>
   evaluate(Evaluator &evaluator, DirectLookupDescriptor desc) const;
+
+  // Dependency sink
+  void recordDependency(SourceFile *SF) const;
 };
 
 class StablePathRequest
