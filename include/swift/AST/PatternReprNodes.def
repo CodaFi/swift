@@ -1,0 +1,52 @@
+//===--- PatternNodes.def - Swift Pattern AST Metaprogramming ---*- C++ -*-===//
+//
+// This source file is part of the Swift.org open source project
+//
+// Copyright (c) 2020 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for the list of Swift project authors
+//
+//===----------------------------------------------------------------------===//
+//
+// This file defines macros used for macro-metaprogramming with patterns.
+//
+//===----------------------------------------------------------------------===//
+
+/// PATTERNREPR(Id, Parent)
+///   The pattern's enumerator value is PatternKind::Id.  The pattern's
+///   class name is Id##Pattern, and the name of its base class is Parent.
+#ifndef PATTERNREPR
+# error Included PatternNodes.def without defining PATTERNREPR!
+#endif
+
+/// REFUTABLE_PATTERNREPR(Id, Parent)
+///   Matching this pattern can fail. These patterns cannot appear syntactically
+///   in variable declarations, assignments, or function declarations.
+#ifndef REFUTABLE_PATTERNREPR
+# define REFUTABLE_PATTERNREPR(Id, Parent) PATTERNREPR(Id, Parent)
+#endif
+
+#ifndef LAST_PATTERNREPR
+#define LAST_PATTERNREPR(Id)
+#endif
+
+// Metavars: x (variable), pat (pattern), e (expression)
+PATTERNREPR(Paren, Pattern) // (pat)
+PATTERNREPR(Tuple, Pattern) // (pat1, ..., patN), N >= 1
+PATTERNREPR(Named, Pattern) // let pat, var pat
+PATTERNREPR(Any, Pattern)   // _
+PATTERNREPR(Typed, Pattern) // pat : type
+PATTERNREPR(Var, Pattern)   // x
+REFUTABLE_PATTERNREPR(Is, Pattern)           // x is myclass
+REFUTABLE_PATTERNREPR(EnumElement, Pattern)  // .mycase(pat1, ..., patN)
+                                             // MyType.mycase(pat1, ..., patN)
+REFUTABLE_PATTERNREPR(OptionalSome, Pattern) // pat?  nil
+REFUTABLE_PATTERNREPR(Bool, Pattern)         // true, false
+REFUTABLE_PATTERNREPR(Expr, Pattern)         // e
+LAST_PATTERNREPR(Expr)
+
+#undef REFUTABLE_PATTERNREPR
+#undef PATTERNREPR
+#undef LAST_PATTERNREPR

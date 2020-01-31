@@ -22,7 +22,8 @@
 #include "swift/AST/Expr.h"
 #include "swift/AST/DiagnosticsParse.h"
 #include "swift/AST/LayoutConstraint.h"
-#include "swift/AST/Pattern.h"
+#include "swift/AST/PatternRepr.h"
+#include "swift/AST/TypeRepr.h"
 #include "swift/AST/Stmt.h"
 #include "swift/Basic/OptionSet.h"
 #include "swift/Parse/Lexer.h"
@@ -1343,8 +1344,8 @@ public:
   //===--------------------------------------------------------------------===//
   // Pattern Parsing
 
-  ParserResult<Pattern> parseTypedPattern();
-  ParserResult<Pattern> parsePattern();
+  ParserResult<PatternRepr> parseTypedPattern();
+  ParserResult<PatternRepr> parsePattern();
   
   /// Parse a tuple pattern element.
   ///
@@ -1354,21 +1355,21 @@ public:
   /// \endcode
   ///
   /// \returns The tuple pattern element, if successful.
-  std::pair<ParserStatus, Optional<TuplePatternElt>>
+  std::pair<ParserStatus, Optional<TuplePatternEltRepr>>
   parsePatternTupleElement();
-  ParserResult<Pattern> parsePatternTuple();
+  ParserResult<PatternRepr> parsePatternTuple();
   
-  ParserResult<Pattern>
-  parseOptionalPatternTypeAnnotation(ParserResult<Pattern> P,
+  ParserResult<PatternRepr>
+  parseOptionalPatternTypeAnnotation(ParserResult<PatternRepr> P,
                                      bool isOptional);
-  ParserResult<Pattern> parseMatchingPattern(bool isExprBasic);
-  ParserResult<Pattern> parseMatchingPatternAsLetOrVar(bool isLet,
-                                                       SourceLoc VarLoc,
-                                                       bool isExprBasic);
-  
+  ParserResult<PatternRepr> parseMatchingPattern(bool isExprBasic);
+  ParserResult<PatternRepr> parseMatchingPatternAsLetOrVar(bool isLet,
+                                                           SourceLoc VarLoc,
+                                                           bool isExprBasic);
 
-  Pattern *createBindingFromPattern(SourceLoc loc, Identifier name,
-                                    VarDecl::Introducer introducer);
+
+  PatternRepr *createBindingFromPattern(SourceLoc loc, Identifier name,
+                                        VarDecl::Introducer introducer);
   
 
   /// Determine whether this token can only start a matching pattern

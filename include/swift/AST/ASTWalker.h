@@ -23,6 +23,7 @@ class Expr;
 class ModuleDecl;
 class Stmt;
 class Pattern;
+class PatternRepr;
 class TypeRepr;
 struct TypeLoc;
 class ParameterList;
@@ -140,6 +141,10 @@ public:
   ///
   /// The default implementation always returns its argument.
   virtual Stmt *walkToStmtPost(Stmt *S) { return S; }
+
+
+  virtual bool walkToPatternReprPre(PatternRepr *P) { return true; }
+  virtual bool walkToPatternReprPost(PatternRepr *P) { return true; }
 
   /// This method is called when first visiting a pattern before walking into
   /// its children.

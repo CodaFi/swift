@@ -259,6 +259,7 @@ class ResolvePattern : public ASTVisitor<ResolvePattern,
                                          /*ExprRetTy=*/Pattern*,
                                          /*StmtRetTy=*/void,
                                          /*DeclRetTy=*/void,
+                                         /*PatternReprRetTy*/Pattern*,
                                          /*PatternRetTy=*/Pattern*>
 {
 public:

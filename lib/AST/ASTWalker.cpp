@@ -67,11 +67,11 @@ namespace {
 /// recursive traverser which queries a user-provided walker class
 /// on every node in an AST.
 class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
-                                    /*Decl*/ bool,
+                                    /*Decl*/ bool, PatternRepr *,
                                     Pattern *, /*TypeRepr*/ bool>
 {
-  friend class ASTVisitor<Traversal, Expr*, Stmt*, bool, Pattern*, bool>;
-  typedef ASTVisitor<Traversal, Expr*, Stmt*, bool, Pattern*, bool> inherited;
+  friend class ASTVisitor<Traversal, Expr*, Stmt*, bool, PatternRepr*, Pattern*, bool>;
+  typedef ASTVisitor<Traversal, Expr*, Stmt*, bool, PatternRepr*, Pattern*, bool> inherited;
 
   ASTWalker &Walker;
   
@@ -102,7 +102,12 @@ class Traversal : public ASTVisitor<Traversal, Expr*, Stmt*,
     SetParentRAII SetParent(Walker, S);
     return inherited::visit(S);
   }
-  
+
+  PatternRepr *visit(PatternRepr *P) {
+    SetParentRAII SetParent(Walker, P);
+    return inherited::visit(P);
+  }
+
   Pattern *visit(Pattern *P) {
     SetParentRAII SetParent(Walker, P);
     return inherited::visit(P);
@@ -1243,6 +1248,23 @@ public:
 
     // If we didn't bail out, do post-order visitation.
     if (P) P = Walker.walkToPatternPost(P);
+
+    return P;
+  }
+
+
+  PatternRepr *doIt(PatternRepr *P) {
+    // Do the pre-order visitation.  If it returns false, we just
+    // skip entering subnodes of this tree.
+    auto Pre = Walker.walkToPatternReprPre(P);
+    if (!Pre.first || !Pre.second)
+      return Pre.second;
+
+    // Otherwise, visit the children.
+    P = visit(P);
+
+    // If we didn't bail out, do post-order visitation.
+    if (P) P = Walker.walkToPatternReprPost(P);
 
     return P;
   }

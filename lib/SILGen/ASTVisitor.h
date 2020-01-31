@@ -29,12 +29,14 @@ template<typename ImplClass,
          typename ExprRetTy = void,
          typename StmtRetTy = void,
          typename DeclRetTy = void,
+         typename PatternReprRetTy = void,
          typename PatternRetTy = void,
          typename... Args>
 class ASTVisitor : public swift::ASTVisitor<ImplClass,
                                             ExprRetTy,
                                             StmtRetTy,
                                             DeclRetTy,
+                                            PatternReprRetTy,
                                             PatternRetTy,
                                             void,
                                             void,
@@ -84,7 +86,7 @@ public:
 template <typename ImplClass,
           typename ExprRetTy = void,
           typename... Args>
-using ExprVisitor = ASTVisitor<ImplClass, ExprRetTy, void, void, void, Args...>;
+using ExprVisitor = ASTVisitor<ImplClass, ExprRetTy, void, void, void, void, Args...>;
 
 } // end namespace Lowering
 } // end namespace swift

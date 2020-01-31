@@ -150,7 +150,7 @@ namespace {
 /// Useful for duplicate checking.
 class UniquePointerCalculator
     : public ASTVisitor<UniquePointerCalculator, void *, void *, void *, void *,
-                        void *, void *> {
+                        void *, void *, void *> {
 public:
   template <typename T> const void *visit(const T *x) {
     return const_cast<T *>(x);
@@ -814,7 +814,7 @@ namespace ast_scope {
 class NodeAdder
     : public ASTVisitor<NodeAdder, NullablePtr<ASTScopeImpl>,
                         NullablePtr<ASTScopeImpl>, NullablePtr<ASTScopeImpl>,
-                        void, void, void, ASTScopeImpl *, ScopeCreator &> {
+                        void, void, void, void, ASTScopeImpl *, ScopeCreator &> {
 public:
 
 #pragma mark ASTNodes that do not create scopes

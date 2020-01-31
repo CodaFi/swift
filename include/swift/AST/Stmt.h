@@ -30,13 +30,13 @@
 
 namespace swift {
 
-class AnyPattern;
+class AnyPatternRepr;
 class ASTContext;
 class ASTWalker;
 class Decl;
 class Expr;
 class FuncDecl;
-class Pattern;
+class PatternRepr;
 class PatternBindingDecl;
 class VarDecl;
 class CaseStmt;
@@ -901,11 +901,11 @@ class CaseLabelItem {
     Default,
   };
 
-  Pattern *CasePattern;
+  PatternRepr *CasePattern;
   SourceLoc WhereLoc;
   llvm::PointerIntPair<Expr *, 1, Kind> GuardExprAndKind;
 
-  CaseLabelItem(Kind kind, Pattern *casePattern, SourceLoc whereLoc,
+  CaseLabelItem(Kind kind, PatternRepr *casePattern, SourceLoc whereLoc,
                 Expr *guardExpr)
     : CasePattern(casePattern), WhereLoc(whereLoc),
       GuardExprAndKind(guardExpr, kind) {}
@@ -913,19 +913,19 @@ class CaseLabelItem {
 public:
   CaseLabelItem(const CaseLabelItem &) = default;
 
-  CaseLabelItem(Pattern *casePattern, SourceLoc whereLoc, Expr *guardExpr)
+  CaseLabelItem(PatternRepr *casePattern, SourceLoc whereLoc, Expr *guardExpr)
     : CaseLabelItem(Kind::Normal, casePattern, whereLoc, guardExpr) {}
-  explicit CaseLabelItem(Pattern *casePattern)
+  explicit CaseLabelItem(PatternRepr *casePattern)
     : CaseLabelItem(casePattern, SourceLoc(), nullptr) {}
 
-  static CaseLabelItem getDefault(AnyPattern *pattern,
+  static CaseLabelItem getDefault(AnyPatternRepr *pattern,
                                   SourceLoc whereLoc,
                                   Expr *guardExpr) {
     assert(pattern);
-    return CaseLabelItem(Kind::Default, reinterpret_cast<Pattern *>(pattern),
+    return CaseLabelItem(Kind::Default, reinterpret_cast<PatternRepr *>(pattern),
                          whereLoc, guardExpr);
   }
-  static CaseLabelItem getDefault(AnyPattern *pattern) {
+  static CaseLabelItem getDefault(AnyPatternRepr *pattern) {
     return getDefault(pattern, SourceLoc(), nullptr);
   }
 
@@ -935,9 +935,9 @@ public:
   SourceLoc getEndLoc() const;
   SourceRange getSourceRange() const;
 
-  Pattern *getPattern() { return CasePattern; }
-  const Pattern *getPattern() const { return CasePattern; }
-  void setPattern(Pattern *CasePattern) { this->CasePattern = CasePattern; }
+  PatternRepr *getPattern() { return CasePattern; }
+  const PatternRepr *getPattern() const { return CasePattern; }
+  void setPattern(PatternRepr *Pat) { CasePattern = Pat; }
 
   /// Return the guard expression if present, or null if the case label has
   /// no guard.

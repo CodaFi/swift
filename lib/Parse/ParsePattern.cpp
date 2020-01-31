@@ -19,6 +19,8 @@
 #include "swift/AST/ASTWalker.h"
 #include "swift/AST/Initializer.h"
 #include "swift/AST/Module.h"
+#include "swift/AST/PatternRepr.h"
+#include "swift/AST/TypeRepr.h"
 #include "swift/AST/SourceFile.h"
 #include "swift/AST/TypeRepr.h"
 #include "swift/Basic/StringExtras.h"
@@ -879,7 +881,7 @@ Parser::parseFunctionSignature(Identifier SimpleName,
 ///
 ///  typed-pattern ::= pattern (':' type)?
 ///
-ParserResult<Pattern> Parser::parseTypedPattern() {
+ParserResult<PatternRepr> Parser::parseTypedPattern() {
   auto result = parsePattern();
   
   // Now parse an optional type annotation.
@@ -888,11 +890,11 @@ ParserResult<Pattern> Parser::parseTypedPattern() {
     SourceLoc colonLoc = consumeToken(tok::colon);
     
     if (result.isNull())  // Recover by creating AnyPattern.
-      result = makeParserErrorResult(new (Context) AnyPattern(colonLoc));
+      result = makeParserErrorResult(new (Context) AnyPatternRepr(colonLoc));
     
     ParserResult<TypeRepr> Ty = parseDeclResultType(diag::expected_type);
     if (Ty.hasCodeCompletion())
-      return makeParserCodeCompletionResult<Pattern>();
+      return makeParserCodeCompletionResult<PatternRepr>();
     if (!Ty.isNull()) {
       // Attempt to diagnose initializer calls incorrectly written
       // as typed patterns, such as "var x: [Int]()".
@@ -931,11 +933,12 @@ ParserResult<Pattern> Parser::parseTypedPattern() {
         }
       }
     } else {
-      Ty = makeParserResult(new (Context) ErrorTypeRepr(PreviousLoc));
+      Ty = makeParserResult(new (Context) ErrorTypeRepr(PreviousLoc, /*implicit*/false));
     }
     
     result = makeParserResult(result,
-                            new (Context) TypedPattern(result.get(), Ty.get()));
+                            new (Context) TypedPatternRepr(result.get(), Ty.get(),
+                                /*implicit*/false));
   }
   
   return result;
@@ -948,7 +951,7 @@ ParserResult<Pattern> Parser::parseTypedPattern() {
 ///   pattern ::= 'var' pattern
 ///   pattern ::= 'let' pattern
 ///
-ParserResult<Pattern> Parser::parsePattern() {
+ParserResult<PatternRepr> Parser::parsePattern() {
   SyntaxParsingContext PatternCtx(SyntaxContext, SyntaxContextKind::Pattern);
   auto introducer = (InVarOrLetPattern != IVOLP_InVar
                      ? VarDecl::Introducer::Let
@@ -968,10 +971,10 @@ ParserResult<Pattern> Parser::parsePattern() {
       auto VD = new (Context) VarDecl(
         /*IsStatic*/false, introducer, /*IsCaptureList*/false,
         consumeToken(tok::kw__), Identifier(), CurDeclContext);
-      return makeParserResult(new (Context) NamedPattern(VD, /*implicit*/true));
+      return makeParserResult(new (Context) NamedPatternRepr(VD, /*implicit*/true));
     }
     PatternCtx.setCreateSyntax(SyntaxKind::WildcardPattern);
-    return makeParserResult(new (Context) AnyPattern(consumeToken(tok::kw__)));
+    return makeParserResult(new (Context) AnyPatternRepr(consumeToken(tok::kw__), /*implicit*/false));
     
   case tok::identifier: {
     PatternCtx.setCreateSyntax(SyntaxKind::IdentifierPattern);
@@ -1012,13 +1015,14 @@ ParserResult<Pattern> Parser::parsePattern() {
     llvm::SaveAndRestore<decltype(InVarOrLetPattern)>
     T(InVarOrLetPattern, isLet ? IVOLP_InLet : IVOLP_InVar);
     
-    ParserResult<Pattern> subPattern = parsePattern();
+    ParserResult<PatternRepr> subPattern = parsePattern();
     if (subPattern.hasCodeCompletion())
-      return makeParserCodeCompletionResult<Pattern>();
+      return makeParserCodeCompletionResult<PatternRepr>();
     if (subPattern.isNull())
       return nullptr;
-    return makeParserResult(new (Context) VarPattern(varLoc, isLet,
-                                                     subPattern.get()));
+    return makeParserResult(new (Context) VarPatternRepr(varLoc, isLet,
+                                                         subPattern.get(),
+                                                         /*implicit*/ false));
   }
       
   default:
@@ -1029,26 +1033,26 @@ ParserResult<Pattern> Parser::parsePattern() {
         .fixItReplace(Tok.getLoc(), "`" + Tok.getText().str() + "`");
       SourceLoc Loc = Tok.getLoc();
       consumeToken();
-      return makeParserErrorResult(new (Context) AnyPattern(Loc));
+      return makeParserErrorResult(new (Context) AnyPatternRepr(Loc));
     }
     diagnose(Tok, diag::expected_pattern);
     return nullptr;
   }
 }
 
-Pattern *Parser::createBindingFromPattern(SourceLoc loc, Identifier name,
-                                          VarDecl::Introducer introducer) {
+PatternRepr *Parser::createBindingFromPattern(SourceLoc loc, Identifier name,
+                                              VarDecl::Introducer introducer) {
   auto var = new (Context) VarDecl(/*IsStatic*/false, introducer,
                                    /*IsCaptureList*/false, loc, name,
                                    CurDeclContext);
-  return new (Context) NamedPattern(var);
+  return new (Context) NamedPatternRepr(var, /*implicit*/false);
 }
 
 /// Parse an element of a tuple pattern.
 ///
 ///   pattern-tuple-element:
 ///     (identifier ':')? pattern
-std::pair<ParserStatus, Optional<TuplePatternElt>>
+std::pair<ParserStatus, Optional<TuplePatternEltRepr>>
 Parser::parsePatternTupleElement() {
   // If this element has a label, parse it.
   Identifier Label;
@@ -1061,13 +1065,13 @@ Parser::parsePatternTupleElement() {
   }
 
   // Parse the pattern.
-  ParserResult<Pattern>  pattern = parsePattern();
+  ParserResult<PatternRepr>  pattern = parsePattern();
   if (pattern.hasCodeCompletion())
     return std::make_pair(makeParserCodeCompletionStatus(), None);
   if (pattern.isNull())
     return std::make_pair(makeParserError(), None);
 
-  auto Elt = TuplePatternElt(Label, LabelLoc, pattern.get());
+  auto Elt = TuplePatternEltRepr(Label, LabelLoc, pattern.get());
   return std::make_pair(makeParserSuccess(), Elt);
 }
 
@@ -1077,7 +1081,7 @@ Parser::parsePatternTupleElement() {
 ///     '(' pattern-tuple-body? ')'
 ///   pattern-tuple-body:
 ///     pattern-tuple-element (',' pattern-tuple-body)*
-ParserResult<Pattern> Parser::parsePatternTuple() {
+ParserResult<PatternRepr> Parser::parsePatternTuple() {
   SyntaxParsingContext TuplePatternCtxt(SyntaxContext,
                                         SyntaxKind::TuplePattern);
   StructureMarkerRAII ParsingPatternTuple(*this, Tok);
@@ -1118,8 +1122,8 @@ ParserResult<Pattern> Parser::parsePatternTuple() {
 ///
 ///  pattern-type-annotation ::= (':' type)?
 ///
-ParserResult<Pattern> Parser::
-parseOptionalPatternTypeAnnotation(ParserResult<Pattern> result,
+ParserResult<PatternRepr> Parser::
+parseOptionalPatternTypeAnnotation(ParserResult<PatternRepr> result,
                                    bool isOptional) {
   if (!Tok.is(tok::colon))
     return result;
@@ -1132,7 +1136,7 @@ parseOptionalPatternTypeAnnotation(ParserResult<Pattern> result,
   if (result.isNull())
     return result;
 
-  Pattern *P = result.get();
+  PatternRepr *P = result.get();
   ParserStatus status;
   if (result.hasCodeCompletion())
     status.setHasCodeCompletion();
@@ -1152,7 +1156,7 @@ parseOptionalPatternTypeAnnotation(ParserResult<Pattern> result,
   if (isOptional)
     repr = new (Context) OptionalTypeRepr(repr, SourceLoc());
 
-  return makeParserResult(status, new (Context) TypedPattern(P, repr));
+  return makeParserResult(status, new (Context) TypedPatternRepr(P, repr));
 }
 
 
@@ -1161,7 +1165,7 @@ parseOptionalPatternTypeAnnotation(ParserResult<Pattern> result,
 /// matching-pattern ::= matching-pattern-var
 /// matching-pattern ::= expr
 ///
-ParserResult<Pattern> Parser::parseMatchingPattern(bool isExprBasic) {
+ParserResult<PatternRepr> Parser::parseMatchingPattern(bool isExprBasic) {
   // TODO: Since we expect a pattern in this position, we should optimistically
   // parse pattern nodes for productions shared by pattern and expression
   // grammar. For short-term ease of initial implementation, we always go
@@ -1215,9 +1219,10 @@ ParserResult<Pattern> Parser::parseMatchingPattern(bool isExprBasic) {
   return makeParserResult(status, new (Context) ExprPattern(subExpr.get()));
 }
 
-ParserResult<Pattern> Parser::parseMatchingPatternAsLetOrVar(bool isLet,
-                                                             SourceLoc varLoc,
-                                                             bool isExprBasic) {
+ParserResult<PatternRepr>
+Parser::parseMatchingPatternAsLetOrVar(bool isLet,
+                                       SourceLoc varLoc,
+                                       bool isExprBasic) {
   // 'var' and 'let' patterns shouldn't nest.
   if (InVarOrLetPattern == IVOLP_InLet ||
       InVarOrLetPattern == IVOLP_InVar)
@@ -1231,7 +1236,7 @@ ParserResult<Pattern> Parser::parseMatchingPatternAsLetOrVar(bool isLet,
   llvm::SaveAndRestore<decltype(InVarOrLetPattern)>
     T(InVarOrLetPattern, isLet ? IVOLP_InLet : IVOLP_InVar);
 
-  ParserResult<Pattern> subPattern = parseMatchingPattern(isExprBasic);
+  ParserResult<PatternRepr> subPattern = parseMatchingPattern(isExprBasic);
   if (subPattern.isNull())
     return nullptr;
   auto *varP = new (Context) VarPattern(varLoc, isLet, subPattern.get());
