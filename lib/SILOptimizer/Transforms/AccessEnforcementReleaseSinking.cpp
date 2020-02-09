@@ -143,6 +143,7 @@ static bool isBarrier(SILInstruction *inst) {
     // or deinit side effects conservatively.
     case BuiltinValueKind::AllocRaw:
     case BuiltinValueKind::DeallocRaw:
+    case BuiltinValueKind::AllocRawStack:
     case BuiltinValueKind::Fence:
     case BuiltinValueKind::AtomicLoad:
     case BuiltinValueKind::AtomicStore:

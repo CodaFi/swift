@@ -714,6 +714,8 @@ public:
   /// bound.
   bool isClassExistentialType();
 
+  bool isValueGenericType();
+
   /// Opens an existential instance or meta-type and returns the opened type.
   Type openAnyExistentialType(OpenedArchetypeType *&opened);
 

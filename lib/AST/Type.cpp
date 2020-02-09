@@ -343,11 +343,22 @@ bool TypeBase::isObjCExistentialType() {
   return getCanonicalType().isObjCExistentialType();
 }
 
+bool TypeBase::isValueGenericType() {
+  return getCanonicalType().isValueGenericType();
+}
+
 bool CanType::isObjCExistentialTypeImpl(CanType type) {
   if (!type.isExistentialType())
     return false;
 
   return type.getExistentialLayout().isObjC();
+}
+
+bool CanType::isValueGenericTypeImpl(CanType type) {
+  auto generic = dyn_cast<GenericTypeParamType>(type.getPointer());
+  if (!generic)
+    return false;
+  return false;
 }
 
 bool TypeBase::isSpecialized() {

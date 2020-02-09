@@ -460,6 +460,7 @@ static void visitBuiltinAddress(BuiltinInst *builtin,
     case BuiltinValueKind::IsOptionalType:
     case BuiltinValueKind::AllocRaw:
     case BuiltinValueKind::DeallocRaw:
+    case BuiltinValueKind::AllocRawStack:
     case BuiltinValueKind::Fence:
     case BuiltinValueKind::StaticReport:
     case BuiltinValueKind::Once:

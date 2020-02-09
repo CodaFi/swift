@@ -132,7 +132,8 @@
         "SetBuilder.swift",
         "SetCasting.swift",
         "SetStorage.swift",
-        "SetVariant.swift"
+        "SetVariant.swift",
+        "StaticArray.swift"
       ]
     }
   ],

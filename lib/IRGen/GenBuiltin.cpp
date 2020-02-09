@@ -474,6 +474,16 @@ if (Builtin.ID == BuiltinValueKind::id) { \
     return;
   }
 
+  if (Builtin.ID == BuiltinValueKind::AllocRawStack) {
+    auto size = args.claimNext();
+    auto align = args.claimNext();
+    auto alignValue = cast<llvm::ConstantInt>(align);
+    auto alloc = IGF.createAlloca(IGF.IGM.SizeTy, size,
+                                  Alignment(alignValue->getSExtValue()));
+    out.add(alloc.getAddress());
+    return;
+  }
+
   if (Builtin.ID == BuiltinValueKind::Fence) {
     SmallVector<Type, 4> Types;
     StringRef BuiltinName =

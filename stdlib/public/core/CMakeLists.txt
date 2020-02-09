@@ -135,6 +135,7 @@ set(SWIFTLIB_ESSENTIAL
   Slice.swift
   SmallString.swift
   Sort.swift
+  StaticArray.swift
   StaticString.swift
   Stride.swift
   StringHashable.swift  # ORDER DEPENDENCY: Must precede String.swift

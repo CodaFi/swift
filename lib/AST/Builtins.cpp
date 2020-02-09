@@ -748,6 +748,12 @@ static ValueDecl *getDeallocOperation(ASTContext &Context, Identifier Id) {
   return getBuiltinFunction(Id, ArgElts, ResultTy);
 }
 
+static ValueDecl *getAllocRawStackOperation(ASTContext &Context, Identifier Id) {
+  Type PtrSizeTy = BuiltinIntegerType::getWordType(Context);
+  Type ResultTy = Context.TheRawPointerType;
+  return getBuiltinFunction(Id, { PtrSizeTy, PtrSizeTy }, ResultTy);
+}
+
 static ValueDecl *getFenceOperation(ASTContext &Context, Identifier Id) {
   return getBuiltinFunction(Id, {}, TupleType::getEmpty(Context));
 }
@@ -1914,6 +1920,9 @@ ValueDecl *swift::getBuiltinValueDecl(ASTContext &Context, Identifier Id) {
 
   case BuiltinValueKind::DeallocRaw:
     return getDeallocOperation(Context, Id);
+
+  case BuiltinValueKind::AllocRawStack:
+    return getAllocRawStackOperation(Context, Id);
 
   case BuiltinValueKind::CastToNativeObject:
   case BuiltinValueKind::UnsafeCastToNativeObject:
