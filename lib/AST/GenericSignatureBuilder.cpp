@@ -4356,8 +4356,13 @@ ConstraintResult GenericSignatureBuilder::addTypeRequirement(
     assert(constraintType && "No type to express resolved constraint?");
   }
 
+  const bool isValueGeneric = (subject.dyn_cast<PotentialArchetype *>() &&
+                               subject.dyn_cast<PotentialArchetype *>()
+                                  ->getDependentType(getGenericParams())
+                                  ->isValueGenericType());
+
   // Check whether we have a reasonable constraint type at all.
-  if (!constraintType->isValueGenericType() &&
+  if (!isValueGeneric &&
       !constraintType->isExistentialType() &&
       !constraintType->getClassOrBoundGenericClass()) {
     if (source.getLoc().isValid() && !constraintType->hasError()) {
@@ -4431,6 +4436,26 @@ ConstraintResult GenericSignatureBuilder::addTypeRequirement(
     }
 
     return ConstraintResult::Resolved;
+  }
+
+  // Value generic requirements.
+  if (isValueGeneric) {
+    bool anyErrors = false;
+
+    auto typeBound = constraintType->getAnyNominal();
+    if (!typeBound)
+      anyErrors = true;
+
+    if (typeBound->isGeneric())
+      anyErrors = true;
+
+    if (isErrorResult(addValueRequirementDirect(resolvedSubject,
+                                                constraintType,
+                                                source)))
+      anyErrors = true;
+
+    return anyErrors ? ConstraintResult::Conflicting
+                     : ConstraintResult::Resolved;
   }
 
   // Protocol requirements.
@@ -4520,10 +4545,6 @@ ConstraintResult GenericSignatureBuilder::addValueRequirementDirect(
     ConcreteConstraint{type.getUnresolvedType(), bound, resolvedSource});
   equivClass->modified(*this);
   ++NumValueConstraints;
-
-  // Update the equivalence class with the constraint.
-  if (!updateSuperclass(type, bound, source))
-    ++NumValueConstraintsExtra;
 
   return ConstraintResult::Resolved;
 }

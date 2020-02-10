@@ -3100,8 +3100,12 @@ public:
   ///
   /// \param name The name of the generic parameter.
   /// \param nameLoc The location of the name.
-  GenericTypeParamDecl(DeclContext *dc, Identifier name, SourceLoc nameLoc,
-                       unsigned depth, unsigned index);
+  GenericTypeParamDecl(DeclKind kind, DeclContext *dc, Identifier name,
+                       SourceLoc nameLoc, unsigned depth, unsigned index);
+  GenericTypeParamDecl(DeclContext *dc, Identifier name,
+                       SourceLoc nameLoc, unsigned depth, unsigned index)
+    : GenericTypeParamDecl(DeclKind::GenericTypeParam, dc,
+                           name, nameLoc, depth, index) {};
 
   /// The depth of this generic type parameter, i.e., the number of outer
   /// levels of generic parameter lists that enclose this type parameter.
@@ -3149,7 +3153,8 @@ public:
   ValueTypeParamDecl(DeclContext *dc, SourceLoc IntroLoc,
                      Identifier name, SourceLoc nameLoc,
                      unsigned depth, unsigned index)
-    : GenericTypeParamDecl(dc, name, nameLoc, depth, index),
+    : GenericTypeParamDecl(DeclKind::ValueTypeParam,
+                           dc, name, nameLoc, depth, index),
       IntroducerLoc(IntroLoc) {};
 
   SourceLoc getStartLoc() const {

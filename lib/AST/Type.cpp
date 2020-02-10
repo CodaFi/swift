@@ -344,7 +344,13 @@ bool TypeBase::isObjCExistentialType() {
 }
 
 bool TypeBase::isValueGenericType() {
-  return getCanonicalType().isValueGenericType();
+  auto generic = dyn_cast<GenericTypeParamType>(this);
+  if (!generic)
+    return false;
+  auto gdecl = generic->getDecl();
+  if (!gdecl)
+    return false;
+  return isa<ValueTypeParamDecl>(gdecl);
 }
 
 bool CanType::isObjCExistentialTypeImpl(CanType type) {
@@ -352,13 +358,6 @@ bool CanType::isObjCExistentialTypeImpl(CanType type) {
     return false;
 
   return type.getExistentialLayout().isObjC();
-}
-
-bool CanType::isValueGenericTypeImpl(CanType type) {
-  auto generic = dyn_cast<GenericTypeParamType>(type.getPointer());
-  if (!generic)
-    return false;
-  return false;
 }
 
 bool TypeBase::isSpecialized() {

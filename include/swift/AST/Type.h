@@ -385,7 +385,6 @@ class CanType : public Type {
   static bool isExistentialTypeImpl(CanType type);
   static bool isAnyExistentialTypeImpl(CanType type);
   static bool isObjCExistentialTypeImpl(CanType type);
-  static bool isValueGenericTypeImpl(CanType type);
   static CanType getOptionalObjectTypeImpl(CanType type);
   static CanType getReferenceStorageReferentImpl(CanType type);
   static CanType getWithoutSpecifierTypeImpl(CanType type);
@@ -470,10 +469,6 @@ public:
   /// Is this an ObjC-compatible existential type?
   bool isObjCExistentialType() const {
     return isObjCExistentialTypeImpl(*this);
-  }
-
-  bool isValueGenericType() const {
-    return isValueGenericTypeImpl(*this);
   }
 
   ClassDecl *getClassOrBoundGenericClass() const; // in Types.h

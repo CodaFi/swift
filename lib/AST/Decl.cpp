@@ -3867,10 +3867,11 @@ AbstractTypeParamDecl::getConformingProtocols() const {
   return { };
 }
 
-GenericTypeParamDecl::GenericTypeParamDecl(DeclContext *dc, Identifier name,
+GenericTypeParamDecl::GenericTypeParamDecl(DeclKind kind,
+                                           DeclContext *dc, Identifier name,
                                            SourceLoc nameLoc,
                                            unsigned depth, unsigned index)
-  : AbstractTypeParamDecl(DeclKind::GenericTypeParam, dc, name, nameLoc) {
+  : AbstractTypeParamDecl(kind, dc, name, nameLoc) {
   Bits.GenericTypeParamDecl.Depth = depth;
   assert(Bits.GenericTypeParamDecl.Depth == depth && "Truncation");
   Bits.GenericTypeParamDecl.Index = index;
