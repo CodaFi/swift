@@ -79,9 +79,9 @@ void simple_display(llvm::raw_ostream &out, const SILGenDescriptor &d);
 SourceLoc extractNearestSourceLoc(const SILGenDescriptor &desc);
 
 class SILGenSourceFileRequest :
-    public SimpleRequest<SILGenSourceFileRequest,
-                         std::unique_ptr<SILModule>(SILGenDescriptor),
-                         CacheKind::Uncached, DependencyKind::Source> {
+    public IncrementalRequest<SILGenSourceFileRequest,
+                              std::unique_ptr<SILModule>(SILGenDescriptor),
+                              CacheKind::Uncached, DependencyKind::Source> {
 public:
   using IncrementalRequest::IncrementalRequest;
 

@@ -47,7 +47,7 @@ public:
   explicit IncrementalRequest(const Inputs& ...inputs)
     : SimpleRequest<Derived, Output(Inputs...), Caching>(inputs...) { }
 
-  void recordDependency(SourceFile *SF) const {
+  void recordDependency(SourceFile &SF) const {
     return static_cast<Derived *>(this)->recordDependency(SF);
   }
 };

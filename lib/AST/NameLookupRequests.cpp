@@ -190,7 +190,7 @@ swift::extractNearestSourceLoc(const UnqualifiedLookupDescriptor &desc) {
   return extractNearestSourceLoc(desc.DC);
 }
 
-void UnqualifiedLookupRequest::recordDependency(SourceFile *SF) const {
+void UnqualifiedLookupRequest::recordDependency(SourceFile &SF) const {
   // Nothing to do.  A downstream request will handle this.
   // FIXME: Then this isn't a dependency sink, now is it.
 }
@@ -199,11 +199,11 @@ void UnqualifiedLookupRequest::recordDependency(SourceFile *SF) const {
 // LookupInModuleRequest computation.
 //----------------------------------------------------------------------------//
 
-void LookupInModuleRequest::recordDependency(SourceFile *SF) const {
+void LookupInModuleRequest::recordDependency(SourceFile &SF) const {
   auto *DC = std::get<0>(getStorage());
   auto name = std::get<1>(getStorage());
 
-  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  auto *refTracker = SF.getReferencedNameTrackerForRequests();
   if (!refTracker)
     return;
 
@@ -216,12 +216,12 @@ void LookupInModuleRequest::recordDependency(SourceFile *SF) const {
 // AnyObjectLookupRequest computation.
 //----------------------------------------------------------------------------//
 
-void AnyObjectLookupRequest::recordDependency(SourceFile *SF) const {
+void AnyObjectLookupRequest::recordDependency(SourceFile &SF) const {
   auto *DC = std::get<0>(getStorage());
   auto name = std::get<1>(getStorage());
   auto options = std::get<2>(getStorage());
 
-  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  auto *refTracker = SF.getReferencedNameTrackerForRequests();
   if (!refTracker)
     return;
 
@@ -255,12 +255,12 @@ void AnyObjectLookupRequest::recordDependency(SourceFile *SF) const {
 // ModuleQualifiedLookupRequest computation.
 //----------------------------------------------------------------------------//
 
-void ModuleQualifiedLookupRequest::recordDependency(SourceFile *SF) const {
+void ModuleQualifiedLookupRequest::recordDependency(SourceFile &SF) const {
   auto *DC = std::get<0>(getStorage());
   auto name = std::get<2>(getStorage());
   auto options = std::get<3>(getStorage());
 
-  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  auto *refTracker = SF.getReferencedNameTrackerForRequests();
   if (!refTracker)
     return;
 
@@ -293,13 +293,13 @@ void ModuleQualifiedLookupRequest::recordDependency(SourceFile *SF) const {
 // QualifiedLookupRequest computation.
 //----------------------------------------------------------------------------//
 
-void QualifiedLookupRequest::recordDependency(SourceFile *SF) const {
+void QualifiedLookupRequest::recordDependency(SourceFile &SF) const {
   auto *DC = std::get<0>(getStorage());
   auto typeDecls = std::get<1>(getStorage());
   auto name = std::get<2>(getStorage());
   auto options = std::get<3>(getStorage());
 
-  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  auto *refTracker = SF.getReferencedNameTrackerForRequests();
   if (!refTracker)
     return;
 
@@ -350,9 +350,9 @@ SourceLoc swift::extractNearestSourceLoc(const DirectLookupDescriptor &desc) {
   return extractNearestSourceLoc(desc.DC);
 }
 
-void DirectLookupRequest::recordDependency(SourceFile *SF) const {
+void DirectLookupRequest::recordDependency(SourceFile &SF) const {
   auto &desc = std::get<0>(getStorage());
-  auto *refTracker = SF->getReferencedNameTrackerForRequests();
+  auto *refTracker = SF.getReferencedNameTrackerForRequests();
   if (!refTracker)
     return;
 

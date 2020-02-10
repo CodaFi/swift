@@ -2121,7 +2121,7 @@ static void reportMissingEdges(ManualRange left, AutomaticRange right) {
 
 void SourceFile::verifyReferencedNameTrackers() {
   auto *manualTracker = getReferencedNameTracker();
-  auto *automaticTracker = getReferencedNameTracker();
+  auto *automaticTracker = getReferencedNameTrackerForRequests();
   assert(!!manualTracker == !!automaticTracker
          && "Forgot to create a tracker");
   if (!manualTracker || !automaticTracker)

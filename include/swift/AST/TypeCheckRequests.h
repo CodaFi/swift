@@ -1958,9 +1958,9 @@ public:
 };
 
 class TypeCheckSourceFileRequest :
-    public SimpleRequest<TypeCheckSourceFileRequest,
-                         bool (SourceFile *), CacheKind::SeparatelyCached,
-                         DependencyKind::Source> {
+    public IncrementalRequest<TypeCheckSourceFileRequest,
+                              bool (SourceFile *), CacheKind::SeparatelyCached,
+                              DependencyKind::Source> {
 public:
   using IncrementalRequest::IncrementalRequest;
 

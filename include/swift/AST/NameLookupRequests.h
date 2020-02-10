@@ -387,7 +387,7 @@ private:
 
 public:
   // Dependency sink
-  void recordDependency(SourceFile *SF) const;
+  void recordDependency(SourceFile &SF) const;
 };
 
 using QualifiedLookupResult = SmallVector<ValueDecl *, 4>;
@@ -415,7 +415,7 @@ private:
 
 public:
   // Dependency sink
-  void recordDependency(SourceFile *SF) const;
+  void recordDependency(SourceFile &SF) const;
 };
 
 /// Perform \c AnyObject lookup for a given member.
@@ -437,7 +437,7 @@ private:
 
 public:
   // Dependency sink
-  void recordDependency(SourceFile *SF) const;
+  void recordDependency(SourceFile &SF) const;
 };
 
 class ModuleQualifiedLookupRequest
@@ -460,7 +460,7 @@ private:
 
 public:
   // Dependency sink
-  void recordDependency(SourceFile *SF) const;
+  void recordDependency(SourceFile &SF) const;
 };
 
 class QualifiedLookupRequest
@@ -485,7 +485,7 @@ private:
 
 public:
   // Dependency sink
-  void recordDependency(SourceFile *SF) const;
+  void recordDependency(SourceFile &SF) const;
 };
 
 /// The input type for a direct lookup request.
@@ -538,7 +538,7 @@ private:
 
 public:
   // Dependency sink
-  void recordDependency(SourceFile *SF) const;
+  void recordDependency(SourceFile &SF) const;
 };
 
 class StablePathRequest

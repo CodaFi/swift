@@ -421,7 +421,9 @@ public:
     typename Request,
     typename std::enable_if<Request::isSink> * = nullptr>
   SourceFile *getDependencySource() const {
-    assert(!activeSources.empty());
+    if (activeSources.empty()) {
+      return nullptr;
+    }
     return activeSources.back();
   }
 
@@ -509,8 +511,8 @@ evaluateOrDefault(
       });
     return def;
   }
-  auto *source = eval.template getDependencySource<Request>();
-  req.recordDependency(source);
+  if (auto *source = eval.template getDependencySource<Request>())
+    req.recordDependency(*source);
   return *result;
 }
 
