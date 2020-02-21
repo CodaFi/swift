@@ -485,8 +485,28 @@ namespace {
           // decomposable.
           return *this;
 
+        PAIRCASE (SpaceKind::Type, SpaceKind::Disjunct): {
+          llvm::DenseSet<DeclName> Heads;
+          const bool disjunctIsSimple = llvm::all_of(other.getSpaces(),
+                                                     [&](auto subspace) {
+            return subspace.getKind() == SpaceKind::Constructor
+                && subspace.getSpaces().empty()
+                && Heads.insert(subspace.getHead()).second;
+          });
+          if (disjunctIsSimple) {
+            SmallVector<Space, 4> constrSpaces;
+            auto decomposition = decompose(DC, this->getType());
+            for (auto subspace : decomposition.getSpaces()) {
+              if (Heads.insert(subspace.Head).second) {
+                constrSpaces.push_back(subspace);
+              }
+            }
+            return Space::forDisjunct(constrSpaces);
+          }
+          LLVM_FALLTHROUGH;
+        }
+
         PAIRCASE (SpaceKind::Empty, SpaceKind::Disjunct):
-        PAIRCASE (SpaceKind::Type, SpaceKind::Disjunct):
         PAIRCASE (SpaceKind::Constructor, SpaceKind::Disjunct):
         PAIRCASE (SpaceKind::Disjunct, SpaceKind::Disjunct):
         PAIRCASE (SpaceKind::BooleanConstant, SpaceKind::Disjunct):
