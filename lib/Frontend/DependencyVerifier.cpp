@@ -224,6 +224,8 @@ public:
   }
 
   Expectation::Kind getKind() const { return info.first; }
+  Expectation::Scope getScope() const { return info.second; }
+
   StringRef getName() const { return name; }
   bool getCascades() const {
     return info.second == Expectation::Scope::Cascading;
@@ -263,11 +265,46 @@ class DependencyVerifier {
   const DependencyTracker &DT;
   std::vector<llvm::SMDiagnostic> Errors = {};
 
+private:
+  using FixitKey = uint16_t;
+  llvm::DenseMap<FixitKey, StringRef> FixitTable;
+
+  static FixitKey getFixitKey(Expectation::Kind kind,
+                              Expectation::Scope scope) {
+    static_assert(std::is_same<std::underlying_type<Expectation::Kind>::type,
+                               uint8_t>::value,
+                  "underlying type exceeds packing requirements");
+    static_assert(std::is_same<std::underlying_type<Expectation::Scope>::type,
+                               uint8_t>::value,
+                  "underlying type exceeds packing requirements");
+    return static_cast<uint8_t>(kind) << 8 | static_cast<uint8_t>(scope);
+  }
+
+  StringRef renderObligationAsFixit(ASTContext &Ctx,
+                                    const Obligation &o, StringRef key) const {
+    auto entry = FixitTable.find(getFixitKey(o.getKind(), o.getScope()));
+    assert(entry != FixitTable.end() && "Didn't correctly pack keys?");
+    // expected-<scope>-<kind> {{<key>}}
+    auto sel = entry->getSecond();
+    return Ctx.AllocateCopy(("// " + sel + " {{" + key + "}}").str());
+  }
+
 public:
   explicit DependencyVerifier(SourceManager &SM, const DependencyTracker &DT)
-      : SM(SM), DT(DT) {}
+      : SM(SM), DT(DT) {
+    // Build a table that maps the info in the matrix of supported
+    // expectations to their corresponding selector names.
+#define MATRIX_ENTRY(EXPECTATION_SELECTOR, SCOPE, KIND)                        \
+  FixitTable.insert(                                                           \
+      {getFixitKey(Expectation::Kind::KIND, Expectation::Scope::SCOPE),        \
+       EXPECTATION_SELECTOR});
 
-  bool verifyFile(const SourceFile *SF);
+    EXPECTATION_MATRIX
+
+#undef MATRIX_ENTRY
+  }
+
+  bool verifyFile(const SourceFile *SF, bool applyFixits);
 
 public:
   using ObligationMap = llvm::MapVector<
@@ -290,6 +327,8 @@ private:
                                   NegativeExpectationMap &Negs);
 
   bool diagnoseUnfulfilledObligations(const SourceFile *SF, ObligationMap &OM);
+
+  void applyEmittedFixits(const SourceFile *SF);
 
 private:
   /// Given an \c ObligationMap and an \c Expectation, attempt to identify a
@@ -345,12 +384,18 @@ private:
     Errors.push_back(diag);
   }
 
-  void addError(const char *Loc, const Twine &Msg,
-                ArrayRef<llvm::SMFixIt> FixIts = {}) {
+  void addError(const char *Loc, const Twine &Msg) {
     auto loc = SourceLoc(llvm::SMLoc::getFromPointer(Loc));
-    auto diag = SM.GetMessage(loc, llvm::SourceMgr::DK_Error, Msg, {}, FixIts);
+    auto diag = SM.GetMessage(loc, llvm::SourceMgr::DK_Error, Msg, {}, {});
     Errors.push_back(diag);
   };
+
+  void addNoteWithFixits(const char *Loc, const Twine &Msg,
+                         ArrayRef<llvm::SMFixIt> FixIts = {}) {
+    auto loc = SourceLoc(llvm::SMLoc::getFromPointer(Loc));
+    auto diag = SM.GetMessage(loc, llvm::SourceMgr::DK_Note, Msg, {}, FixIts);
+    Errors.push_back(diag);
+  }
 };
 } // end anonymous namespace
 
@@ -581,6 +626,7 @@ bool DependencyVerifier::diagnoseUnfulfilledObligations(
     const SourceFile *SF, ObligationMap &Obligations) {
   CharSourceRange EntireRange = SM.getRangeForBuffer(*SF->getBufferID());
   StringRef InputFile = SM.extractText(EntireRange);
+  auto &Ctx = SF->getASTContext();
   forEachOwedObligation(Obligations, [&](StringRef key, Obligation &p) {
     // HACK: Diagnosing the end of the buffer will print a carat pointing
     // at the file path, but not print any of the buffer's contents, which
@@ -592,20 +638,40 @@ bool DependencyVerifier::diagnoseUnfulfilledObligations(
     case Expectation::Kind::Member:
       addFormattedDiagnostic(Loc, "unexpected {0} dependency: {1}",
                              p.describeCascade(), key);
+      addNoteWithFixits(Loc, "expect a member dependency",
+                        {
+                            llvm::SMFixIt(llvm::SMLoc::getFromPointer(Loc),
+                                          renderObligationAsFixit(Ctx, p, key)),
+                        });
       break;
     case Expectation::Kind::DynamicMember:
       addFormattedDiagnostic(Loc,
                              "unexpected {0} dynamic member dependency: {1}",
                              p.describeCascade(), p.getName());
+      addNoteWithFixits(Loc, "expect a dynamic member dependency",
+                        {
+                            llvm::SMFixIt(llvm::SMLoc::getFromPointer(Loc),
+                                          renderObligationAsFixit(Ctx, p, key)),
+                        });
       break;
     case Expectation::Kind::PotentialMember:
       addFormattedDiagnostic(Loc,
                              "unexpected {0} potential member dependency: {1}",
                              p.describeCascade(), key);
+      addNoteWithFixits(Loc, "expect a potential member",
+                        {
+                            llvm::SMFixIt(llvm::SMLoc::getFromPointer(Loc),
+                                          renderObligationAsFixit(Ctx, p, key)),
+                        });
       break;
     case Expectation::Kind::Provides:
       addFormattedDiagnostic(Loc, "unexpected provided entity: {0}",
                              p.getName());
+      addNoteWithFixits(Loc, "expect a provide",
+                        {
+                            llvm::SMFixIt(llvm::SMLoc::getFromPointer(Loc),
+                                          renderObligationAsFixit(Ctx, p, key)),
+                        });
       break;
     }
   });
@@ -613,7 +679,62 @@ bool DependencyVerifier::diagnoseUnfulfilledObligations(
   return false;
 }
 
-bool DependencyVerifier::verifyFile(const SourceFile *SF) {
+void DependencyVerifier::applyEmittedFixits(const SourceFile *SF) {
+  // Walk the list of diagnostics, pulling out any fixits into an array of just
+  // them.
+  SmallVector<llvm::SMFixIt, 4> FixIts;
+  for (auto &diag : Errors)
+    FixIts.append(diag.getFixIts().begin(), diag.getFixIts().end());
+
+  // If we have no fixits to apply, avoid touching the file.
+  if (FixIts.empty())
+    return;
+
+  // Sort the fixits by their start location.
+  std::sort(FixIts.begin(), FixIts.end(),
+            [&](const llvm::SMFixIt &lhs, const llvm::SMFixIt &rhs) -> bool {
+              return lhs.getRange().Start.getPointer()
+                   < rhs.getRange().Start.getPointer();
+            });
+
+  // Get the contents of the original source file.
+  auto memBuffer = SM.getLLVMSourceMgr().getMemoryBuffer(*SF->getBufferID());
+  auto bufferRange = memBuffer->getBuffer();
+
+  // Apply the fixes, building up a new buffer as an std::string.
+  const char *LastPos = bufferRange.begin();
+  std::string Result;
+
+  for (auto &fix : FixIts) {
+    // We cannot handle overlapping fixits, so assert that they don't happen.
+    assert(LastPos <= fix.getRange().Start.getPointer() &&
+           "Cannot handle overlapping fixits");
+
+    // Keep anything from the last spot we've checked to the start of the fixit.
+    Result.append(LastPos, fix.getRange().Start.getPointer());
+
+    // Replace the content covered by the fixit with the replacement text.
+    Result.append(fix.getText().begin(), fix.getText().end());
+
+    // Append a newline.
+    Result.append("\n");
+
+    // Next character to consider is at the end of the fixit.
+    LastPos = fix.getRange().End.getPointer();
+  }
+
+  // Retain the end of the file.
+  Result.append(LastPos, bufferRange.end());
+
+  std::error_code error;
+  llvm::raw_fd_ostream outs(memBuffer->getBufferIdentifier(), error,
+                            llvm::sys::fs::OpenFlags::F_None);
+  if (!error)
+    outs << Result;
+}
+
+
+bool DependencyVerifier::verifyFile(const SourceFile *SF, bool applyFixits) {
   std::vector<Expectation> ExpectedDependencies;
   if (parseExpectations(SF, ExpectedDependencies)) {
     return true;
@@ -637,6 +758,10 @@ bool DependencyVerifier::verifyFile(const SourceFile *SF) {
     return true;
   }
 
+  if (applyFixits) {
+    applyEmittedFixits(SF);
+  }
+
   // Sort the diagnostics by location so we get a stable ordering.
   std::sort(Errors.begin(), Errors.end(),
             [&](const llvm::SMDiagnostic &lhs,
@@ -655,22 +780,24 @@ bool DependencyVerifier::verifyFile(const SourceFile *SF) {
 //===----------------------------------------------------------------------===//
 
 bool swift::verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
+                               bool autoApplyFixits,
                                ArrayRef<FileUnit *> SFs) {
   bool HadError = false;
   DependencyVerifier Verifier{SM, DT};
   for (const auto *FU : SFs) {
     if (const auto *SF = dyn_cast<SourceFile>(FU))
-      HadError |= Verifier.verifyFile(SF);
+      HadError |= Verifier.verifyFile(SF, autoApplyFixits);
   }
   return HadError;
 }
 
 bool swift::verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
+                               bool autoApplyFixits,
                                ArrayRef<SourceFile *> SFs) {
   bool HadError = false;
   DependencyVerifier Verifier{SM, DT};
   for (const auto *SF : SFs) {
-    HadError |= Verifier.verifyFile(SF);
+    HadError |= Verifier.verifyFile(SF, autoApplyFixits);
   }
   return HadError;
 }

@@ -39,8 +39,10 @@ namespace swift {
                          bool autoApplyFixes, bool ignoreUnknown);
 
   bool verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
+                          bool autoApplyFixits,
                           ArrayRef<FileUnit *> SFs);
   bool verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
+                          bool autoApplyFixits,
                           ArrayRef<SourceFile *> SFs);
 }
 

@@ -2188,14 +2188,18 @@ int swift::performFrontend(ArrayRef<const char *> Args,
 
   // Verify reference dependencies of the current compilation job *before*
   // verifying diagnostics so that the former can be tested via the latter.
+  const bool autoApplyFixits =
+      diagOpts.VerifyMode == DiagnosticOptions::VerifyAndApplyFixes;
   if (Invocation.getFrontendOptions().EnableIncrementalDependencyVerifier) {
     if (!Instance->getPrimarySourceFiles().empty()) {
       HadError |= swift::verifyDependencies(Instance->getSourceMgr(),
                                             *Instance->getDependencyTracker(),
+                                            autoApplyFixits,
                                             Instance->getPrimarySourceFiles());
     } else {
       HadError |= swift::verifyDependencies(
           Instance->getSourceMgr(), *Instance->getDependencyTracker(),
+          autoApplyFixits,
           Instance->getMainModule()->getFiles());
     }
   }
@@ -2204,7 +2208,7 @@ int swift::performFrontend(ArrayRef<const char *> Args,
     HadError = verifyDiagnostics(
         Instance->getSourceMgr(),
         Instance->getInputBufferIDs(),
-        diagOpts.VerifyMode == DiagnosticOptions::VerifyAndApplyFixes,
+        autoApplyFixits,
         diagOpts.VerifyIgnoreUnknown);
 
     DiagnosticEngine &diags = Instance->getDiags();
