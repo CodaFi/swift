@@ -129,6 +129,10 @@ private:
 
 public:
   bool isCached() const { return true; }
+
+public:
+  // Incremental dependencies.
+  SourceFile *getDependencySource() const;
 };
 
 class IRGenWholeModuleRequest

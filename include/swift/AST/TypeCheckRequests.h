@@ -858,6 +858,10 @@ private:
 
 public:
   bool isCached() const { return true; }
+
+public:
+  // Incremental dependencies.
+  SourceFile *getDependencySource() const;
 };
 
 /// Request to obtain a list of stored properties in a nominal type.
@@ -1999,6 +2003,10 @@ public:
   bool isCached() const { return true; }
   Optional<bool> getCachedResult() const;
   void cacheResult(bool result) const;
+
+public:
+  // Incremental dependencies.
+  SourceFile *getDependencySource() const;
 };
 
 /// Computes whether the specified type or a super-class/super-protocol has the
@@ -2206,7 +2214,7 @@ void simple_display(llvm::raw_ostream &out, ConformanceLookupKind kind);
 class LookupAllConformancesInContextRequest :
     public SimpleRequest<LookupAllConformancesInContextRequest,
                          ProtocolConformanceLookupResult(const DeclContext *),
-                         CacheKind::Uncached> {
+                         CacheKind::SeparatelyCached> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -2215,7 +2223,15 @@ private:
 
   // Evaluation.
   llvm::Expected<ProtocolConformanceLookupResult>
-  evaluate(Evaluator &evaluator, const DeclContext *DC) const;
+  evaluate(Evaluator &evaluator, const DeclContext *DC) const;\
+
+public:
+  // Separate caching.
+  bool isCached() const { return true; }
+  Optional<ProtocolConformanceLookupResult> getCachedResult() const {
+    return None;
+  }
+  void cacheResult(ProtocolConformanceLookupResult r) const;
 };
 
 // Allow AnyValue to compare two Type values, even though Type doesn't

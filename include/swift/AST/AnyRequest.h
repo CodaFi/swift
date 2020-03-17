@@ -34,6 +34,7 @@ using llvm::hash_code;
 using llvm::hash_value;
 
 class DiagnosticEngine;
+class SourceFile;
 
 /// A collection of functions that describe how to perform operations for a
 /// specific concrete request, obtained using
@@ -66,6 +67,9 @@ struct AnyRequestVTable {
     static SourceLoc getNearestLoc(const void *ptr) {
       return static_cast<const Request *>(ptr)->getNearestLoc();
     }
+    static SourceFile *getDependencySource(const void *ptr) {
+      return static_cast<const Request *>(ptr)->getDependencySource();
+    }
   };
 
   const uint64_t typeID;
@@ -78,6 +82,7 @@ struct AnyRequestVTable {
   const std::function<void(const void *, DiagnosticEngine &)> diagnoseCycle;
   const std::function<void(const void *, DiagnosticEngine &)> noteCycleStep;
   const std::function<SourceLoc(const void *)> getNearestLoc;
+  const std::function<SourceFile *(const void *)> getDependencySource;
 
   template <typename Request>
   static const AnyRequestVTable *get() {
@@ -92,6 +97,7 @@ struct AnyRequestVTable {
         &Impl<Request>::diagnoseCycle,
         &Impl<Request>::noteCycleStep,
         &Impl<Request>::getNearestLoc,
+        &Impl<Request>::getDependencySource,
     };
     return &vtable;
   }
@@ -192,6 +198,12 @@ public:
   /// Retrieve the nearest source location to which this request applies.
   SourceLoc getNearestLoc() const {
     return getVTable()->getNearestLoc(getRawStorage());
+  }
+
+  /// If this request acts as the source of a dependency edge, returns the
+  /// associated file.
+  SourceFile *getDependencySource() const {
+    return getVTable()->getDependencySource(getRawStorage());
   }
 
   /// Compare two instances for equality.

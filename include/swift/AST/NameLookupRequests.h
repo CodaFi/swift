@@ -20,6 +20,7 @@
 #include "swift/AST/ASTTypeIDs.h"
 #include "swift/AST/FileUnit.h"
 #include "swift/AST/Identifier.h"
+#include "swift/AST/NameLookup.h"
 #include "swift/Basic/Statistic.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/TinyPtrVector.h"
@@ -399,7 +400,7 @@ SourceLoc extractNearestSourceLoc(const UnqualifiedLookupDescriptor &desc);
 class UnqualifiedLookupRequest
     : public SimpleRequest<UnqualifiedLookupRequest,
                            LookupResult(UnqualifiedLookupDescriptor),
-                           CacheKind::Uncached> {
+                           CacheKind::SeparatelyCached> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -409,6 +410,12 @@ private:
   // Evaluation.
   llvm::Expected<LookupResult> evaluate(Evaluator &evaluator,
                                         UnqualifiedLookupDescriptor desc) const;
+
+public:
+  // Caching
+  bool isCached() const { return true; }
+  Optional<LookupResult> getCachedResult() const { return None; }
+  void cacheResult(LookupResult l) const;
 };
 
 using QualifiedLookupResult = SmallVector<ValueDecl *, 4>;
@@ -419,7 +426,7 @@ class LookupInModuleRequest
                            QualifiedLookupResult(
                                const DeclContext *, DeclName, NLKind,
                                namelookup::ResolutionKind, const DeclContext *),
-                           CacheKind::Uncached> {
+                           CacheKind::SeparatelyCached> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -431,6 +438,12 @@ private:
   evaluate(Evaluator &evaluator, const DeclContext *moduleOrFile, DeclName name,
            NLKind lookupKind, namelookup::ResolutionKind resolutionKind,
            const DeclContext *moduleScopeContext) const;
+
+public:
+  // Caching
+  bool isCached() const { return true; }
+  Optional<QualifiedLookupResult> getCachedResult() const { return None; }
+  void cacheResult(QualifiedLookupResult l) const;
 };
 
 /// Perform \c AnyObject lookup for a given member.
@@ -438,7 +451,7 @@ class AnyObjectLookupRequest
     : public SimpleRequest<AnyObjectLookupRequest,
                            QualifiedLookupResult(const DeclContext *,
                                                  DeclNameRef, NLOptions),
-                           CacheKind::Uncached> {
+                           CacheKind::SeparatelyCached> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -449,6 +462,11 @@ private:
                                                  const DeclContext *dc,
                                                  DeclNameRef name,
                                                  NLOptions options) const;
+public:
+  // Caching
+  bool isCached() const { return true; }
+  Optional<QualifiedLookupResult> getCachedResult() const { return None; }
+  void cacheResult(QualifiedLookupResult l) const;
 };
 
 class ModuleQualifiedLookupRequest
@@ -526,7 +544,7 @@ SourceLoc extractNearestSourceLoc(const DirectLookupDescriptor &desc);
 class DirectLookupRequest
     : public SimpleRequest<DirectLookupRequest,
                            TinyPtrVector<ValueDecl *>(DirectLookupDescriptor),
-                           CacheKind::Uncached> {
+                           CacheKind::SeparatelyCached> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -536,6 +554,12 @@ private:
   // Evaluation.
   llvm::Expected<TinyPtrVector<ValueDecl *>>
   evaluate(Evaluator &evaluator, DirectLookupDescriptor desc) const;
+
+public:
+  // Caching
+  bool isCached() const { return true; }
+  Optional<TinyPtrVector<ValueDecl *>> getCachedResult() const { return None; }
+  void cacheResult(TinyPtrVector<ValueDecl *> l) const;
 };
 
 class OperatorLookupDescriptor final {
@@ -598,19 +622,25 @@ template <typename OperatorType>
 class LookupOperatorRequest
     : public SimpleRequest<LookupOperatorRequest<OperatorType>,
                            OperatorType *(OperatorLookupDescriptor),
-                           CacheKind::Uncached> {
+                           CacheKind::SeparatelyCached> {
   using SimpleRequest<LookupOperatorRequest<OperatorType>,
                       OperatorType *(OperatorLookupDescriptor),
-                      CacheKind::Uncached>::SimpleRequest;
+                      CacheKind::SeparatelyCached>::SimpleRequest;
 
 private:
   friend SimpleRequest<LookupOperatorRequest<OperatorType>,
                        OperatorType *(OperatorLookupDescriptor),
-                       CacheKind::Uncached>;
+                       CacheKind::SeparatelyCached>;
 
   // Evaluation.
   llvm::Expected<OperatorType *> evaluate(Evaluator &evaluator,
                                           OperatorLookupDescriptor desc) const;
+
+public:
+  // Caching
+  bool isCached() const { return true; }
+  Optional<OperatorType *> getCachedResult() const { return None; }
+  void cacheResult(OperatorType *l) const;
 };
 
 using LookupPrefixOperatorRequest = LookupOperatorRequest<PrefixOperatorDecl>;
@@ -686,7 +716,7 @@ SourceLoc extractNearestSourceLoc(const LookupConformanceDescriptor &desc);
 class LookupConformanceInModuleRequest
     : public SimpleRequest<LookupConformanceInModuleRequest,
                            ProtocolConformanceRef(LookupConformanceDescriptor),
-                           CacheKind::Uncached> {
+                           CacheKind::SeparatelyCached> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -696,6 +726,12 @@ private:
   // Evaluation.
   llvm::Expected<ProtocolConformanceRef> evaluate(
       Evaluator &evaluator, LookupConformanceDescriptor desc) const;
+
+public:
+  // Caching
+  bool isCached() const { return true; }
+  Optional<ProtocolConformanceRef> getCachedResult() const { return None; }
+  void cacheResult(ProtocolConformanceRef p) const;
 };
 
 #define SWIFT_TYPEID_ZONE NameLookup

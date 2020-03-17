@@ -177,6 +177,14 @@ SourceLoc extractNearestSourceLoc(const std::tuple<First, Rest...> &value) {
 ///   Optional<Output> getCachedResult() const;
 ///   void cacheResult(Output value) const;
 /// \endcode
+///
+/// Automatic incremental dependency tracking occurs as a consequence of
+/// request evaluation. To support that system, high-level requests that define
+/// dependency sources (currently instances of \c SourceFile ) should override
+/// \c getDependencySource() to have the evaluator automatically register it:
+/// \code
+///   SourceFile *getDependencySource() const;
+/// \endcode
 template<typename Derived, typename Signature, CacheKind Caching>
 class SimpleRequest;
 
@@ -223,6 +231,12 @@ public:
   /// Retrieve the nearest source location to which this request applies.
   SourceLoc getNearestLoc() const {
     return extractNearestSourceLoc(storage);
+  }
+
+  /// Retrieve the source file associated with this request if it provides the
+  /// source end of an incremental dependency edge.
+  SourceFile *getDependencySource() const {
+    return nullptr;
   }
 
   void diagnoseCycle(DiagnosticEngine &diags) const {

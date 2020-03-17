@@ -99,6 +99,9 @@ public:
   bool isCached() const { return true; }
   Optional<ArrayRef<Decl *>> getCachedResult() const;
   void cacheResult(ArrayRef<Decl *> decls) const;
+
+public:
+  SourceFile *getDependencySource() const;
 };
 
 void simple_display(llvm::raw_ostream &out,
@@ -117,6 +120,9 @@ private:
   // Evaluation.
   bool evaluate(Evaluator &evaluator, SourceFile *SF,
                 CodeCompletionCallbacksFactory *Factory) const;
+
+public:
+  SourceFile *getDependencySource() const;
 };
 
 /// The zone number for the parser.

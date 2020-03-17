@@ -448,6 +448,8 @@ static void checkRedeclaration(ASTContext &ctx, ValueDecl *current) {
     if (auto nominal = currentDC->getSelfNominalTypeDecl()) {
       auto found = nominal->lookupDirect(current->getBaseName());
       otherDefinitions.append(found.begin(), found.end());
+      // FIXME(Evaluator Incremental Dependencies): Remove this. The direct
+      // lookup registers this edge.
       if (tracker)
         tracker->addUsedMember({nominal, current->getBaseName()}, isCascading);
     }
@@ -1895,6 +1897,10 @@ public:
       ClassDecl *Super = superclassTy->getClassOrBoundGenericClass();
 
       if (auto *SF = CD->getParentSourceFile()) {
+        // FIXME(Evaluator Incremental Dependencies): Remove this. Type lookup
+        // for the superclass will run (un)qualified lookup which will register
+        // the appropriate edge, then SuperclassTypeRequest registers the
+        // potential member edge.
         if (auto *tracker = SF->getReferencedNameTracker()) {
           bool isPrivate =
               CD->getFormalAccess() <= AccessLevel::FilePrivate;
@@ -2002,6 +2008,9 @@ public:
     if (SF) {
       if (auto *tracker = SF->getReferencedNameTracker()) {
         bool isNonPrivate = (PD->getFormalAccess() > AccessLevel::FilePrivate);
+        // FIXME(Evaluator Incremental Dependencies): Remove this. Type lookup
+        // for the ancestor protocols will run (un)qualified lookup which will
+        // register the appropriate edge.
         for (auto *parentProto : PD->getInheritedProtocols())
           tracker->addUsedMember({parentProto, Identifier()}, isNonPrivate);
       }

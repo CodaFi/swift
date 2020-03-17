@@ -1194,7 +1194,6 @@ llvm::Expected<OperatorType *> LookupOperatorRequest<OperatorType>::evaluate(
                                               desc.isCascading);
   if (!result.hasValue())
     return nullptr;
-
   if (!result.getValue() ||
       result.getValue()->getDeclContext()->getModuleScopeContext() != file) {
     namelookup::recordLookupOfTopLevelName(file, desc.name, desc.isCascading);
@@ -1207,6 +1206,31 @@ llvm::Expected<OperatorType *> LookupOperatorRequest<OperatorType>::evaluate(
   return result.hasValue() ? result.getValue() : nullptr;
 }
 
+template <typename OperatorType>
+void LookupOperatorRequest<OperatorType>::cacheResult(OperatorType *o) const {
+  auto &desc = std::get<0>(this->getStorage());
+  auto *FU = desc.fileOrModule.template get<FileUnit *>();
+  auto shouldRegisterDependencyEdge = [&FU](OperatorType *o) -> bool {
+    if (!o)
+      return true;
+
+    auto *topLevelContext = o->getDeclContext()->getModuleScopeContext();
+    return topLevelContext != FU;
+  };
+
+  if (!shouldRegisterDependencyEdge(o)) {
+    return;
+  }
+
+  auto *source = FU->getASTContext().evaluator.getActiveDependencySource();
+  if (!source)
+    return;
+  auto reqTracker = source->getRequestBasedReferencedNameTracker();
+  if (!reqTracker)
+    return;
+  reqTracker->addTopLevelName(desc.name, desc.isCascading);
+}
+
 #define LOOKUP_OPERATOR(Kind)                                                  \
   Kind##Decl *ModuleDecl::lookup##Kind(Identifier name, SourceLoc loc) {       \
     auto result =                                                              \
@@ -1216,7 +1240,9 @@ llvm::Expected<OperatorType *> LookupOperatorRequest<OperatorType>::evaluate(
   }                                                                            \
   template llvm::Expected<Kind##Decl *>                                        \
   LookupOperatorRequest<Kind##Decl>::evaluate(Evaluator &e,                    \
-                                              OperatorLookupDescriptor d) const;
+                                              OperatorLookupDescriptor) const; \
+  template                                                                     \
+  void LookupOperatorRequest<Kind##Decl>::cacheResult(Kind##Decl *) const;     \
 
 LOOKUP_OPERATOR(PrefixOperator)
 LOOKUP_OPERATOR(InfixOperator)
@@ -2515,7 +2541,9 @@ void SourceFile::setTypeRefinementContext(TypeRefinementContext *Root) {
 
 void SourceFile::createReferencedNameTracker() {
   assert(!ReferencedNames && "This file already has a name tracker.");
+  assert(!RequestReferencedNames && "This file already has a name tracker.");
   ReferencedNames.emplace(ReferencedNameTracker());
+  RequestReferencedNames.emplace(ReferencedNameTracker());
 }
 
 ArrayRef<OpaqueTypeDecl *> SourceFile::getOpaqueReturnTypeDecls() {

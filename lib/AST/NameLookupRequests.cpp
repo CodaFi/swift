@@ -14,6 +14,7 @@
 #include "swift/AST/NameLookupRequests.h"
 #include "swift/AST/ASTContext.h"
 #include "swift/AST/Decl.h"
+#include "swift/AST/ProtocolConformance.h"
 #include "swift/AST/Evaluator.h"
 #include "swift/AST/Module.h"
 #include "swift/AST/SourceFile.h"
@@ -85,6 +86,20 @@ void InheritedProtocolsRequest::cacheResult(ArrayRef<ProtocolDecl *> PDs) const 
   auto proto = std::get<0>(getStorage());
   proto->InheritedProtocols = PDs;
   proto->setInheritedProtocolsValid();
+
+  auto &eval = proto->getASTContext().evaluator;
+  auto *activeSource = eval.getActiveDependencySource();
+  if (!activeSource)
+    return;
+
+  auto *tracker = activeSource->getRequestBasedReferencedNameTracker();
+  if (!tracker)
+    return;
+
+  for (auto *parentProto : PDs) {
+    tracker->addUsedMember({parentProto, Identifier()},
+                           eval.isActiveSourceCascading());
+  }
 }
 
 //----------------------------------------------------------------------------//
@@ -131,6 +146,7 @@ HasMissingDesignatedInitializersRequest::evaluate(Evaluator &evaluator,
 //----------------------------------------------------------------------------//
 // Extended nominal computation.
 //----------------------------------------------------------------------------//
+
 Optional<NominalTypeDecl *> ExtendedNominalRequest::getCachedResult() const {
   // Note: if we fail to compute any nominal declaration, it's considered
   // a cache miss. This allows us to recompute the extended nominal types
@@ -148,6 +164,29 @@ Optional<NominalTypeDecl *> ExtendedNominalRequest::getCachedResult() const {
 void ExtendedNominalRequest::cacheResult(NominalTypeDecl *value) const {
   auto ext = std::get<0>(getStorage());
   ext->setExtendedNominal(value);
+
+  if (!value)
+    return;
+
+  auto *topLevelContext = value->getModuleScopeContext();
+  auto *SF = dyn_cast<SourceFile>(topLevelContext);
+  if (!SF)
+    return;
+
+  auto &eval = value->getASTContext().evaluator;
+  auto *activeSource = eval.getActiveDependencySource();
+  if (!activeSource)
+    return;
+
+  if (topLevelContext != activeSource)
+    return;
+  
+  auto *tracker = activeSource->getRequestBasedReferencedNameTracker();
+  if (!tracker)
+    return;
+
+  tracker->addUsedMember({value, Identifier()},
+                         eval.isActiveSourceCascading());
 }
 
 //----------------------------------------------------------------------------//
@@ -250,6 +289,21 @@ SourceLoc swift::extractNearestSourceLoc(const OperatorLookupDescriptor &desc) {
   return desc.diagLoc;
 }
 
+void DirectLookupRequest::cacheResult(TinyPtrVector<ValueDecl *> l) const {
+  auto &desc = std::get<0>(getStorage());
+  auto &eval = desc.DC->getASTContext().evaluator;
+
+  auto *activeSource = eval.getActiveDependencySource();
+  if (!activeSource)
+    return;
+
+  auto *tracker = activeSource->getRequestBasedReferencedNameTracker();
+  if (!tracker)
+    return;
+  tracker->addUsedMember({desc.DC, desc.Name.getBaseName()},
+                         eval.isActiveSourceCascading());
+}
+
 //----------------------------------------------------------------------------//
 // LookupConformanceInModuleRequest computation.
 //----------------------------------------------------------------------------//
@@ -264,9 +318,101 @@ void swift::simple_display(llvm::raw_ostream &out,
   simple_display(out, desc.Mod);
 }
 
+void AnyObjectLookupRequest::cacheResult(QualifiedLookupResult l) const {
+  auto *dc = std::get<0>(getStorage());
+  auto member = std::get<1>(getStorage());
+
+  auto &eval = dc->getASTContext().evaluator;
+  auto *source = eval.getActiveDependencySource();
+  if (!source)
+    return;
+  auto reqTracker = source->getRequestBasedReferencedNameTracker();
+  if (!reqTracker)
+    return;
+  reqTracker->addDynamicLookupName(member.getBaseName(),
+                                   eval.isActiveSourceCascading());
+}
+
 SourceLoc
 swift::extractNearestSourceLoc(const LookupConformanceDescriptor &desc) {
   return SourceLoc();
+}
+
+//----------------------------------------------------------------------------//
+// LookupInModuleRequest computation.
+//----------------------------------------------------------------------------//
+
+void LookupInModuleRequest::cacheResult(QualifiedLookupResult l) const {
+  auto *dc = std::get<0>(getStorage());
+  auto member = std::get<1>(getStorage());
+  auto &eval = dc->getASTContext().evaluator;
+
+  auto *source = eval.getActiveDependencySource();
+  if (!source)
+    return;
+  if (dc != source->getParentModule())
+    return;
+  auto reqTracker = source->getRequestBasedReferencedNameTracker();
+  if (!reqTracker)
+    return;
+  reqTracker->addTopLevelName(member.getBaseName(),
+                              eval.isActiveSourceCascading());
+}
+
+//----------------------------------------------------------------------------//
+// LookupInModuleRequest computation.
+//----------------------------------------------------------------------------//
+
+void LookupConformanceInModuleRequest::cacheResult(ProtocolConformanceRef lookupResult) const {
+  if (lookupResult.isInvalid() || !lookupResult.isConcrete())
+    return;
+
+  auto &desc = std::get<0>(getStorage());
+  auto *Adoptee = desc.Ty->getAnyNominal();
+  if (!Adoptee)
+    return;
+
+  auto &eval = desc.Mod->getASTContext().evaluator;
+  auto *source = eval.getActiveDependencySource();
+  if (!source)
+    return;
+  auto reqTracker = source->getRequestBasedReferencedNameTracker();
+  if (!reqTracker)
+    return;
+
+  auto *conformance = lookupResult.getConcrete();
+  if (source->getParentModule() !=
+      conformance->getDeclContext()->getParentModule())
+    return;
+  reqTracker->addUsedMember({Adoptee, Identifier()},
+                            eval.isActiveSourceCascading());
+}
+
+//----------------------------------------------------------------------------//
+// UnqualifiedLookupRequest computation.
+//----------------------------------------------------------------------------//
+
+void UnqualifiedLookupRequest::cacheResult(LookupResult l) const {
+  auto &desc = std::get<0>(getStorage());
+  auto &eval = desc.DC->getASTContext().evaluator;
+  // FIXME: Uncomment below to enable the more conservatively-correct edge.
+  // Today, unqualified lookups originating from one file that pass the decl
+  // context of another file will *not* register the lookup in their name
+  // tracker. Instead, the tracker corresponding to the file of the
+  // *passed-in decl context* is used.
+  //
+  // If this is actually correct, UnqualifiedLookupRequest should define
+  // \c getDependencySource().
+  //
+  // auto *source = eval.getActiveDependencySource();
+  auto *source = desc.DC->getParentSourceFile();
+  if (!source)
+    return;
+  auto reqTracker = source->getRequestBasedReferencedNameTracker();
+  if (!reqTracker)
+    return;
+  reqTracker->addTopLevelName(desc.Name.getBaseName(),
+                              eval.isActiveSourceCascading());
 }
 
 // Define request evaluation functions for each of the name lookup requests.

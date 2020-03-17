@@ -136,13 +136,35 @@ bool SuperclassTypeRequest::isCached() const {
 Optional<Type> SuperclassTypeRequest::getCachedResult() const {
   auto nominalDecl = std::get<0>(getStorage());
 
+  auto registerDependency = [](Type value) -> Type {
+    if (!value)
+      return value;
+
+    ClassDecl *Super = value->getClassOrBoundGenericClass();
+    if (!Super)
+      return value;
+
+    auto &ctx = value->getASTContext();
+    auto *activeSource = ctx.evaluator.getActiveDependencySource();
+    if (!activeSource)
+      return value;
+
+    auto *tracker = activeSource->getRequestBasedReferencedNameTracker();
+    if (!tracker)
+      return value;
+    bool isPrivate =
+        Super->getFormalAccess() <= AccessLevel::FilePrivate;
+    tracker->addUsedMember({Super, Identifier()}, !isPrivate);
+    return value;
+  };
+
   if (auto *classDecl = dyn_cast<ClassDecl>(nominalDecl))
     if (classDecl->LazySemanticInfo.SuperclassType.getInt())
-      return classDecl->LazySemanticInfo.SuperclassType.getPointer();
+      return registerDependency(classDecl->LazySemanticInfo.SuperclassType.getPointer());
 
   if (auto *protocolDecl = dyn_cast<ProtocolDecl>(nominalDecl))
     if (protocolDecl->LazySemanticInfo.SuperclassType.getInt())
-      return protocolDecl->LazySemanticInfo.SuperclassType.getPointer();
+      return registerDependency(protocolDecl->LazySemanticInfo.SuperclassType.getPointer());
 
   return None;
 }
@@ -150,11 +172,30 @@ Optional<Type> SuperclassTypeRequest::getCachedResult() const {
 void SuperclassTypeRequest::cacheResult(Type value) const {
   auto nominalDecl = std::get<0>(getStorage());
 
+  if (auto *protocolDecl = dyn_cast<ProtocolDecl>(nominalDecl))
+    protocolDecl->LazySemanticInfo.SuperclassType.setPointerAndInt(value, true);
+
   if (auto *classDecl = dyn_cast<ClassDecl>(nominalDecl))
     classDecl->LazySemanticInfo.SuperclassType.setPointerAndInt(value, true);
 
-  if (auto *protocolDecl = dyn_cast<ProtocolDecl>(nominalDecl))
-    protocolDecl->LazySemanticInfo.SuperclassType.setPointerAndInt(value, true);
+  if (!value)
+    return;
+
+  ClassDecl *Super = value->getClassOrBoundGenericClass();
+  if (!Super)
+    return;
+
+  auto &ctx = nominalDecl->getASTContext();
+  auto *activeSource = ctx.evaluator.getActiveDependencySource();
+  if (!activeSource)
+    return;
+
+  auto *tracker = activeSource->getRequestBasedReferencedNameTracker();
+  if (!tracker)
+    return;
+  bool isPrivate =
+      Super->getFormalAccess() <= AccessLevel::FilePrivate;
+  tracker->addUsedMember({Super, Identifier()}, !isPrivate);
 }
 
 //----------------------------------------------------------------------------//
@@ -1265,8 +1306,45 @@ void DifferentiableAttributeTypeCheckRequest::cacheResult(
 }
 
 //----------------------------------------------------------------------------//
+// LookupAllConformancesInContextRequest computation.
+//----------------------------------------------------------------------------//
+
+void LookupAllConformancesInContextRequest::cacheResult(
+    ProtocolConformanceLookupResult conformances) const {
+
+  auto *dc = std::get<0>(getStorage());
+  auto &ctx = dc->getASTContext();
+  auto *activeSource = ctx.evaluator.getActiveDependencySource();
+  if (!activeSource)
+    return;
+
+  auto *tracker = activeSource->getRequestBasedReferencedNameTracker();
+  if (!tracker)
+    return;
+
+  AccessLevel defaultAccess;
+  if (auto ext = dyn_cast<ExtensionDecl>(dc)) {
+    const NominalTypeDecl *nominal = ext->getExtendedNominal();
+    if (!nominal)
+      return;
+    defaultAccess = nominal->getFormalAccess();
+  } else {
+    defaultAccess = cast<NominalTypeDecl>(dc)->getFormalAccess();
+  }
+
+  for (auto conformance : conformances) {
+    tracker->addUsedMember({conformance->getProtocol(), Identifier()},
+                           defaultAccess > AccessLevel::FilePrivate);
+  }
+}
+
+//----------------------------------------------------------------------------//
 // TypeCheckSourceFileRequest computation.
 //----------------------------------------------------------------------------//
+
+SourceFile *TypeCheckSourceFileRequest::getDependencySource() const {
+  return std::get<0>(getStorage());
+}
 
 Optional<bool> TypeCheckSourceFileRequest::getCachedResult() const {
   auto *SF = std::get<0>(getStorage());
@@ -1307,4 +1385,12 @@ void TypeCheckSourceFileRequest::cacheResult(bool result) const {
     }
 #endif
   }
+}
+
+//----------------------------------------------------------------------------//
+// TypeCheckFunctionBodyUntilRequest computation.
+//----------------------------------------------------------------------------//
+
+SourceFile *TypeCheckFunctionBodyUntilRequest::getDependencySource() const {
+  return std::get<0>(getStorage())->getParentSourceFile();
 }

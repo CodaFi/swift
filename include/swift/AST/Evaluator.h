@@ -19,6 +19,7 @@
 #define SWIFT_AST_EVALUATOR_H
 
 #include "swift/AST/AnyRequest.h"
+#include "swift/AST/SourceFile.h"
 #include "swift/Basic/AnyValue.h"
 #include "swift/Basic/Debug.h"
 #include "swift/Basic/Defer.h"
@@ -224,6 +225,25 @@ class Evaluator {
   /// so all clients must cope with cycles.
   llvm::DenseMap<AnyRequest, std::vector<AnyRequest>> dependencies;
 
+  /// A stack of dependency sources in the order they were evaluated.
+  llvm::TinyPtrVector<SourceFile *> dependencySources;
+
+  /// An RAII type that manages manipulating the evaluator's
+  /// dependency source stack.
+  struct DependencyStackRAII {
+    Evaluator &Eval;
+    SourceFile *SF;
+    explicit DependencyStackRAII(Evaluator &E, SourceFile *SF)
+      : Eval(E), SF(SF) {
+      if (SF)
+        E.dependencySources.push_back(SF);
+    }
+    ~DependencyStackRAII() {
+      if (SF)
+        Eval.dependencySources.pop_back();
+    }
+  };
+
   /// Retrieve the request function for the given zone and request IDs.
   AbstractRequestFunction *getAbstractRequestFunction(uint8_t zoneID,
                                                       uint8_t requestID) const;
@@ -362,6 +382,8 @@ private:
 
     PrettyStackTraceRequest<Request> prettyStackTrace(request);
 
+    DependencyStackRAII DS{*this, request.getDependencySource()};
+
     // Trace and/or count statistics.
     FrontendStatsTracer statsTracer = make_tracer(stats, request);
     if (stats) reportEvaluatedRequest(*stats, request);
@@ -414,6 +436,15 @@ private:
     // Cache the result.
     cache.insert({AnyRequest(request), *result});
     return result;
+  }
+
+public:
+  bool isActiveSourceCascading() const {
+    return dependencySources.size() <= 1;
+  }
+
+  SourceFile *getActiveDependencySource() const {
+    return dependencySources.empty() ? nullptr : dependencySources.back();
   }
 
 public:
