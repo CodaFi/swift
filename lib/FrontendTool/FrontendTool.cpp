@@ -686,7 +686,13 @@ static void countStatsPostSema(UnifiedStatsReporter &Stats,
   }
 
   for (auto SF : Instance.getPrimarySourceFiles()) {
-    if (auto *R = SF->getReferencedNameTracker()) {
+    ReferencedNameTracker *Tracker = nullptr;
+    if (AST.LangOpts.DisableRequestBasedIncrementalDependencies) {
+      Tracker = SF->getReferencedNameTracker();
+    } else {
+      Tracker = SF->getRequestBasedReferencedNameTracker();
+    }
+    if (auto *R = Tracker) {
       C.NumReferencedTopLevelNames += R->getTopLevelNames().size();
       C.NumReferencedDynamicNames += R->getDynamicLookupNames().size();
       C.NumReferencedMemberNames += R->getUsedMembers().size();
@@ -941,16 +947,26 @@ static void emitReferenceDependenciesForAllPrimaryInputsIfNeeded(
         Invocation.getReferenceDependenciesFilePathForPrimary(
             SF->getFilename());
     if (!referenceDependenciesFilePath.empty()) {
-      if (Invocation.getLangOptions().EnableFineGrainedDependencies)
+      auto LangOpts = Invocation.getLangOptions();
+      ReferencedNameTracker *tracker = nullptr;
+      if (LangOpts.DisableRequestBasedIncrementalDependencies) {
+        tracker = SF->getReferencedNameTracker();
+      } else {
+        tracker = SF->getRequestBasedReferencedNameTracker();
+      }
+      if (LangOpts.EnableFineGrainedDependencies) {
         (void)fine_grained_dependencies::emitReferenceDependencies(
             Instance.getASTContext().Diags, SF,
-            *Instance.getDependencyTracker(), referenceDependenciesFilePath,
-            Invocation.getLangOptions()
-                .EmitFineGrainedDependencySourcefileDotFiles);
-      else
+            *Instance.getDependencyTracker(),
+            tracker,
+            referenceDependenciesFilePath,
+            LangOpts.EmitFineGrainedDependencySourcefileDotFiles);
+      } else {
         (void)emitReferenceDependencies(Instance.getASTContext().Diags, SF,
                                         *Instance.getDependencyTracker(),
+                                        tracker,
                                         referenceDependenciesFilePath);
+      }
     }
   }
 }
@@ -2207,14 +2223,21 @@ int swift::performFrontend(ArrayRef<const char *> Args,
   // Verify reference dependencies of the current compilation job *before*
   // verifying diagnostics so that the former can be tested via the latter.
   if (Invocation.getFrontendOptions().EnableIncrementalDependencyVerifier) {
+    PrimaryNameTracker primaryTracker;
+    if (Invocation.getLangOptions().DisableRequestBasedIncrementalDependencies) {
+      primaryTracker = PrimaryNameTracker::Manual;
+    } else {
+      primaryTracker = PrimaryNameTracker::RequestBased;
+    }
     if (!Instance->getPrimarySourceFiles().empty()) {
       HadError |= swift::verifyDependencies(Instance->getSourceMgr(),
                                             *Instance->getDependencyTracker(),
-                                            Instance->getPrimarySourceFiles());
+                                            Instance->getPrimarySourceFiles(),
+                                            primaryTracker);
     } else {
       HadError |= swift::verifyDependencies(
           Instance->getSourceMgr(), *Instance->getDependencyTracker(),
-          Instance->getMainModule()->getFiles());
+          Instance->getMainModule()->getFiles(), primaryTracker);
     }
   }
 

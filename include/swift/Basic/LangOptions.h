@@ -334,6 +334,9 @@ namespace swift {
     /// Enable verification when every SubstitutionMap is constructed.
     bool VerifyAllSubstitutionMaps = false;
 
+    /// If set to \c true, fall back to the legacy manual reference name tracking code.
+    bool DisableRequestBasedIncrementalDependencies = false;
+
     /// Sets the target we are building for and updates platform conditions
     /// to match.
     ///

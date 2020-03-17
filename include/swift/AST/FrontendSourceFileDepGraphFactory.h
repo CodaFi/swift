@@ -15,6 +15,8 @@
 
 #include "swift/AST/AbstractSourceFileDepGraphFactory.h"
 namespace swift {
+class ReferencedNameTracker;
+
 namespace fine_grained_dependencies {
 
 /// Constructs a SourceFileDepGraph from a *real* \c SourceFile
@@ -25,10 +27,12 @@ class FrontendSourceFileDepGraphFactory
     : public AbstractSourceFileDepGraphFactory {
   SourceFile *const SF;
   const DependencyTracker &depTracker;
+  const ReferencedNameTracker *nameTracker;
 
 public:
   FrontendSourceFileDepGraphFactory(SourceFile *SF, StringRef outputPath,
                                     const DependencyTracker &depTracker,
+                                    const ReferencedNameTracker *nameTracker,
                                     bool alsoEmitDotFile);
 
   ~FrontendSourceFileDepGraphFactory() override = default;

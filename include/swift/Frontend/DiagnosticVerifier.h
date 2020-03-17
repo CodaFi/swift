@@ -38,10 +38,17 @@ namespace swift {
   bool verifyDiagnostics(SourceManager &SM, ArrayRef<unsigned> BufferIDs,
                          bool autoApplyFixes, bool ignoreUnknown);
 
+  // The primary kind of referenced name tracker
+  // to use to construct obligations in the dependency verifier.
+  enum PrimaryNameTracker : bool {
+    RequestBased = true,
+    Manual = false,
+  };
+
   bool verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
-                          ArrayRef<FileUnit *> SFs);
+                          ArrayRef<FileUnit *> SFs, PrimaryNameTracker prim);
   bool verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
-                          ArrayRef<SourceFile *> SFs);
-}
+                          ArrayRef<SourceFile *> SFs, PrimaryNameTracker prim);
+} // end namespace swift
 
 #endif

@@ -58,6 +58,7 @@ namespace swift {
 class DependencyTracker;
 class DiagnosticEngine;
 class FrontendOptions;
+class ReferencedNameTracker;
 class SourceFile;
 
 /// Use a new namespace to help keep the experimental code from clashing.
@@ -346,6 +347,7 @@ private:
 /// Write out the .swiftdeps file for a frontend compilation of a primary file.
 bool emitReferenceDependencies(DiagnosticEngine &diags, SourceFile *SF,
                                const DependencyTracker &depTracker,
+                               const ReferencedNameTracker *nameTracker,
                                StringRef outputPath, bool alsoEmitDotFile);
 //==============================================================================
 // MARK: Enums

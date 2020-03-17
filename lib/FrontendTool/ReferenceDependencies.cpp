@@ -44,12 +44,14 @@ namespace {
 class ReferenceDependenciesEmitter {
   SourceFile *const SF;
   const DependencyTracker &depTracker;
+  const ReferencedNameTracker *nameTracker;
   llvm::raw_ostream &out;
 
   ReferenceDependenciesEmitter(SourceFile *const SF,
                                const DependencyTracker &depTracker,
+                               const ReferencedNameTracker *nameTracker,
                                llvm::raw_ostream &out)
-      : SF(SF), depTracker(depTracker), out(out) {}
+      : SF(SF), depTracker(depTracker), nameTracker(nameTracker), out(out) {}
 
 public:
   /// Emits the provided and depended-upon dependencies to a file
@@ -61,10 +63,13 @@ public:
   ///
   /// \return true on error
   static bool emit(DiagnosticEngine &diags, SourceFile *SF,
-                   const DependencyTracker &depTracker, StringRef outputPath);
+                   const DependencyTracker &depTracker,
+                   const ReferencedNameTracker *nameTracker,
+                   StringRef outputPath);
 
   /// Emit the dependencies.
   static void emit(SourceFile *SF, const DependencyTracker &depTracker,
+                   const ReferencedNameTracker *nameTracker,
                    llvm::raw_ostream &out);
 
 private:
@@ -132,12 +137,15 @@ class DependsEmitter {
   const SourceFile *const SF;
   /// The dependencies collected by the compiler.
   const DependencyTracker &depTracker;
+  /// The name tracker
+  const ReferencedNameTracker *nameTracker;
 
   llvm::raw_ostream &out;
 
   DependsEmitter(const SourceFile *SF, const DependencyTracker &depTracker,
+                 const ReferencedNameTracker *nameTracker,
                  llvm::raw_ostream &out)
-      : SF(SF), depTracker(depTracker), out(out) {}
+      : SF(SF), depTracker(depTracker), nameTracker(nameTracker), out(out) {}
 
 public:
   /// A NominalTypeDecl, its DeclBaseName, and whether it is externally-visible.
@@ -149,6 +157,7 @@ public:
   /// \param depTracker Contains the dependencies found during compilation
   /// \param out Where the dependencies are emitted
   static void emit(const SourceFile *SF, const DependencyTracker &depTracker,
+                   const ReferencedNameTracker *nameTracker,
                    llvm::raw_ostream &out);
 
 private:
@@ -189,21 +198,23 @@ static std::string escape(DeclBaseName name) {
 bool ReferenceDependenciesEmitter::emit(DiagnosticEngine &diags,
                                         SourceFile *const SF,
                                         const DependencyTracker &depTracker,
+                                        const ReferencedNameTracker *nameTrack,
                                         StringRef outputPath) {
   // Before writing to the dependencies file path, preserve any previous file
   // that may have been there. No error handling -- this is just a nicety, it
   // doesn't matter if it fails.
   llvm::sys::fs::rename(outputPath, outputPath + "~");
   return withOutputFile(diags, outputPath, [&](llvm::raw_pwrite_stream &out) {
-    ReferenceDependenciesEmitter::emit(SF, depTracker, out);
+    ReferenceDependenciesEmitter::emit(SF, depTracker, nameTrack, out);
     return false;
   });
 }
 
 void ReferenceDependenciesEmitter::emit(SourceFile *SF,
                                         const DependencyTracker &depTracker,
+                                        const ReferencedNameTracker *nameTrack,
                                         llvm::raw_ostream &out) {
-  ReferenceDependenciesEmitter(SF, depTracker, out).emit();
+  ReferenceDependenciesEmitter(SF, depTracker, nameTrack, out).emit();
 }
 
 void ReferenceDependenciesEmitter::emit() const {
@@ -216,8 +227,10 @@ void ReferenceDependenciesEmitter::emit() const {
 
 bool swift::emitReferenceDependencies(DiagnosticEngine &diags, SourceFile *SF,
                                       const DependencyTracker &depTracker,
+                                      const ReferencedNameTracker *nameTracker,
                                       StringRef outputPath) {
-  return ReferenceDependenciesEmitter::emit(diags, SF, depTracker, outputPath);
+  return ReferenceDependenciesEmitter::emit(diags, SF, depTracker,
+                                            nameTracker, outputPath);
 }
 
 void ProvidesEmitter::emit() const {
@@ -236,7 +249,7 @@ void ReferenceDependenciesEmitter::emitProvides() const {
 }
 
 void ReferenceDependenciesEmitter::emitDepends() const {
-  DependsEmitter::emit(SF, depTracker, out);
+  DependsEmitter::emit(SF, depTracker, nameTracker, out);
 }
 
 void ReferenceDependenciesEmitter::emitInterfaceHash() const {
@@ -483,17 +496,17 @@ bool ProvidesEmitter::extendedTypeIsPrivate(TypeLoc inheritedType) {
 
 void DependsEmitter::emit(const SourceFile *SF,
                           const DependencyTracker &depTracker,
+                          const ReferencedNameTracker *nameTracker,
                           llvm::raw_ostream &out) {
-  DependsEmitter(SF, depTracker, out).emit();
+  DependsEmitter(SF, depTracker, nameTracker, out).emit();
 }
 
 void DependsEmitter::emit() const {
-  const ReferencedNameTracker *const tracker = SF->getReferencedNameTracker();
-  assert(tracker && "Cannot emit reference dependencies without a tracker");
+  assert(nameTracker && "Cannot emit reference dependencies without a tracker");
 
-  emitTopLevelNames(tracker);
+  emitTopLevelNames(nameTracker);
 
-  auto &memberLookupTable = tracker->getUsedMembers();
+  auto &memberLookupTable = nameTracker->getUsedMembers();
   std::vector<MemberTableEntryTy> sortedMembers{
     memberLookupTable.begin(), memberLookupTable.end()
   };
@@ -519,7 +532,7 @@ void DependsEmitter::emit() const {
 
   emitMembers(sortedMembers);
   emitNominalTypes(sortedMembers);
-  emitDynamicLookup(tracker);
+  emitDynamicLookup(nameTracker);
   emitExternal(depTracker);
 }
 

@@ -1272,6 +1272,30 @@ OperatorType *LookupOperatorRequest<OperatorType>::evaluate(
   return result.hasValue() ? result.getValue() : nullptr;
 }
 
+template <typename OperatorType>
+void LookupOperatorRequest<OperatorType>::writeDependencySink(
+    Evaluator &evaluator, OperatorType *o) const {
+  auto &desc = std::get<0>(this->getStorage());
+  auto *FU = desc.fileOrModule.template get<FileUnit *>();
+  auto shouldRegisterDependencyEdge = [&FU](OperatorType *o) -> bool {
+    if (!o)
+      return true;
+
+    auto *topLevelContext = o->getDeclContext()->getModuleScopeContext();
+    return topLevelContext != FU;
+  };
+
+  if (!shouldRegisterDependencyEdge(o)) {
+    return;
+  }
+
+  auto *reqTracker = evaluator.getActiveDependencyTracker();
+  if (!reqTracker)
+    return;
+  assert(!desc.name.empty());
+  reqTracker->addTopLevelName(desc.name, desc.isCascading);
+}
+
 #define LOOKUP_OPERATOR(Kind)                                                  \
   Kind##Decl *ModuleDecl::lookup##Kind(Identifier name, SourceLoc loc) {       \
     auto result =                                                              \
@@ -1281,7 +1305,9 @@ OperatorType *LookupOperatorRequest<OperatorType>::evaluate(
   }                                                                            \
   template Kind##Decl *                                                        \
   LookupOperatorRequest<Kind##Decl>::evaluate(Evaluator &e,                    \
-                                              OperatorLookupDescriptor d) const;
+                                              OperatorLookupDescriptor) const; \
+  template                                                                     \
+  void LookupOperatorRequest<Kind##Decl>::writeDependencySink(Evaluator &, Kind##Decl *) const;     \
 
 LOOKUP_OPERATOR(PrefixOperator)
 LOOKUP_OPERATOR(InfixOperator)
@@ -2565,7 +2591,9 @@ void SourceFile::setTypeRefinementContext(TypeRefinementContext *Root) {
 
 void SourceFile::createReferencedNameTracker() {
   assert(!ReferencedNames && "This file already has a name tracker.");
+  assert(!RequestReferencedNames && "This file already has a name tracker.");
   ReferencedNames.emplace(ReferencedNameTracker());
+  RequestReferencedNames.emplace(ReferencedNameTracker());
 }
 
 ArrayRef<OpaqueTypeDecl *> SourceFile::getOpaqueReturnTypeDecls() {

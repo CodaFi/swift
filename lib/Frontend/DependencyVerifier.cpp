@@ -279,10 +279,12 @@ public:
 class DependencyVerifier {
   SourceManager &SM;
   const DependencyTracker &DT;
+  PrimaryNameTracker PNT;
 
 public:
-  explicit DependencyVerifier(SourceManager &SM, const DependencyTracker &DT)
-      : SM(SM), DT(DT) {}
+  explicit DependencyVerifier(SourceManager &SM, const DependencyTracker &DT,
+                              PrimaryNameTracker PNT)
+      : SM(SM), DT(DT), PNT(PNT) {}
 
   bool verifyFile(const SourceFile *SF);
 
@@ -292,6 +294,15 @@ public:
       llvm::DenseMap<Obligation::Key, unsigned, Obligation::Key::Info>>;
   using NegativeExpectationMap = llvm::StringMap<Expectation>;
 
+private:
+  const ReferencedNameTracker *getPrimaryNameTracker(const SourceFile *SF) {
+    switch (PNT) {
+    case PrimaryNameTracker::RequestBased:
+      return SF->getRequestBasedReferencedNameTracker();
+    case PrimaryNameTracker::Manual:
+      return SF->getReferencedNameTracker();
+    }
+  }
 private:
   /// These routines return \c true on failure, \c false otherwise.
   bool parseExpectations(const SourceFile *SF,
@@ -427,7 +438,7 @@ bool DependencyVerifier::parseExpectations(
 
 bool DependencyVerifier::constructObligations(const SourceFile *SF,
                                               ObligationMap &Obligations) {
-  auto *tracker = SF->getReferencedNameTracker();
+  auto *tracker = getPrimaryNameTracker(SF);
   assert(tracker && "Constructed source file without referenced name tracker!");
 
   auto &Ctx = SF->getASTContext();
@@ -490,7 +501,7 @@ bool DependencyVerifier::constructObligations(const SourceFile *SF,
 bool DependencyVerifier::verifyObligations(
     const SourceFile *SF, const std::vector<Expectation> &ExpectedDependencies,
     ObligationMap &OM, llvm::StringMap<Expectation> &NegativeExpectations) {
-  auto *tracker = SF->getReferencedNameTracker();
+  auto *tracker = getPrimaryNameTracker(SF);
   assert(tracker && "Constructed source file without referenced name tracker!");
   auto &diags = SF->getASTContext().Diags;
   for (auto &expectation : ExpectedDependencies) {
@@ -645,9 +656,10 @@ bool DependencyVerifier::verifyFile(const SourceFile *SF) {
 //===----------------------------------------------------------------------===//
 
 bool swift::verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
-                               ArrayRef<FileUnit *> SFs) {
+                               ArrayRef<FileUnit *> SFs,
+                               PrimaryNameTracker PNT) {
   bool HadError = false;
-  DependencyVerifier Verifier{SM, DT};
+  DependencyVerifier Verifier{SM, DT, PNT};
   for (const auto *FU : SFs) {
     if (const auto *SF = dyn_cast<SourceFile>(FU))
       HadError |= Verifier.verifyFile(SF);
@@ -656,9 +668,10 @@ bool swift::verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
 }
 
 bool swift::verifyDependencies(SourceManager &SM, const DependencyTracker &DT,
-                               ArrayRef<SourceFile *> SFs) {
+                               ArrayRef<SourceFile *> SFs,
+                               PrimaryNameTracker PNT) {
   bool HadError = false;
-  DependencyVerifier Verifier{SM, DT};
+  DependencyVerifier Verifier{SM, DT, PNT};
   for (const auto *SF : SFs) {
     HadError |= Verifier.verifyFile(SF);
   }

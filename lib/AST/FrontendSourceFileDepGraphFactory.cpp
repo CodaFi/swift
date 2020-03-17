@@ -282,7 +282,8 @@ DependencyKey DependencyKey::createDependedUponKey(StringRef mangledHolderName,
 
 bool fine_grained_dependencies::emitReferenceDependencies(
     DiagnosticEngine &diags, SourceFile *const SF,
-    const DependencyTracker &depTracker, StringRef outputPath,
+    const DependencyTracker &depTracker,
+    const ReferencedNameTracker *nameTracker, StringRef outputPath,
     const bool alsoEmitDotFile) {
 
   // Before writing to the dependencies file path, preserve any previous file
@@ -291,7 +292,8 @@ bool fine_grained_dependencies::emitReferenceDependencies(
   llvm::sys::fs::rename(outputPath, outputPath + "~");
 
   SourceFileDepGraph g = FrontendSourceFileDepGraphFactory(
-                             SF, outputPath, depTracker, alsoEmitDotFile)
+                             SF, outputPath, depTracker,
+                             nameTracker, alsoEmitDotFile)
                              .construct();
 
   const bool hadError =
@@ -317,12 +319,12 @@ bool fine_grained_dependencies::emitReferenceDependencies(
 
 FrontendSourceFileDepGraphFactory::FrontendSourceFileDepGraphFactory(
     SourceFile *SF, StringRef outputPath, const DependencyTracker &depTracker,
-    const bool alsoEmitDotFile)
+    const ReferencedNameTracker *nameTracker, const bool alsoEmitDotFile)
     : AbstractSourceFileDepGraphFactory(
           computeIncludePrivateDeps(SF), SF->getASTContext().hadError(),
           outputPath, getInterfaceHash(SF), alsoEmitDotFile,
           SF->getASTContext().Diags),
-      SF(SF), depTracker(depTracker) {}
+      SF(SF), depTracker(depTracker), nameTracker(nameTracker) {}
 
 bool FrontendSourceFileDepGraphFactory::computeIncludePrivateDeps(
     SourceFile *SF) {
@@ -563,7 +565,7 @@ void FrontendSourceFileDepGraphFactory::addAllUsedDecls() {
       DependencyKey::createKeyForWholeSourceFile(DeclAspect::implementation,
                                                  swiftDeps);
 
-  SF->getReferencedNameTracker()->enumerateAllUses(
+  nameTracker->enumerateAllUses(
       includePrivateDeps, depTracker,
       [&](const fine_grained_dependencies::NodeKind kind, StringRef context,
           StringRef name, const bool isCascadingUse) {

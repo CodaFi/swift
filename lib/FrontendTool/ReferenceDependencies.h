@@ -23,6 +23,7 @@ namespace swift {
 class DependencyTracker;
 class DiagnosticEngine;
 class FrontendOptions;
+class ReferencedNameTracker;
 class SourceFile;
 
 /// Sort a set of paths in an order that's (comparatively) stable against
@@ -34,6 +35,7 @@ reversePathSortedFilenames(const llvm::ArrayRef<std::string> paths);
 /// Emit a Swift-style dependencies file for \p SF.
 bool emitReferenceDependencies(DiagnosticEngine &diags, SourceFile *SF,
                                const DependencyTracker &depTracker,
+                               const ReferencedNameTracker *nameTracker,
                                StringRef outputPath);
 } // end namespace swift
 
