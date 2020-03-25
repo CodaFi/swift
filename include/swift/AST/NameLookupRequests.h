@@ -167,7 +167,7 @@ public:
 class InheritedProtocolsRequest
     : public SimpleRequest<InheritedProtocolsRequest,
                            ArrayRef<ProtocolDecl *>(ProtocolDecl *),
-                           CacheKind::SeparatelyCached> {
+                           CacheKind::SeparatelyCached|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -179,10 +179,15 @@ private:
   evaluate(Evaluator &evaluator, ProtocolDecl *PD) const;
 
 public:
-  // Caching.
+  // Caching
   bool isCached() const { return true; }
   Optional<ArrayRef<ProtocolDecl *>> getCachedResult() const;
-  void cacheResult(ArrayRef<ProtocolDecl *> decls) const;
+  void cacheResult(ArrayRef<ProtocolDecl *> value) const;
+
+public:
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &evaluator,
+                           ArrayRef<ProtocolDecl *> result) const;
 };
 
 /// Requests whether or not this class has designated initializers that are
@@ -212,7 +217,7 @@ public:
 class ExtendedNominalRequest :
     public SimpleRequest<ExtendedNominalRequest,
                          NominalTypeDecl *(ExtensionDecl *),
-                         CacheKind::SeparatelyCached> {
+                         CacheKind::SeparatelyCached|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -228,6 +233,11 @@ public:
   bool isCached() const { return true; }
   Optional<NominalTypeDecl *> getCachedResult() const;
   void cacheResult(NominalTypeDecl *value) const;
+
+public:
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &evaluator,
+                           NominalTypeDecl *result) const;
 };
 
 struct SelfBounds {
@@ -296,7 +306,7 @@ public:
 class GetDestructorRequest :
     public SimpleRequest<GetDestructorRequest,
                          DestructorDecl *(ClassDecl *),
-                         CacheKind::SeparatelyCached> {
+                         CacheKind::SeparatelyCached|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -312,6 +322,10 @@ public:
   bool isCached() const { return true; }
   Optional<DestructorDecl *> getCachedResult() const;
   void cacheResult(DestructorDecl *value) const;
+
+public:
+  // Incremental dependencies.
+  SourceFile *readDependencySource(Evaluator &) const;
 };
 
 class GenericParamListRequest :
@@ -400,7 +414,7 @@ SourceLoc extractNearestSourceLoc(const UnqualifiedLookupDescriptor &desc);
 class UnqualifiedLookupRequest
     : public SimpleRequest<UnqualifiedLookupRequest,
                            LookupResult(UnqualifiedLookupDescriptor),
-                           CacheKind::SeparatelyCached> {
+                           CacheKind::Uncached|CacheKind::DependencySource|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -412,10 +426,9 @@ private:
                                         UnqualifiedLookupDescriptor desc) const;
 
 public:
-  // Caching
-  bool isCached() const { return true; }
-  Optional<LookupResult> getCachedResult() const { return None; }
-  void cacheResult(LookupResult l) const;
+  // Incremental dependencies
+  SourceFile *readDependencySource(Evaluator &) const;
+  void writeDependencySink(Evaluator &eval, LookupResult res) const;
 };
 
 using QualifiedLookupResult = SmallVector<ValueDecl *, 4>;
@@ -426,7 +439,7 @@ class LookupInModuleRequest
                            QualifiedLookupResult(
                                const DeclContext *, DeclName, NLKind,
                                namelookup::ResolutionKind, const DeclContext *),
-                           CacheKind::SeparatelyCached> {
+                           CacheKind::Uncached|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -440,10 +453,9 @@ private:
            const DeclContext *moduleScopeContext) const;
 
 public:
-  // Caching
-  bool isCached() const { return true; }
-  Optional<QualifiedLookupResult> getCachedResult() const { return None; }
-  void cacheResult(QualifiedLookupResult l) const;
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &eval,
+                           QualifiedLookupResult lookupResult) const;
 };
 
 /// Perform \c AnyObject lookup for a given member.
@@ -451,7 +463,7 @@ class AnyObjectLookupRequest
     : public SimpleRequest<AnyObjectLookupRequest,
                            QualifiedLookupResult(const DeclContext *,
                                                  DeclNameRef, NLOptions),
-                           CacheKind::SeparatelyCached> {
+                           CacheKind::Uncached|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -463,10 +475,8 @@ private:
                                                  DeclNameRef name,
                                                  NLOptions options) const;
 public:
-  // Caching
-  bool isCached() const { return true; }
-  Optional<QualifiedLookupResult> getCachedResult() const { return None; }
-  void cacheResult(QualifiedLookupResult l) const;
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &eval, QualifiedLookupResult l) const;
 };
 
 class ModuleQualifiedLookupRequest
@@ -544,7 +554,7 @@ SourceLoc extractNearestSourceLoc(const DirectLookupDescriptor &desc);
 class DirectLookupRequest
     : public SimpleRequest<DirectLookupRequest,
                            TinyPtrVector<ValueDecl *>(DirectLookupDescriptor),
-                           CacheKind::SeparatelyCached> {
+                           CacheKind::Uncached|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -556,10 +566,9 @@ private:
   evaluate(Evaluator &evaluator, DirectLookupDescriptor desc) const;
 
 public:
-  // Caching
-  bool isCached() const { return true; }
-  Optional<TinyPtrVector<ValueDecl *>> getCachedResult() const { return None; }
-  void cacheResult(TinyPtrVector<ValueDecl *> l) const;
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &evaluator,
+                           TinyPtrVector<ValueDecl *> result) const;
 };
 
 class OperatorLookupDescriptor final {
@@ -622,25 +631,24 @@ template <typename OperatorType>
 class LookupOperatorRequest
     : public SimpleRequest<LookupOperatorRequest<OperatorType>,
                            OperatorType *(OperatorLookupDescriptor),
-                           CacheKind::SeparatelyCached> {
+                           CacheKind::Uncached|CacheKind::DependencySink> {
   using SimpleRequest<LookupOperatorRequest<OperatorType>,
                       OperatorType *(OperatorLookupDescriptor),
-                      CacheKind::SeparatelyCached>::SimpleRequest;
+                      CacheKind::Uncached|CacheKind::DependencySink>::SimpleRequest;
 
 private:
   friend SimpleRequest<LookupOperatorRequest<OperatorType>,
                        OperatorType *(OperatorLookupDescriptor),
-                       CacheKind::SeparatelyCached>;
+                       CacheKind::Uncached|CacheKind::DependencySink>;
 
   // Evaluation.
   llvm::Expected<OperatorType *> evaluate(Evaluator &evaluator,
                                           OperatorLookupDescriptor desc) const;
 
 public:
-  // Caching
-  bool isCached() const { return true; }
-  Optional<OperatorType *> getCachedResult() const { return None; }
-  void cacheResult(OperatorType *l) const;
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &evaluator,
+                           OperatorType *o) const;
 };
 
 using LookupPrefixOperatorRequest = LookupOperatorRequest<PrefixOperatorDecl>;
@@ -716,7 +724,7 @@ SourceLoc extractNearestSourceLoc(const LookupConformanceDescriptor &desc);
 class LookupConformanceInModuleRequest
     : public SimpleRequest<LookupConformanceInModuleRequest,
                            ProtocolConformanceRef(LookupConformanceDescriptor),
-                           CacheKind::SeparatelyCached> {
+                           CacheKind::Uncached|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -728,10 +736,9 @@ private:
       Evaluator &evaluator, LookupConformanceDescriptor desc) const;
 
 public:
-  // Caching
-  bool isCached() const { return true; }
-  Optional<ProtocolConformanceRef> getCachedResult() const { return None; }
-  void cacheResult(ProtocolConformanceRef p) const;
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &evaluator,
+                           ProtocolConformanceRef result) const;
 };
 
 #define SWIFT_TYPEID_ZONE NameLookup

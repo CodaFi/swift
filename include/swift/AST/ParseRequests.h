@@ -84,7 +84,7 @@ public:
 class ParseSourceFileRequest
     : public SimpleRequest<ParseSourceFileRequest,
                            ArrayRef<Decl *>(SourceFile *),
-                           CacheKind::SeparatelyCached> {
+                           CacheKind::SeparatelyCached|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -101,7 +101,7 @@ public:
   void cacheResult(ArrayRef<Decl *> decls) const;
 
 public:
-  SourceFile *getDependencySource() const;
+  SourceFile *readDependencySource(Evaluator &) const;
 };
 
 void simple_display(llvm::raw_ostream &out,
@@ -110,7 +110,7 @@ void simple_display(llvm::raw_ostream &out,
 class CodeCompletionSecondPassRequest
     : public SimpleRequest<CodeCompletionSecondPassRequest,
                            bool(SourceFile *, CodeCompletionCallbacksFactory *),
-                           CacheKind::Uncached> {
+                           CacheKind::Uncached|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -122,7 +122,7 @@ private:
                 CodeCompletionCallbacksFactory *Factory) const;
 
 public:
-  SourceFile *getDependencySource() const;
+  SourceFile *readDependencySource(Evaluator &) const;
 };
 
 /// The zone number for the parser.

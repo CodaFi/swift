@@ -1207,7 +1207,7 @@ llvm::Expected<OperatorType *> LookupOperatorRequest<OperatorType>::evaluate(
 }
 
 template <typename OperatorType>
-void LookupOperatorRequest<OperatorType>::cacheResult(OperatorType *o) const {
+void LookupOperatorRequest<OperatorType>::writeDependencySink(Evaluator &evaluator, OperatorType *o) const {
   auto &desc = std::get<0>(this->getStorage());
   auto *FU = desc.fileOrModule.template get<FileUnit *>();
   auto shouldRegisterDependencyEdge = [&FU](OperatorType *o) -> bool {
@@ -1222,10 +1222,7 @@ void LookupOperatorRequest<OperatorType>::cacheResult(OperatorType *o) const {
     return;
   }
 
-  auto *source = FU->getASTContext().evaluator.getActiveDependencySource();
-  if (!source)
-    return;
-  auto reqTracker = source->getRequestBasedReferencedNameTracker();
+  auto *reqTracker = evaluator.getActiveDependencyTracker();
   if (!reqTracker)
     return;
   reqTracker->addTopLevelName(desc.name, desc.isCascading);
@@ -1242,7 +1239,7 @@ void LookupOperatorRequest<OperatorType>::cacheResult(OperatorType *o) const {
   LookupOperatorRequest<Kind##Decl>::evaluate(Evaluator &e,                    \
                                               OperatorLookupDescriptor) const; \
   template                                                                     \
-  void LookupOperatorRequest<Kind##Decl>::cacheResult(Kind##Decl *) const;     \
+  void LookupOperatorRequest<Kind##Decl>::writeDependencySink(Evaluator &, Kind##Decl *) const;     \
 
 LOOKUP_OPERATOR(PrefixOperator)
 LOOKUP_OPERATOR(InfixOperator)

@@ -98,7 +98,8 @@ template <typename Request>
 char CyclicalRequestError<Request>::ID = '\0';
 
 /// Evaluates a given request or returns a default value if a cycle is detected.
-template <typename Request>
+template <typename Request,
+          typename std::enable_if<!Request::isDependencySink>::type * = nullptr>
 typename Request::OutputType
 evaluateOrDefault(
   Evaluator &eval, Request req, typename Request::OutputType def) {
@@ -110,6 +111,24 @@ evaluateOrDefault(
       });
     return def;
   }
+  return *result;
+}
+
+template <typename Request,
+          typename std::enable_if<Request::isDependencySink>::type * = nullptr>
+typename Request::OutputType
+evaluateOrDefault(
+  Evaluator &eval, Request req, typename Request::OutputType def) {
+  auto result = eval(req);
+  if (auto err = result.takeError()) {
+    llvm::handleAllErrors(std::move(err),
+      [](const CyclicalRequestError<Request> &E) {
+        // cycle detected
+      });
+    req.writeDependencySink(eval, def);
+    return def;
+  }
+  req.writeDependencySink(eval, *result);
   return *result;
 }
 
@@ -226,21 +245,37 @@ class Evaluator {
   llvm::DenseMap<AnyRequest, std::vector<AnyRequest>> dependencies;
 
   /// A stack of dependency sources in the order they were evaluated.
-  llvm::TinyPtrVector<SourceFile *> dependencySources;
+  using DependencySource = llvm::PointerIntPair<SourceFile *, 1, bool>;
+  llvm::TinyPtrVector<DependencySource> dependencySources;
 
   /// An RAII type that manages manipulating the evaluator's
   /// dependency source stack.
   struct DependencyStackRAII {
-    Evaluator &Eval;
-    SourceFile *SF;
-    explicit DependencyStackRAII(Evaluator &E, SourceFile *SF)
-      : Eval(E), SF(SF) {
-      if (SF)
-        E.dependencySources.push_back(SF);
+    NullablePtr<Evaluator> Eval;
+    explicit DependencyStackRAII(Evaluator &E,
+                                 std::pair<SourceFile *, bool> Source) {
+      if (!Source.first) {
+        return;
+      }
+      E.dependencySources.push_back({Source.first, Source.second});
+      Eval = &E;
     }
+
+    explicit DependencyStackRAII(Evaluator &E, SourceFile *SF)
+      : DependencyStackRAII(E, {SF, /*cascades*/ true}) {}
+
+    explicit DependencyStackRAII(Evaluator &E, AbstractFunctionDecl *AFD) {
+      auto *SF = AFD->getParentSourceFile();
+      if (!SF) {
+        return;
+      }
+      E.dependencySources.push_back({SF, /*cascades*/ false});
+      Eval = &E;
+    }
+
     ~DependencyStackRAII() {
-      if (SF)
-        Eval.dependencySources.pop_back();
+      if (Eval.isNonNull())
+        Eval.get()->dependencySources.pop_back();
     }
   };
 
@@ -281,7 +316,8 @@ public:
   /// Retrieve the result produced by evaluating a request that can
   /// be cached.
   template<typename Request,
-           typename std::enable_if<Request::isEverCached>::type * = nullptr>
+           typename std::enable_if<Request::isEverCached>::type * = nullptr,
+           typename std::enable_if<!Request::isDependencySource>::type * = nullptr>
   llvm::Expected<typename Request::OutputType>
   operator()(const Request &request) {
     // The request can be cached, but check a predicate to determine
@@ -296,12 +332,42 @@ public:
   /// Retrieve the result produced by evaluating a request that
   /// will never be cached.
   template<typename Request,
-           typename std::enable_if<!Request::isEverCached>::type * = nullptr>
+           typename std::enable_if<!Request::isEverCached>::type * = nullptr,
+           typename std::enable_if<!Request::isDependencySource>::type * = nullptr>
   llvm::Expected<typename Request::OutputType>
   operator()(const Request &request) {
     return getResultUncached(request);
   }
 
+  /// Retrieve the result produced by evaluating a request that can
+  /// be cached.
+  template<typename Request,
+           typename std::enable_if<Request::isEverCached>::type * = nullptr,
+           typename std::enable_if<Request::isDependencySource>::type * = nullptr>
+  llvm::Expected<typename Request::OutputType>
+  operator()(const Request &request) {
+    DependencyStackRAII DS{*this, request.readDependencySource(*this)};
+
+    // The request can be cached, but check a predicate to determine
+    // whether this particular instance is cached. This allows more
+    // fine-grained control over which instances get cache.
+    if (request.isCached())
+      return getResultCached(request);
+
+    return getResultUncached(request);
+  }
+
+  /// Retrieve the result produced by evaluating a request that
+  /// will never be cached.
+  template<typename Request,
+           typename std::enable_if<!Request::isEverCached>::type * = nullptr,
+           typename std::enable_if<Request::isDependencySource>::type * = nullptr>
+  llvm::Expected<typename Request::OutputType>
+  operator()(const Request &request) {
+    DependencyStackRAII DS{*this, request.readDependencySource(*this)};
+
+    return getResultUncached(request);
+  }
   /// Evaluate a set of requests and return their results as a tuple.
   ///
   /// Use this to describe cases where there are multiple (known)
@@ -382,8 +448,6 @@ private:
 
     PrettyStackTraceRequest<Request> prettyStackTrace(request);
 
-    DependencyStackRAII DS{*this, request.getDependencySource()};
-
     // Trace and/or count statistics.
     FrontendStatsTracer statsTracer = make_tracer(stats, request);
     if (stats) reportEvaluatedRequest(*stats, request);
@@ -440,11 +504,22 @@ private:
 
 public:
   bool isActiveSourceCascading() const {
-    return dependencySources.size() <= 1;
+    if (dependencySources.empty()) {
+      return true;
+    }
+    return dependencySources.back().getInt();
   }
 
   SourceFile *getActiveDependencySource() const {
-    return dependencySources.empty() ? nullptr : dependencySources.back();
+    if (dependencySources.empty())
+      return nullptr;
+    return dependencySources.back().getPointer();
+  }
+
+  ReferencedNameTracker *getActiveDependencyTracker() const {
+    if (auto *source = getActiveDependencySource())
+      return source->getRequestBasedReferencedNameTracker();
+    return nullptr;
   }
 
 public:

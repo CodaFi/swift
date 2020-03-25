@@ -81,7 +81,7 @@ SourceLoc extractNearestSourceLoc(const SILGenDescriptor &desc);
 class SILGenSourceFileRequest :
     public SimpleRequest<SILGenSourceFileRequest,
                          std::unique_ptr<SILModule>(SILGenDescriptor),
-                         CacheKind::Uncached> {
+                         CacheKind::Uncached|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -97,7 +97,7 @@ public:
 
 public:
   // Incremental dependencies.
-  SourceFile *getDependencySource() const;
+  SourceFile *readDependencySource(Evaluator &) const;
 };
 
 class SILGenWholeModuleRequest :

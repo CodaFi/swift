@@ -563,7 +563,7 @@ void FrontendSourceFileDepGraphFactory::addAllUsedDecls() {
       DependencyKey::createKeyForWholeSourceFile(DeclAspect::implementation,
                                                  swiftDeps);
 
-  SF->getReferencedNameTracker()->enumerateAllUses(
+  SF->getRequestBasedReferencedNameTracker()->enumerateAllUses(
       includePrivateDeps, depTracker,
       [&](const fine_grained_dependencies::NodeKind kind, StringRef context,
           StringRef name, const bool isCascadingUse) {

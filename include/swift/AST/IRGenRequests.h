@@ -116,7 +116,7 @@ void reportEvaluatedRequest(UnifiedStatsReporter &stats,
 class IRGenSourceFileRequest
     : public SimpleRequest<IRGenSourceFileRequest,
                            std::unique_ptr<llvm::Module>(IRGenDescriptor),
-                           CacheKind::Uncached> {
+                           CacheKind::Uncached|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -132,7 +132,7 @@ public:
 
 public:
   // Incremental dependencies.
-  SourceFile *getDependencySource() const;
+  SourceFile *readDependencySource(Evaluator &) const;
 };
 
 class IRGenWholeModuleRequest

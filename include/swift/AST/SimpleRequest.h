@@ -34,14 +34,22 @@ class Evaluator;
 /// Describes how the result for a particular request will be cached.
 enum class CacheKind {
   /// The result for a particular request should never be cached.
-  Uncached,
+  Uncached = 1 << 0,
   /// The result for a particular request should be cached within the
   /// evaluator itself.
-  Cached,
+  Cached = 1 << 1,
   /// The result of a particular request will be cached via some separate
   /// mechanism, such as a mutable data structure.
-  SeparatelyCached,
+  SeparatelyCached = 1 << 2,
+
+  DependencySource = 1 << 3,
+  DependencySink = 1 << 4,
 };
+
+static constexpr inline CacheKind operator|(CacheKind lhs, CacheKind rhs) {
+  return CacheKind(static_cast<std::underlying_type<CacheKind>::type>(lhs) |
+                   static_cast<std::underlying_type<CacheKind>::type>(rhs));
+}
 
 /// -------------------------------------------------------------------------
 /// Extracting the source location "nearest" a request.
@@ -123,6 +131,29 @@ namespace detail {
   }
 }
 
+namespace detail {
+constexpr bool cacheContains(CacheKind kind, CacheKind needle) {
+  using cache_t = std::underlying_type<CacheKind>::type;
+  return (static_cast<cache_t>(kind) & static_cast<cache_t>(needle))
+      == static_cast<cache_t>(needle);
+}
+constexpr bool isEverCached(CacheKind kind) {
+  return !cacheContains(kind, CacheKind::Uncached);
+}
+
+constexpr bool hasExternalCache(CacheKind kind) {
+  return cacheContains(kind, CacheKind::SeparatelyCached);
+}
+
+constexpr bool isDependencySource(CacheKind kind) {
+  return cacheContains(kind, CacheKind::DependencySource);
+}
+
+constexpr bool isDependencySink(CacheKind kind) {
+  return cacheContains(kind, CacheKind::DependencySink);
+}
+}
+
 /// Extract the first, nearest source location from a tuple.
 template<typename First, typename ...Rest,
          typename = typename std::enable_if<
@@ -180,10 +211,20 @@ SourceLoc extractNearestSourceLoc(const std::tuple<First, Rest...> &value) {
 ///
 /// Automatic incremental dependency tracking occurs as a consequence of
 /// request evaluation. To support that system, high-level requests that define
-/// dependency sources (currently instances of \c SourceFile ) should override
-/// \c getDependencySource() to have the evaluator automatically register it:
+/// dependency sources (currently instances of \c SourceFile *) should override
+/// \c readDependencySource() and specify \c CacheKind::DependencySource
+/// in addition to one of the 3 caching kinds defined above.
 /// \code
-///   SourceFile *getDependencySource() const;
+///   SourceFile *readDependencySource(Evaluator &) const;
+/// \endcode
+///
+/// Requests that define dependency sinks should instead override
+/// \c writeDependencySink() and use the given evaluator and request
+/// result to write an edge into the dependency tracker. In addition,
+/// \c CacheKind::DependencySource should be specified along with
+/// one of the 3 caching kinds defined above.
+/// \code
+///   void writeDependencySink(Evaluator &, Output value) const;
 /// \endcode
 template<typename Derived, typename Signature, CacheKind Caching>
 class SimpleRequest;
@@ -213,8 +254,13 @@ protected:
   const std::tuple<Inputs...> &getStorage() const { return storage; }
 
 public:
-  static const bool isEverCached = (Caching != CacheKind::Uncached);
-  static const bool hasExternalCache = (Caching == CacheKind::SeparatelyCached);
+  constexpr static bool isEverCached = detail::isEverCached(Caching);
+  constexpr static bool hasExternalCache = detail::hasExternalCache(Caching);
+
+public:
+  constexpr static bool isDependencySource = detail::isDependencySource(Caching);
+  constexpr static bool isDependencySink = detail::isDependencySink(Caching);
+  constexpr static bool isDependencyNeutral = !isDependencySource && !isDependencySink;
 
   using OutputType = Output;
   
@@ -231,12 +277,6 @@ public:
   /// Retrieve the nearest source location to which this request applies.
   SourceLoc getNearestLoc() const {
     return extractNearestSourceLoc(storage);
-  }
-
-  /// Retrieve the source file associated with this request if it provides the
-  /// source end of an incremental dependency edge.
-  SourceFile *getDependencySource() const {
-    return nullptr;
   }
 
   void diagnoseCycle(DiagnosticEngine &diags) const {

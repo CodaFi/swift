@@ -48,7 +48,7 @@ SourceLoc swift::extractNearestSourceLoc(const IRGenDescriptor &desc) {
   return SourceLoc();
 }
 
-SourceFile *IRGenSourceFileRequest::getDependencySource() const {
+SourceFile *IRGenSourceFileRequest::readDependencySource(Evaluator &e) const {
   auto &desc = std::get<0>(getStorage());
   return desc.Ctx.dyn_cast<SourceFile *>();
 }

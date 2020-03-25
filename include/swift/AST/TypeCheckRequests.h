@@ -94,7 +94,7 @@ public:
 class SuperclassTypeRequest :
     public SimpleRequest<SuperclassTypeRequest,
                          Type(NominalTypeDecl *, TypeResolutionStage),
-                         CacheKind::SeparatelyCached> {
+                         CacheKind::SeparatelyCached|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -110,10 +110,15 @@ public:
   // Cycle handling
   void diagnoseCycle(DiagnosticEngine &diags) const;
 
+public:
   // Separate caching.
   bool isCached() const;
   Optional<Type> getCachedResult() const;
   void cacheResult(Type value) const;
+
+public:
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &eval, Type t) const;
 };
 
 /// Request the raw type of the given enum.
@@ -844,7 +849,7 @@ public:
 class TypeCheckFunctionBodyUntilRequest :
     public SimpleRequest<TypeCheckFunctionBodyUntilRequest,
                          bool(AbstractFunctionDecl *, SourceLoc),
-                         CacheKind::Cached> {
+                         CacheKind::Cached|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -861,7 +866,7 @@ public:
 
 public:
   // Incremental dependencies.
-  SourceFile *getDependencySource() const;
+  AbstractFunctionDecl *readDependencySource(Evaluator &) const;
 };
 
 /// Request to obtain a list of stored properties in a nominal type.
@@ -1988,7 +1993,8 @@ public:
 
 class TypeCheckSourceFileRequest :
     public SimpleRequest<TypeCheckSourceFileRequest,
-                         bool (SourceFile *), CacheKind::SeparatelyCached> {
+                         bool (SourceFile *),
+                         CacheKind::SeparatelyCached|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -2006,7 +2012,7 @@ public:
 
 public:
   // Incremental dependencies.
-  SourceFile *getDependencySource() const;
+  SourceFile *readDependencySource(Evaluator &) const;
 };
 
 /// Computes whether the specified type or a super-class/super-protocol has the
@@ -2214,7 +2220,7 @@ void simple_display(llvm::raw_ostream &out, ConformanceLookupKind kind);
 class LookupAllConformancesInContextRequest :
     public SimpleRequest<LookupAllConformancesInContextRequest,
                          ProtocolConformanceLookupResult(const DeclContext *),
-                         CacheKind::SeparatelyCached> {
+                         CacheKind::Uncached|CacheKind::DependencySink> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -2226,12 +2232,35 @@ private:
   evaluate(Evaluator &evaluator, const DeclContext *DC) const;\
 
 public:
+  // Incremental dependencies
+  void writeDependencySink(Evaluator &eval,
+                           ProtocolConformanceLookupResult r) const;
+};
+
+class CheckRedeclarationRequest :
+    public SimpleRequest<CheckRedeclarationRequest,
+                         bool (ValueDecl *),
+                         CacheKind::SeparatelyCached|CacheKind::DependencySource|CacheKind::DependencySink> {
+public:
+  using SimpleRequest::SimpleRequest;
+
+private:
+  friend SimpleRequest;
+
+  // Evaluation.
+  llvm::Expected<bool>
+  evaluate(Evaluator &evaluator, ValueDecl *VD) const;
+
+public:
   // Separate caching.
   bool isCached() const { return true; }
-  Optional<ProtocolConformanceLookupResult> getCachedResult() const {
-    return None;
-  }
-  void cacheResult(ProtocolConformanceLookupResult r) const;
+  Optional<bool> getCachedResult() const;
+  void cacheResult(bool value) const;
+
+public:
+  // Incremental dependencies
+  std::pair<SourceFile *, bool> readDependencySource(Evaluator &eval) const;
+  void writeDependencySink(Evaluator &eval, bool b) const;
 };
 
 // Allow AnyValue to compare two Type values, even though Type doesn't

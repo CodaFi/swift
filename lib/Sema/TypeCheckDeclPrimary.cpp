@@ -419,24 +419,18 @@ static void checkGenericParams(GenericContext *ownerCtx) {
 }
 
 /// Check whether \c current is a redeclaration.
-static void checkRedeclaration(ASTContext &ctx, ValueDecl *current) {
-  // If we've already checked this declaration, don't do it again.
-  if (current->alreadyCheckedRedeclaration())
-    return;
-
-  // Make sure we don't do this checking again.
-  current->setCheckedRedeclaration(true);
-
+llvm::Expected<bool>
+CheckRedeclarationRequest::evaluate(Evaluator &eval, ValueDecl *current) const {
   // Ignore invalid and anonymous declarations.
   if (current->isInvalid() || !current->hasName())
-    return;
+    return true;
 
   // If this declaration isn't from a source file, don't check it.
   // FIXME: Should restrict this to the source file we care about.
   DeclContext *currentDC = current->getDeclContext();
   SourceFile *currentFile = currentDC->getParentSourceFile();
   if (!currentFile || currentDC->isLocalContext())
-    return;
+    return true;
 
   ReferencedNameTracker *tracker = currentFile->getReferencedNameTracker();
   bool isCascading = (current->getFormalAccess() > AccessLevel::FilePrivate);
@@ -467,6 +461,7 @@ static void checkRedeclaration(ASTContext &ctx, ValueDecl *current) {
   OverloadSignature currentSig = current->getOverloadSignature();
   CanType currentSigType = current->getOverloadSignatureType();
   ModuleDecl *currentModule = current->getModuleContext();
+  auto &ctx = current->getASTContext();
   for (auto other : otherDefinitions) {
     // Skip invalid declarations and ourselves.
     //
@@ -672,6 +667,7 @@ static void checkRedeclaration(ASTContext &ctx, ValueDecl *current) {
       break;
     }
   }
+  return true;
 }
 
 static Optional<unsigned>
@@ -1193,10 +1189,10 @@ public:
     if (auto VD = dyn_cast<ValueDecl>(decl)) {
       auto &Context = getASTContext();
       TypeChecker::checkForForbiddenPrefix(Context, VD->getBaseName());
-      
-      checkRedeclaration(Context, VD);
 
       // Force some requests, which can produce diagnostics.
+      (void)evaluateOrDefault(decl->getASTContext().evaluator,
+                              CheckRedeclarationRequest{VD}, false);
 
       // Compute access level.
       (void) VD->getFormalAccess();

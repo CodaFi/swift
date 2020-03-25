@@ -12,10 +12,11 @@ import Foundation
 // expected-private-superclass {{__C.NSObject}}
 // expected-private-conformance {{Foundation._KeyValueCodingAndObserving}}
 // expected-private-conformance {{Swift.Hashable}}
-// expected-private-conformance {{Swift.Equatable}}
+// expected-cascading-conformance {{Swift.Equatable}}
 // expected-private-conformance {{Swift.CustomDebugStringConvertible}}
 // expected-private-conformance {{Swift.CVarArg}}
 // expected-private-conformance {{Swift.CustomStringConvertible}}
+// expected-cascading-member {{Swift._ExpressibleByBuiltinIntegerLiteral.init}}
 // expected-cascading-superclass {{main.LookupFactory}}
 @objc private class LookupFactory: NSObject {
   // expected-provides {{AssignmentPrecedence}}

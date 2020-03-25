@@ -46,7 +46,7 @@ SourceLoc swift::extractNearestSourceLoc(const SILGenDescriptor &desc) {
   return SourceLoc();
 }
 
-SourceFile *SILGenSourceFileRequest::getDependencySource() const {
+SourceFile *SILGenSourceFileRequest::readDependencySource(Evaluator &e) const {
   auto &desc = std::get<0>(getStorage());
   auto *unit = desc.context.dyn_cast<FileUnit *>();
   return dyn_cast_or_null<SourceFile>(unit);
