@@ -88,17 +88,22 @@ void InheritedProtocolsRequest::cacheResult(ArrayRef<ProtocolDecl *> PDs) const 
   proto->setInheritedProtocolsValid();
 }
 
-void
-InheritedProtocolsRequest::writeDependencySink(Evaluator &eval,
-                                               ArrayRef<ProtocolDecl *> PDs) const {
+std::pair<SourceFile *, bool>
+InheritedProtocolsRequest::readDependencySource(Evaluator &e) const {
+  auto *PD = std::get<0>(getStorage());
+  const bool cascades = (PD->getFormalAccess() > AccessLevel::FilePrivate);
+  return {e.getActiveDependencySource(), cascades};
+}
+
+void InheritedProtocolsRequest::writeDependencySink(Evaluator &eval,
+                                                    ArrayRef<ProtocolDecl *> PDs) const {
   auto *tracker = eval.getActiveDependencyTracker();
   if (!tracker)
     return;
 
-  auto *PD = std::get<0>(getStorage());
-  const bool cascades = (PD->getFormalAccess() > AccessLevel::FilePrivate);
   for (auto *parentProto : PDs) {
-    tracker->addUsedMember({parentProto, Identifier()}, cascades);
+    tracker->addUsedMember({parentProto, Identifier()},
+                           eval.isActiveSourceCascading());
   }
 }
 
@@ -209,8 +214,9 @@ void GetDestructorRequest::cacheResult(DestructorDecl *value) const {
   classDecl->addMember(value);
 }
 
-SourceFile *GetDestructorRequest::readDependencySource(Evaluator &eval) const {
-  return std::get<0>(getStorage())->getParentSourceFile();
+std::pair<SourceFile *, bool>
+GetDestructorRequest::readDependencySource(Evaluator &eval) const {
+  return {eval.getActiveDependencySource(), /*cascades*/ false};
 }
 
 //----------------------------------------------------------------------------//
@@ -295,14 +301,12 @@ SourceLoc swift::extractNearestSourceLoc(const OperatorLookupDescriptor &desc) {
   return desc.diagLoc;
 }
 
-void DirectLookupRequest::writeDependencySink(Evaluator &evaluator,
-                                         TinyPtrVector<ValueDecl *> result) const {
-  auto &desc = std::get<0>(getStorage());
-  auto &eval = desc.DC->getASTContext().evaluator;
-
+void DirectLookupRequest::writeDependencySink(Evaluator &eval,
+                                              TinyPtrVector<ValueDecl *> result) const {
   auto *tracker = eval.getActiveDependencyTracker();
   if (!tracker)
     return;
+  auto &desc = std::get<0>(getStorage());
   tracker->addUsedMember({desc.DC, desc.Name.getBaseName()},
                          eval.isActiveSourceCascading());
 }
@@ -362,7 +366,7 @@ void LookupInModuleRequest::writeDependencySink(Evaluator &eval,
 //----------------------------------------------------------------------------//
 
 void LookupConformanceInModuleRequest::writeDependencySink(Evaluator &eval,
-                                                      ProtocolConformanceRef lookupResult) const {
+                                                           ProtocolConformanceRef lookupResult) const {
   if (lookupResult.isInvalid() || !lookupResult.isConcrete())
     return;
 
@@ -390,15 +394,21 @@ void LookupConformanceInModuleRequest::writeDependencySink(Evaluator &eval,
 // UnqualifiedLookupRequest computation.
 //----------------------------------------------------------------------------//
 
-SourceFile *UnqualifiedLookupRequest::readDependencySource(Evaluator &) const {
-  return std::get<0>(getStorage()).DC->getParentSourceFile();
+std::pair<SourceFile *, bool>
+UnqualifiedLookupRequest::readDependencySource(Evaluator &) const {
+  auto &desc = std::get<0>(getStorage());
+  // FIXME: This maintains compatibility with the existing scheme, but the
+  // existing scheme is totally ad-hoc. We should remove this flag and ensure
+  // that non-cascading qualified lookups occur in the right contexts instead.
+  return {desc.DC->getParentSourceFile(),
+          !desc.Options.contains(UnqualifiedLookupFlags::KnownPrivate)};
 }
 
 void UnqualifiedLookupRequest::writeDependencySink(Evaluator &eval, LookupResult res) const {
   auto reqTracker = eval.getActiveDependencyTracker();
   if (!reqTracker)
     return;
-  
+
   auto &desc = std::get<0>(getStorage());
   reqTracker->addTopLevelName(desc.Name.getBaseName(),
                               eval.isActiveSourceCascading());

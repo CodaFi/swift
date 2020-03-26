@@ -167,7 +167,7 @@ public:
 class InheritedProtocolsRequest
     : public SimpleRequest<InheritedProtocolsRequest,
                            ArrayRef<ProtocolDecl *>(ProtocolDecl *),
-                           CacheKind::SeparatelyCached|CacheKind::DependencySink> {
+                           CacheKind::SeparatelyCached|CacheKind::DependencySink|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -186,6 +186,7 @@ public:
 
 public:
   // Incremental dependencies
+  std::pair<SourceFile *, bool> readDependencySource(Evaluator &e) const;
   void writeDependencySink(Evaluator &evaluator,
                            ArrayRef<ProtocolDecl *> result) const;
 };
@@ -325,7 +326,7 @@ public:
 
 public:
   // Incremental dependencies.
-  SourceFile *readDependencySource(Evaluator &) const;
+  std::pair<SourceFile *, bool> readDependencySource(Evaluator &) const;
 };
 
 class GenericParamListRequest :
@@ -427,7 +428,7 @@ private:
 
 public:
   // Incremental dependencies
-  SourceFile *readDependencySource(Evaluator &) const;
+  std::pair<SourceFile *, bool> readDependencySource(Evaluator &) const;
   void writeDependencySink(Evaluator &eval, LookupResult res) const;
 };
 

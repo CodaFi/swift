@@ -150,11 +150,18 @@ Optional<Type> SuperclassTypeRequest::getCachedResult() const {
 void SuperclassTypeRequest::cacheResult(Type value) const {
   auto nominalDecl = std::get<0>(getStorage());
 
-  if (auto *protocolDecl = dyn_cast<ProtocolDecl>(nominalDecl))
-    protocolDecl->LazySemanticInfo.SuperclassType.setPointerAndInt(value, true);
-
   if (auto *classDecl = dyn_cast<ClassDecl>(nominalDecl))
     classDecl->LazySemanticInfo.SuperclassType.setPointerAndInt(value, true);
+
+  if (auto *protocolDecl = dyn_cast<ProtocolDecl>(nominalDecl))
+    protocolDecl->LazySemanticInfo.SuperclassType.setPointerAndInt(value, true);
+}
+
+std::pair<SourceFile *, bool>
+SuperclassTypeRequest::readDependencySource(Evaluator &e) const {
+  const bool isCascading =
+      std::get<0>(getStorage())->getFormalAccess() > AccessLevel::FilePrivate;
+  return {e.getActiveDependencySource(), isCascading};
 }
 
 void SuperclassTypeRequest::writeDependencySink(Evaluator &eval,
@@ -169,9 +176,8 @@ void SuperclassTypeRequest::writeDependencySink(Evaluator &eval,
   auto *tracker = eval.getActiveDependencyTracker();
   if (!tracker)
     return;
-  const bool isCascading =
-      std::get<0>(getStorage())->getFormalAccess() > AccessLevel::FilePrivate;
-  tracker->addUsedMember({Super, Identifier()}, isCascading);
+
+  tracker->addUsedMember({Super, Identifier()}, eval.isActiveSourceCascading());
 }
 
 //----------------------------------------------------------------------------//
@@ -1285,27 +1291,31 @@ void DifferentiableAttributeTypeCheckRequest::cacheResult(
 // LookupAllConformancesInContextRequest computation.
 //----------------------------------------------------------------------------//
 
-void LookupAllConformancesInContextRequest::writeDependencySink(
-    Evaluator &eval, ProtocolConformanceLookupResult conformances) const {
-
+std::pair<SourceFile *, bool>
+LookupAllConformancesInContextRequest::readDependencySource(Evaluator &eval) const {
   auto *dc = std::get<0>(getStorage());
-  auto *tracker = eval.getActiveDependencyTracker();
-  if (!tracker)
-    return;
-
   AccessLevel defaultAccess;
   if (auto ext = dyn_cast<ExtensionDecl>(dc)) {
     const NominalTypeDecl *nominal = ext->getExtendedNominal();
     if (!nominal)
-      return;
+      return {eval.getActiveDependencySource(), /*cascades*/true};
     defaultAccess = nominal->getFormalAccess();
   } else {
     defaultAccess = cast<NominalTypeDecl>(dc)->getFormalAccess();
   }
+  const bool isCascading = defaultAccess > AccessLevel::FilePrivate;
+  return {eval.getActiveDependencySource(), isCascading};
+}
+
+void LookupAllConformancesInContextRequest::writeDependencySink(
+    Evaluator &eval, ProtocolConformanceLookupResult conformances) const {
+  auto *tracker = eval.getActiveDependencyTracker();
+  if (!tracker)
+    return;
 
   for (auto conformance : conformances) {
     tracker->addUsedMember({conformance->getProtocol(), Identifier()},
-                           defaultAccess > AccessLevel::FilePrivate);
+                           eval.isActiveSourceCascading());
   }
 }
 

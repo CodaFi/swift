@@ -94,7 +94,7 @@ public:
 class SuperclassTypeRequest :
     public SimpleRequest<SuperclassTypeRequest,
                          Type(NominalTypeDecl *, TypeResolutionStage),
-                         CacheKind::SeparatelyCached|CacheKind::DependencySink> {
+                         CacheKind::SeparatelyCached|CacheKind::DependencySink|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -118,6 +118,7 @@ public:
 
 public:
   // Incremental dependencies
+  std::pair<SourceFile *, bool> readDependencySource(Evaluator &e) const;
   void writeDependencySink(Evaluator &eval, Type t) const;
 };
 
@@ -2220,7 +2221,7 @@ void simple_display(llvm::raw_ostream &out, ConformanceLookupKind kind);
 class LookupAllConformancesInContextRequest :
     public SimpleRequest<LookupAllConformancesInContextRequest,
                          ProtocolConformanceLookupResult(const DeclContext *),
-                         CacheKind::Uncached|CacheKind::DependencySink> {
+                         CacheKind::Uncached|CacheKind::DependencySink|CacheKind::DependencySource> {
 public:
   using SimpleRequest::SimpleRequest;
 
@@ -2233,6 +2234,7 @@ private:
 
 public:
   // Incremental dependencies
+  std::pair<SourceFile *, bool> readDependencySource(Evaluator &eval) const;
   void writeDependencySink(Evaluator &eval,
                            ProtocolConformanceLookupResult r) const;
 };
