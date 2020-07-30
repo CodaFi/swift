@@ -3391,7 +3391,7 @@ ModuleDecl *ClangModuleUnit::getOverlayModule() const {
       auto *sharedModuleRef = Ctx.getLoadedModule(M->getName());
       assert(!sharedModuleRef || sharedModuleRef == overlay ||
              sharedModuleRef == M);
-      Ctx.addLoadedModule(overlay);
+//      Ctx.addLoadedModule(overlay);
     }
 
     auto mutableThis = const_cast<ClangModuleUnit *>(this);

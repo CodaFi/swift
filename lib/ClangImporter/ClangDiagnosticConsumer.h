@@ -28,7 +28,7 @@ class ClangDiagnosticConsumer : public clang::TextDiagnosticPrinter {
                    const clang::IdentifierInfo *import)
         : Consumer(&consumer) {
       assert(import);
-      assert(!Consumer->CurrentImport);
+//      assert(!Consumer->CurrentImport);
       Consumer->CurrentImport = import;
     }
 
