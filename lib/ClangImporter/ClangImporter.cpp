@@ -1846,7 +1846,6 @@ ModuleDecl *ClangImporter::Implementation::finishLoadingClangModule(
   if (clangModule->isSubModule()) {
     finishLoadingClangModule(clangModule->getTopLevelModule(), importLoc);
   } else {
-
     if (!SwiftContext.getLoadedModule(result->getName()))
       SwiftContext.addLoadedModule(result);
   }
@@ -3387,19 +3386,10 @@ ModuleDecl *ClangModuleUnit::getOverlayModule() const {
     // FIXME: Include proper source location.
     ModuleDecl *M = getParentModule();
     ASTContext &Ctx = M->getASTContext();
-    auto overlay = Ctx.getModule(ModuleDecl::AccessPathTy({M->getName(),
-                                                           SourceLoc()}));
-    if (overlay == M) {
-      overlay = nullptr;
-    } else {
-      // FIXME: This bizarre and twisty invariant is due to nested
-      // re-entrancy in both clang module loading and overlay module loading.
-      auto *sharedModuleRef = Ctx.getLoadedModule(M->getName());
-      assert(!sharedModuleRef || sharedModuleRef == overlay ||
-             sharedModuleRef == M);
+    auto overlay = Ctx.getOverlayModule(this);
+    if (overlay) {
       Ctx.addLoadedModule(overlay);
     }
-
     auto mutableThis = const_cast<ClangModuleUnit *>(this);
     mutableThis->overlayModule.setPointerAndInt(overlay, true);
   }
@@ -3456,16 +3446,16 @@ void ClangModuleUnit::getImportedModules(
   for (auto importMod : imported) {
     auto wrapper = owner.getWrapperForModule(importMod);
 
-    auto actualMod = wrapper->getOverlayModule();
-    if (!actualMod) {
+    auto importTopLevel = importMod->getTopLevelModule();
+    auto actualMod = getASTContext().getModuleByName(importTopLevel->Name);
+    if (!actualMod || actualMod->isNonSwiftModule()) {
       // HACK: Deal with imports of submodules by importing the top-level module
       // as well.
-      auto importTopLevel = importMod->getTopLevelModule();
       if (importTopLevel != importMod) {
         if (!clangModule || importTopLevel != clangModule->getTopLevelModule()){
           auto topLevelWrapper = owner.getWrapperForModule(importTopLevel);
-          imports.push_back({ ModuleDecl::AccessPathTy(),
-                              topLevelWrapper->getParentModule() });
+          imports.emplace_back(ModuleDecl::AccessPathTy(),
+                               topLevelWrapper->getParentModule());
         }
       }
       actualMod = wrapper->getParentModule();
@@ -3474,7 +3464,7 @@ void ClangModuleUnit::getImportedModules(
     }
 
     assert(actualMod && "Missing imported overlay");
-    imports.push_back({ModuleDecl::AccessPathTy(), actualMod});
+    imports.emplace_back(ModuleDecl::AccessPathTy(), actualMod);
   }
 }
 
@@ -3525,9 +3515,10 @@ void ClangModuleUnit::getImportedModulesForLookup(
 
       // Don't continue looking through submodules of modules that have
       // overlays. The overlay might shadow things.
-      auto wrapper = owner.getWrapperForModule(nextTopLevel);
-      if (wrapper->getOverlayModule())
+      auto loadedMod = getASTContext().getModuleByName(nextTopLevel->Name);
+      if (!loadedMod->isNonSwiftModule()) {
         continue;
+      }
     }
 
     // Only look through the current module if it's not top-level.
@@ -3543,14 +3534,13 @@ void ClangModuleUnit::getImportedModulesForLookup(
   }
 
   for (auto importMod : topLevelImported) {
+    auto actualMod = getASTContext().getModuleByName(importMod->Name);
     auto wrapper = owner.getWrapperForModule(importMod);
-
-    auto actualMod = wrapper->getOverlayModule();
-    if (!actualMod || actualMod == topLevelOverlay)
+    if (!wrapper->getOverlayModule() || actualMod == topLevelOverlay) {
       actualMod = wrapper->getParentModule();
-
+    }
     assert(actualMod && "Missing imported overlay");
-    imports.push_back({ModuleDecl::AccessPathTy(), actualMod});
+    imports.emplace_back(ModuleDecl::AccessPathTy(), actualMod);
   }
 
   // Cache our results for use next time.

@@ -1878,6 +1878,28 @@ ASTContext::getModule(ArrayRef<Located<Identifier>> ModulePath) {
   return nullptr;
 }
 
+ModuleDecl *ASTContext::getOverlayModule(const FileUnit *FU) {
+  assert(FU && FU->getKind() == FileUnitKind::ClangModule &&
+         "Overlays can only be retrieved for clang modules!");
+
+  Identifier MName = FU->getParentModule()->getName();
+  if (auto *Existing = getLoadedModule({{MName, SourceLoc()}})) {
+    if (!Existing->isNonSwiftModule())
+      return Existing;
+  }
+
+  for (auto &importer : getImpl().ModuleLoaders) {
+    if (importer.get() == getClangModuleLoader())
+      continue;
+
+    if (ModuleDecl *M = importer->loadModule(SourceLoc(), {{MName, {}}})) {
+      return M;
+    }
+  }
+
+  return nullptr;
+}
+
 ModuleDecl *ASTContext::getModuleByName(StringRef ModuleName) {
   SmallVector<Located<Identifier>, 4>
   AccessPath;
