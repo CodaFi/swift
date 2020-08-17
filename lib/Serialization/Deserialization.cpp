@@ -20,6 +20,7 @@
 #include "swift/AST/Expr.h"
 #include "swift/AST/ForeignErrorConvention.h"
 #include "swift/AST/GenericEnvironment.h"
+#include "swift/AST/ImportCache.h"
 #include "swift/AST/Initializer.h"
 #include "swift/AST/NameLookupRequests.h"
 #include "swift/AST/Pattern.h"
@@ -2032,8 +2033,13 @@ ModuleDecl *ModuleFile::getModule(ArrayRef<Identifier> name,
   for (auto pathElem : name)
     importPath.push_back({ pathElem, SourceLoc() });
 
-  if (allowLoading)
-    return getContext().getModule(importPath);
+  if (allowLoading) {
+    auto *M = getContext().getModule(importPath);
+    if (M) {
+      (void) namelookup::getAllImports(M);
+    }
+    return M;
+  }
   return getContext().getLoadedModule(importPath);
 }
 

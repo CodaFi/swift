@@ -16,6 +16,7 @@
 
 #include "swift/AST/ASTPrinter.h"
 #include "swift/AST/ASTWalker.h"
+#include "swift/AST/ImportCache.h"
 #include "swift/Basic/Version.h"
 #include "swift/Frontend/Frontend.h"
 #include "swift/Frontend/PrintingDiagnosticConsumer.h"
@@ -99,7 +100,11 @@ static ModuleDecl *getModuleByFullName(ASTContext &Ctx, StringRef ModuleName) {
     std::tie(SubModuleName, ModuleName) = ModuleName.split('.');
     AccessPath.push_back({ Ctx.getIdentifier(SubModuleName), SourceLoc() });
   }
-  return Ctx.getModule(AccessPath);
+  auto *M = Ctx.getModule(AccessPath);
+  if (M) {
+    (void) namelookup::getAllImports(M);
+  }
+  return M;
 }
 
 static ModuleDecl *getModuleByFullName(ASTContext &Ctx, Identifier ModuleName) {

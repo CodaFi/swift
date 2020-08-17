@@ -1833,14 +1833,10 @@ ModuleDecl *ClangImporter::Implementation::finishLoadingClangModule(
   // Bump the generation count.
   bumpGeneration();
 
-  // Force load overlays for all imported modules.
-  // FIXME: This forces the creation of wrapper modules for all imports as
-  // well, and may do unnecessary work.
   ClangModuleUnit *wrapperUnit = getWrapperForModule(clangModule, importLoc);
   ModuleDecl *result = wrapperUnit->getParentModule();
   if (!ModuleWrappers[clangModule].getInt()) {
     ModuleWrappers[clangModule].setInt(true);
-    (void) namelookup::getAllImports(result);
   }
 
   if (clangModule->isSubModule()) {
@@ -1873,7 +1869,16 @@ void ClangImporter::Implementation::handleDeferredImports(SourceLoc diagLoc) {
   // officially supported with bridging headers: app targets and unit tests
   // only. Unfortunately that's not enforced.
   for (size_t i = 0; i < ImportedHeaderExports.size(); ++i) {
-    (void)finishLoadingClangModule(ImportedHeaderExports[i], diagLoc);
+    auto *CM = ImportedHeaderExports[i];
+    // Force load overlays for all imported modules.
+    // FIXME: This forces the creation of wrapper modules for all imports as
+    // well, and may do unnecessary work.
+    if (CM->isSubModule()) {
+      auto *TM = finishLoadingClangModule(CM->getTopLevelModule(), diagLoc);
+      (void) namelookup::getAllImports(TM);
+    }
+    auto *M = finishLoadingClangModule(CM, diagLoc);
+    (void) namelookup::getAllImports(M);
   }
 }
 
