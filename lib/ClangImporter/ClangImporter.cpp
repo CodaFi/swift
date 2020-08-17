@@ -1836,11 +1836,9 @@ ModuleDecl *ClangImporter::Implementation::finishLoadingClangModule(
   ClangModuleUnit *wrapperUnit = getWrapperForModule(clangModule, importLoc);
   ModuleDecl *result = wrapperUnit->getParentModule();
 
-  if (clangModule->isSubModule()) {
-    finishLoadingClangModule(clangModule->getTopLevelModule(), importLoc);
-  } else {
-    if (!SwiftContext.getLoadedModule(result->getName()))
-      SwiftContext.addLoadedModule(result);
+  if (!clangModule->isSubModule() &&
+      !SwiftContext.getLoadedModule(result->getName())) {
+    SwiftContext.addLoadedModule(result);
   }
 
   return result;
