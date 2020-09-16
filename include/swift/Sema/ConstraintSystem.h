@@ -2029,6 +2029,9 @@ class ConstraintSystem {
   friend class swift::unittest::SemaTest;
 
 public:
+  using DeferredErrorMap = llvm::SmallDenseMap<ASTNode, SmallVector<ConstraintFix *, 4>>;
+
+public:
   DeclContext *DC;
   ConstraintSystemOptions Options;
   Optional<ExpressionTimer> Timer;
@@ -2235,6 +2238,8 @@ public:
   /// types.
   llvm::DenseMap<CanType, DynamicCallableMethods> DynamicCallableCache;
 
+  /// The set of constraint fixes that have been deferred to runtime.
+  DeferredErrorMap DeferredErrors;
 private:
   /// Describe the candidate expression for partial solving.
   /// This class used by shrink & solve methods which apply

@@ -33,6 +33,10 @@
 using namespace swift;
 using namespace constraints;
 
+bool swift::constraints::defersTypeErrorsToRuntime(ConstraintSystem &cs) {
+  return cs.getASTContext().TypeCheckerOpts.DeferTypeErrors;
+}
+
 ConstraintFix::~ConstraintFix() {}
 
 ASTNode ConstraintFix::getAnchor() const { return getLocator()->getAnchor(); }

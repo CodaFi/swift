@@ -802,6 +802,9 @@ static bool ParseTypeCheckerArgs(TypeCheckerOptions &Opts, ArgList &Args,
   if (Args.getLastArg(OPT_solver_disable_shrink))
     Opts.SolverDisableShrink = true;
 
+  Opts.DeferTypeErrors |=
+    Args.hasArg(OPT_defer_type_errors);
+
   return HadError;
 }
 

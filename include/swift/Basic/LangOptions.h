@@ -554,6 +554,12 @@ namespace swift {
     /// Enable experimental support for one-way constraints for the
     /// parameters of closures.
     bool EnableOneWayClosureParameters = false;
+
+    /// When set, defer type errors from the expression checker that do not
+    /// impact the structure of code until runtime.
+    ///
+    /// \Note This does not make Swift a dynamic language.
+    bool DeferTypeErrors = false;
   };
 
   /// Options for controlling the behavior of the Clang importer.

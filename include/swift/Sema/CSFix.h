@@ -48,6 +48,8 @@ enum class ConversionRestrictionKind;
 class Solution;
 struct MemberLookupResult;
 
+bool defersTypeErrorsToRuntime(ConstraintSystem &cs);
+
 /// Describes the kind of fix to apply to the given constraint before
 /// visiting it.
 ///
@@ -320,6 +322,7 @@ public:
   FixKind getKind() const { return Kind; }
 
   bool isWarning() const { return IsWarning; }
+  bool isDeferred() const { return !isWarning() && defersTypeErrorsToRuntime(CS); }
 
   virtual std::string getName() const = 0;
 

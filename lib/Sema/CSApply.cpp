@@ -371,6 +371,51 @@ static bool buildObjCKeyPathString(KeyPathExpr *E,
 }
 
 namespace {
+class DiagnosticCatcher final : public DiagnosticConsumer {
+  DiagnosticEngine &diags;
+  std::string Buffer;
+  std::vector<DiagnosticConsumer *> consumers;
+  llvm::raw_string_ostream AllCaughtDiagnostics;
+  bool hadErrorOccurred;
+
+  DiagnosticCatcher(const DiagnosticCatcher &) = delete;
+  DiagnosticCatcher &operator=(const DiagnosticCatcher &) = delete;
+
+public:
+  explicit DiagnosticCatcher(DiagnosticEngine &diags)
+    : diags(diags), Buffer(), AllCaughtDiagnostics(Buffer),
+      hadErrorOccurred(diags.hadAnyError()) {
+    consumers = diags.takeConsumers();
+    diags.addConsumer(*this);
+  }
+
+  void handleDiagnostic(SourceManager &SM,
+                        const DiagnosticInfo &Info) override {
+    DiagnosticEngine::formatDiagnosticText(AllCaughtDiagnostics,
+                                           Info.FormatString, Info.FormatArgs);
+  }
+
+  std::string takeCapturedDiagnostics() && {
+    return Buffer;
+  }
+
+  ~DiagnosticCatcher() {
+    if (!hadErrorOccurred) {
+      diags.resetHadAnyError();
+    }
+    (void)diags.takeConsumers();
+    for (auto consumer : consumers)
+      diags.addConsumer(*consumer);
+  }
+
+  static bool isEnabled(const DiagnosticEngine &diags) {
+    return diags.getConsumers().empty();
+  }
+};
+
+};
+
+namespace {
 
   /// Rewrites an expression by applying the solution of a constraint
   /// system to that expression.
@@ -561,6 +606,24 @@ namespace {
       return SubstitutionMap::get(sig,
                                   QueryTypeSubstitutionMap{subs},
                                   LookUpConformanceInModule(cs.DC->getParentModule()));
+    }
+
+  private:
+    Expr *buildDeferredErrorExprIfNecessary(Expr *expr, Type toType) {
+      if (!swift::constraints::defersTypeErrorsToRuntime(getConstraintSystem())) {
+        return nullptr;
+      }
+      auto fixes = getConstraintSystem().DeferredErrors.find(ASTNode(expr));
+      if (fixes == getConstraintSystem().DeferredErrors.end()) {
+        return nullptr;
+      }
+
+      DiagnosticCatcher catcher(cs.getASTContext().Diags);
+      fixes->getSecond().front()->coalesceAndDiagnose(
+          solution, ArrayRef<ConstraintFix *>(fixes->getSecond()).drop_front());
+      auto diags = std::move(catcher).takeCapturedDiagnostics();
+      StringRef ownedDiags = cs.getASTContext().AllocateCopy(StringRef(diags));
+      return expandRuntimeErrorExpr(expr, ownedDiags, toType);
     }
 
   public:
@@ -2995,6 +3058,9 @@ namespace {
                            expr,
                            ConstraintLocator::ConstructorMember);
       if (auto selected = solution.getOverloadChoiceIfAvailable(ctorLocator)) {
+        if (auto *RTE = buildDeferredErrorExprIfNecessary(expr, simplifyType(selected->openedType))) {
+          return RTE;
+        }
         return applyCtorRefExpr(
             expr, base, dotLoc, nameLoc, implicit, ctorLocator, *selected);
       }
@@ -3010,6 +3076,9 @@ namespace {
         // leave this as whatever type of member reference it already is.
         Type resultTy = simplifyType(cs.getType(expr));
         cs.setType(expr, resultTy);
+        if (auto *RTE = buildDeferredErrorExprIfNecessary(expr, resultTy)) {
+          return RTE;
+        }
         return expr;
       }
 
@@ -3891,6 +3960,12 @@ namespace {
       expr->setCastType(toType);
       cs.setType(expr->getCastTypeRepr(), toType);
 
+      if (auto *RTE = buildDeferredErrorExprIfNecessary(expr, toType)) {
+        expr->setSubExpr(RTE);
+        cs.setType(expr, toType);
+        return expr;
+      }
+
       // If this is a literal that got converted into constructor call
       // lets put proper source information in place.
       if (expr->isLiteralInit()) {
@@ -4222,6 +4297,9 @@ namespace {
       }
 
       Type valueType = simplifyType(cs.getType(expr));
+      if (auto *RTE = buildDeferredErrorExprIfNecessary(expr, valueType)) {
+        return RTE;
+      }
       cs.setType(expr, valueType);
 
       // Coerce the object type, if necessary.
@@ -4282,16 +4360,17 @@ namespace {
       Expr *argExpr = new (ctx) StringLiteralExpr(msg, E->getLoc(),
                                                   /*implicit*/true);
 
-      Expr *callExpr = CallExpr::createImplicit(ctx, fnRef, { argExpr },
-                                                { Identifier() });
-
+      CallExpr *callExpr = CallExpr::createImplicit(ctx, fnRef, { argExpr },
+                                                    { Identifier() });
+      callExpr->setThrows(false);
+      Expr *resultExpr = callExpr;
       auto resultTy = TypeChecker::typeCheckExpression(
-          callExpr, cs.DC, /*contextualInfo=*/{valueType, CTP_CannotFail});
+          resultExpr, cs.DC, /*contextualInfo=*/{valueType, CTP_CannotFail});
       assert(resultTy && "Conversion cannot fail!");
       (void)resultTy;
 
-      cs.cacheExprTypes(callExpr);
-      E->setSemanticExpr(callExpr);
+      cs.cacheExprTypes(resultExpr);
+      E->setSemanticExpr(resultExpr);
       return E;
     }
 
@@ -5007,6 +5086,37 @@ namespace {
       return E;
     }
 
+    Expr *expandRuntimeErrorExpr(Expr *diagnosedExpr,
+                                 StringRef errorMessage, Type valueType) {
+      assert(!valueType->hasUnresolvedType());
+
+      // Synthesize a call to _undefined() of appropriate type.
+      auto &ctx = cs.getASTContext();
+      FuncDecl *undefinedDecl = ctx.getUndefined();
+      if (!undefinedDecl) {
+        ctx.Diags.diagnose(diagnosedExpr->getLoc(), diag::missing_undefined_runtime);
+        return nullptr;
+      }
+      DeclRefExpr *fnRef = new (ctx) DeclRefExpr(undefinedDecl, DeclNameLoc(),
+                                                 /*Implicit=*/true);
+      fnRef->setFunctionRefKind(FunctionRefKind::SingleApply);
+
+      Expr *argExpr = new (ctx) StringLiteralExpr(errorMessage,
+                                                  diagnosedExpr->getLoc(),
+                                                  /*implicit*/true);
+
+      Expr *callExpr = CallExpr::createImplicit(ctx, fnRef, { argExpr },
+                                                { Identifier() });
+      cast<CallExpr>(callExpr)->setThrows(false);
+      auto resultTy = TypeChecker::typeCheckExpression(
+          callExpr, cs.DC, valueType, CTP_CannotFail);
+      assert(resultTy && "Conversion cannot fail!");
+      (void)resultTy;
+
+      cs.cacheExprTypes(callExpr);
+      return callExpr;
+    }
+
     /// Interface for ExprWalker
     void walkToExprPre(Expr *expr) {
       // If we have an apply, make a note of its callee locator prior to
@@ -5429,6 +5539,10 @@ Expr *ExprRewriter::coerceOptionalToOptional(Expr *expr, Type toType,
 }
 
 Expr *ExprRewriter::coerceImplicitlyUnwrappedOptionalToValue(Expr *expr, Type objTy) {
+  if (auto *RTE = buildDeferredErrorExprIfNecessary(expr, objTy)) {
+    return RTE;
+  }
+
   auto optTy = cs.getType(expr);
   // Preserve l-valueness of the result.
   if (optTy->is<LValueType>())
@@ -5490,6 +5604,10 @@ Expr *ExprRewriter::coerceCallArguments(
     ApplyExpr *apply,
     ArrayRef<Identifier> argLabels,
     ConstraintLocatorBuilder locator) {
+  if (auto *RTE = buildDeferredErrorExprIfNecessary(arg, funcType->getResult())) {
+    return RTE;
+  }
+
   auto &ctx = getConstraintSystem().getASTContext();
   auto params = funcType->getParams();
 
@@ -6283,6 +6401,10 @@ Expr *ExprRewriter::coerceToType(Expr *expr, Type toType,
   if (fromType->isEqual(toType))
     return expr;
 
+  if (auto *RTE = buildDeferredErrorExprIfNecessary(expr, toType)) {
+    return RTE;
+  }
+
   // If the solver recorded what we should do here, just do it immediately.
   auto knownRestriction = solution.ConstraintRestrictions.find(
                             { fromType->getCanonicalType(),
@@ -6822,6 +6944,10 @@ Expr *ExprRewriter::coerceToType(Expr *expr, Type toType,
   // Use an opaque type to abstract a value of the underlying concrete type.
   if (toType->getAs<OpaqueTypeArchetypeType>()) {
     return cs.cacheType(new (ctx) UnderlyingToOpaqueExpr(expr, toType));
+  }
+
+  if (swift::constraints::defersTypeErrorsToRuntime(getConstraintSystem())) {
+    return buildDeferredErrorExprIfNecessary(expr, toType);
   }
   
   llvm_unreachable("Unhandled coercion");
@@ -7365,6 +7491,10 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
       return nullptr;
     }
 
+    if (auto *RTE = buildDeferredErrorExprIfNecessary(apply, fnType->getResult())) {
+      return RTE;
+    }
+
     apply->setArg(arg);
     cs.setType(apply, fnType->getResult());
     apply->setIsSuper(isSuper);
@@ -7755,6 +7885,74 @@ namespace {
 
 }
 
+static bool isDeferrable(ConstraintFix *fix) {
+  switch (fix->getKind()) {
+  case FixKind::DefineMemberBasedOnUse:
+  case FixKind::RemoveReturn:
+  case FixKind::SpecifyClosureParameterType:
+  case FixKind::SpecifyClosureReturnType:
+  case FixKind::AddressOf:
+  case FixKind::RemoveAddressOf:
+    return false;
+  case FixKind::ForceOptional:
+  case FixKind::UnwrapOptionalBase:
+  case FixKind::UnwrapOptionalBaseWithOptionalResult:
+  case FixKind::ForceDowncast:
+  case FixKind::CoerceToCheckedCast:
+  case FixKind::ExplicitlyEscaping:
+  case FixKind::RelabelArguments:
+  case FixKind::TreatRValueAsLValue:
+  case FixKind::AddConformance:
+  case FixKind::SkipSameTypeRequirement:
+  case FixKind::SkipSuperclassRequirement:
+  case FixKind::ContextualMismatch:
+  case FixKind::GenericArgumentsMismatch:
+  case FixKind::AutoClosureForwarding:
+  case FixKind::RemoveUnwrap:
+  case FixKind::InsertCall:
+  case FixKind::UsePropertyWrapper:
+  case FixKind::UseWrappedValue:
+  case FixKind::UseSubscriptOperator:
+  case FixKind::AllowTypeOrInstanceMember:
+  case FixKind::AllowInvalidPartialApplication:
+  case FixKind::AllowInvalidInitRef:
+  case FixKind::AllowTupleTypeMismatch:
+  case FixKind::AllowFunctionTypeMismatch:
+  case FixKind::AllowMemberRefOnExistential:
+  case FixKind::AddMissingArguments:
+  case FixKind::RemoveExtraneousArguments:
+  case FixKind::AllowClosureParameterDestructuring:
+  case FixKind::MoveOutOfOrderArgument:
+  case FixKind::AllowInaccessibleMember:
+  case FixKind::AllowAnyObjectKeyPathRoot:
+  case FixKind::TreatKeyPathSubscriptIndexAsHashable:
+  case FixKind::AllowInvalidRefInKeyPath:
+  case FixKind::DefaultGenericArgument:
+  case FixKind::SkipUnhandledConstructInFunctionBuilder:
+  case FixKind::AllowMutatingMemberOnRValueBase:
+  case FixKind::AllowTupleSplatForSingleParameter:
+  case FixKind::AllowArgumentTypeMismatch:
+  case FixKind::ExplicitlyConstructRawRepresentable:
+  case FixKind::UseRawValue:
+  case FixKind::ExpandArrayIntoVarargs:
+  case FixKind::RemoveCall:
+  case FixKind::TreatEphemeralAsNonEphemeral:
+  case FixKind::SpecifyBaseTypeForContextualMember:
+  case FixKind::SpecifyObjectLiteralTypeImport:
+  case FixKind::AllowNonClassTypeToConvertToAnyObject:
+  case FixKind::AddQualifierToAccessTopLevelName:
+  case FixKind::AllowCoercionToForceCast:
+  case FixKind::AllowKeyPathRootTypeMismatch:
+  case FixKind::AllowMultiArgFuncKeyPathMismatch:
+  case FixKind::SpecifyKeyPathRootType:
+  case FixKind::UnwrapOptionalBaseKeyPathApplication:
+  case FixKind::SpecifyLabelToAssociateTrailingClosure:
+  case FixKind::AllowKeyPathWithoutComponents:
+  case FixKind::IgnoreInvalidFunctionBuilderBody:
+    return true;
+  }
+}
+
 /// Emit the fixes computed as part of the solution, returning true if we were
 /// able to emit an error message, or false if none of the fixits worked out.
 bool ConstraintSystem::applySolutionFixes(const Solution &solution) {
@@ -7790,8 +7988,12 @@ bool ConstraintSystem::applySolutionFixes(const Solution &solution) {
       for (auto fixesPerKind : fixesPerLocator.second) {
         auto fixes = fixesPerKind.second;
         auto *primaryFix = fixes[0];
-        ArrayRef<ConstraintFix *> secondaryFixes{fixes.begin() + 1, fixes.end()};
+        if (isDeferrable(primaryFix) && primaryFix->isDeferred()) {
+          DeferredErrors.insert({anchor, fixes});
+          continue;
+        }
 
+        ArrayRef<ConstraintFix *> secondaryFixes{fixes.begin() + 1, fixes.end()};
         auto diagnosed =
             primaryFix->coalesceAndDiagnose(solution, secondaryFixes);
         if (primaryFix->isWarning()) {
@@ -8316,7 +8518,7 @@ Optional<SolutionApplicationTarget> ConstraintSystem::applySolution(
     // If all of the available fixes would result in a warning,
     // we can go ahead and apply this solution to AST.
     if (!llvm::all_of(solution.Fixes, [](const ConstraintFix *fix) {
-          return fix->isWarning();
+          return fix->isWarning() || fix->isDeferred();
         })) {
       // If we already diagnosed any errors via fixes, that's it.
       if (diagnosedErrorsViaFixes)
@@ -8332,7 +8534,7 @@ Optional<SolutionApplicationTarget> ConstraintSystem::applySolution(
   // If there are no fixes recorded but score indicates that there
   // should have been at least one, let's fail application and
   // produce a fallback diagnostic to highlight the problem.
-  {
+  if (!swift::constraints::defersTypeErrorsToRuntime(solution.getConstraintSystem())) {
     const auto &score = solution.getFixedScore();
     if (score.Data[SK_Fix] > 0 || score.Data[SK_Hole] > 0) {
       maybeProduceFallbackDiagnostic(target);

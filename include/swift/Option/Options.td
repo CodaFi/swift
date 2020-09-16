@@ -1189,4 +1189,11 @@ def disable_autolinking_runtime_compatibility_dynamic_replacements
       HelpText<"Do not use autolinking for the dynamic replacement runtime "
                "compatibility library">;
 
+// Deferred Type Errors
+
+def defer_type_errors
+    : Flag<["-"], "defer-type-errors">,
+      Flags<[FrontendOption]>,
+      HelpText<"Defer type errors until runtime">;
+
 include "FrontendOptions.td"
