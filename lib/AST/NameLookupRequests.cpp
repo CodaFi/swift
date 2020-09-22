@@ -164,13 +164,6 @@ void ExtendedNominalRequest::writeDependencySink(
     evaluator::DependencyCollector &tracker, NominalTypeDecl *value) const {
   if (!value)
     return;
-
-  // Ensure this extension comes from a source file.
-  auto *SF = std::get<0>(getStorage())->getParentSourceFile();
-  if (!SF)
-    return;
-  if (SF != tracker.getRecorder().getActiveDependencySourceOrNull().getPtrOrNull())
-    return;
   tracker.addPotentialMember(value);
 }
 
@@ -300,15 +293,7 @@ void DirectLookupRequest::writeDependencySink(
 
 void LookupInModuleRequest::writeDependencySink(
     evaluator::DependencyCollector &reqTracker, QualifiedLookupResult l) const {
-  auto *module = std::get<0>(getStorage());
   auto member = std::get<1>(getStorage());
-  auto *DC = std::get<4>(getStorage());
-
-  // Decline to record lookups outside our module.
-  if (!DC->getParentSourceFile() ||
-      module->getParentModule() != DC->getParentModule()) {
-    return;
-  }
   reqTracker.addTopLevelName(member.getBaseName());
 }
 
@@ -343,15 +328,7 @@ swift::extractNearestSourceLoc(const LookupConformanceDescriptor &desc) {
 
 void ModuleQualifiedLookupRequest::writeDependencySink(
     evaluator::DependencyCollector &reqTracker, QualifiedLookupResult l) const {
-  auto *DC = std::get<0>(getStorage());
-  auto *module = std::get<1>(getStorage());
   auto member = std::get<2>(getStorage());
-
-  // Decline to record lookups outside our module.
-  if (!DC->getParentSourceFile() ||
-      module != DC->getModuleScopeContext()->getParentModule()) {
-    return;
-  }
   reqTracker.addTopLevelName(member.getBaseName());
 }
 
@@ -370,15 +347,6 @@ void LookupConformanceInModuleRequest::writeDependencySink(
   if (!Adoptee)
     return;
 
-  auto source = reqTracker.getRecorder().getActiveDependencySourceOrNull();
-  if (source.isNull())
-    return;
-
-  // Decline to record conformances defined outside of the active module.
-  auto *conformance = lookupResult.getConcrete();
-  if (source.get()->getParentModule() !=
-      conformance->getDeclContext()->getParentModule())
-    return;
   reqTracker.addPotentialMember(Adoptee);
 }
 
