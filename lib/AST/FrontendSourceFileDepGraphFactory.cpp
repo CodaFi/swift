@@ -262,6 +262,32 @@ bool fine_grained_dependencies::emitReferenceDependencies(
   return hadError;
 }
 
+bool fine_grained_dependencies::emitSerializedModuleReferenceDependencies(
+    DiagnosticEngine &diags, ModuleDecl *const Mod,
+    const DependencyTracker &depTracker,
+    StringRef outputPath,
+    const bool alsoEmitDotFile) {
+
+  // Before writing to the dependencies file path, preserve any previous file
+  // that may have been there. No error handling -- this is just a nicety, it
+  // doesn't matter if it fails.
+  llvm::sys::fs::rename(outputPath, outputPath + "~");
+
+  SourceFileDepGraph g = SerializedModuleFileDepGraphFactory(
+                             Mod, outputPath, depTracker, alsoEmitDotFile)
+                              .construct();
+
+  bool hadError = writeFineGrainedDependencyGraph(diags, outputPath, g);
+
+  // If path is stdout, cannot read it back, so check for "-"
+  assert(outputPath == "-" || g.verifyReadsWhatIsWritten(outputPath));
+
+  if (alsoEmitDotFile)
+    g.emitDotFile(outputPath, diags);
+
+  return hadError;
+}
+
 //==============================================================================
 // MARK: FrontendSourceFileDepGraphFactory
 //==============================================================================
@@ -286,12 +312,6 @@ bool FrontendSourceFileDepGraphFactory::computeIncludePrivateDeps(
   return SF->getASTContext()
              .LangOpts.FineGrainedDependenciesIncludeIntrafileOnes ||
          SF->getASTContext().LangOpts.EnableTypeFingerprints;
-}
-
-/// Centralize the invariant that the fingerprint of the whole file is the
-/// interface hash
-std::string FrontendSourceFileDepGraphFactory::getFingerprint(SourceFile *SF) {
-  return getInterfaceHash(SF);
 }
 
 //==============================================================================
@@ -629,6 +649,216 @@ Optional<std::string> FrontendSourceFileDepGraphFactory::getFingerprintIfAny(
 }
 Optional<std::string>
 FrontendSourceFileDepGraphFactory::getFingerprintIfAny(const Decl *d) {
+  if (const auto *idc = dyn_cast<IterableDeclContext>(d)) {
+    auto result = idc->getBodyFingerprint();
+    assert((!result || !result->empty()) &&
+           "Fingerprint should never be empty");
+    return result;
+  }
+  return None;
+}
+
+//==============================================================================
+// MARK: SerializedModuleFileDepGraphFactory
+//==============================================================================
+
+SerializedModuleFileDepGraphFactory::SerializedModuleFileDepGraphFactory(
+    ModuleDecl *Mod, StringRef outputPath, const DependencyTracker &depTracker,
+    const bool alsoEmitDotFile)
+    : AbstractSourceFileDepGraphFactory(
+          /*fingerprints*/ true, Mod->getASTContext().hadError(),
+          outputPath, "0xDEADBEEF", alsoEmitDotFile,
+          Mod->getASTContext().Diags),
+      Mod(Mod), depTracker(depTracker) {}
+
+//==============================================================================
+// MARK: SerializedModuleFileDepGraphFactory - adding collections of defined Decls
+//==============================================================================
+//==============================================================================
+// MARK: SerializedModuleFileDeclFinder
+//==============================================================================
+
+namespace {
+/// Takes all the Decls in a SourceFile, and collects them into buckets by
+/// groups of DeclKinds. Also casts them to more specific types
+/// TODO: Factor with SourceFileDeclFinder
+struct SerializedModuleFileDeclFinder {
+
+public:
+  // The extracted Decls:
+  ConstPtrVec<ExtensionDecl> extensions;
+  ConstPtrVec<OperatorDecl> operators;
+  ConstPtrVec<PrecedenceGroupDecl> precedenceGroups;
+  ConstPtrVec<NominalTypeDecl> topNominals;
+  ConstPtrVec<ValueDecl> topValues;
+  ConstPtrVec<NominalTypeDecl> allNominals;
+  ConstPtrVec<NominalTypeDecl> potentialMemberHolders;
+  ConstPtrVec<FuncDecl> memberOperatorDecls;
+  ConstPtrPairVec<NominalTypeDecl, ValueDecl> valuesInExtensions;
+  ConstPtrVec<ValueDecl> classMembers;
+
+  /// Construct me and separates the Decls.
+  // clang-format off
+    SerializedModuleFileDeclFinder(const ModuleDecl *const Mod) {
+      SmallVector<Decl *, 32> Results;
+      Mod->getTopLevelDecls(Results);
+      for (const Decl *const D : Results) {
+        select<ExtensionDecl, DeclKind::Extension>(D, extensions) ||
+        select<OperatorDecl, DeclKind::InfixOperator, DeclKind::PrefixOperator,
+        DeclKind::PostfixOperator>(D, operators) ||
+        select<PrecedenceGroupDecl, DeclKind::PrecedenceGroup>(D, precedenceGroups) ||
+        select<NominalTypeDecl, DeclKind::Enum, DeclKind::Struct,
+        DeclKind::Class, DeclKind::Protocol>(D, topNominals) ||
+        select<ValueDecl, DeclKind::TypeAlias, DeclKind::Var, DeclKind::Func,
+        DeclKind::Accessor>(D, topValues);
+      }
+    // clang-format on
+    // The order is important because some of these use instance variables
+    // computed by others.
+    findNominalsFromExtensions();
+    findNominalsInTopNominals();
+    findValuesInExtensions();
+    findClassMembers(Mod);
+  }
+
+private:
+  /// Extensions may contain nominals and operators.
+  void findNominalsFromExtensions() {
+    for (auto *ED : extensions) {
+      const auto *const NTD = ED->getExtendedNominal();
+      if (NTD)
+        findNominalsAndOperatorsIn(NTD, ED);
+    }
+  }
+  /// Top-level nominals may contain nominals and operators.
+  void findNominalsInTopNominals() {
+    for (const auto *const NTD : topNominals)
+      findNominalsAndOperatorsIn(NTD);
+  }
+  /// Any nominal may contain nominals and operators.
+  /// (indirectly recursive)
+  void findNominalsAndOperatorsIn(const NominalTypeDecl *const NTD,
+                                  const ExtensionDecl *ED = nullptr) {
+    allNominals.push_back(NTD);
+    potentialMemberHolders.push_back(NTD);
+    findNominalsAndOperatorsInMembers(ED ? ED->getMembers()
+                                         : NTD->getMembers());
+  }
+
+  /// Search through the members to find nominals and operators.
+  /// (indirectly recursive)
+  /// TODO: clean this up, maybe recurse separately for each purpose.
+  void findNominalsAndOperatorsInMembers(const DeclRange members) {
+    for (const Decl *const D : members) {
+      auto *VD = dyn_cast<ValueDecl>(D);
+      if (!VD)
+        continue;
+      if (VD->getName().isOperator())
+        memberOperatorDecls.push_back(cast<FuncDecl>(D));
+      else if (const auto *const NTD = dyn_cast<NominalTypeDecl>(D))
+        findNominalsAndOperatorsIn(NTD);
+    }
+  }
+
+  /// Extensions may contain ValueDecls.
+  void findValuesInExtensions() {
+    for (const auto *ED : extensions) {
+      const auto *const NTD = ED->getExtendedNominal();
+      if (!NTD)
+        continue;
+      for (const auto *member : ED->getMembers())
+        if (const auto *VD = dyn_cast<ValueDecl>(member))
+          if (VD->hasName() && !VD->isPrivateToEnclosingFile()) {
+            const auto *const NTD = ED->getExtendedNominal();
+            if (NTD)
+              valuesInExtensions.push_back(std::make_pair(NTD, VD));
+          }
+    }
+  }
+
+  /// Class members are needed for dynamic lookup dependency nodes.
+  void findClassMembers(const ModuleDecl *const Mod) {
+    struct Collector : public VisibleDeclConsumer {
+      ConstPtrVec<ValueDecl> &classMembers;
+      Collector(ConstPtrVec<ValueDecl> &classMembers)
+          : classMembers(classMembers) {}
+      void foundDecl(ValueDecl *VD, DeclVisibilityKind,
+                     DynamicLookupInfo) override {
+        classMembers.push_back(VD);
+      }
+    } collector{classMembers};
+    Mod->lookupClassMembers({}, collector);
+  }
+
+  /// Check \p D to see if it is one of the DeclKinds in the template
+  /// arguments. If so, cast it to DesiredDeclType and add it to foundDecls.
+  /// \returns true if successful.
+  template <typename DesiredDeclType, DeclKind firstKind,
+            DeclKind... restOfKinds>
+  bool select(const Decl *const D, ConstPtrVec<DesiredDeclType> &foundDecls) {
+    if (D->getKind() == firstKind) {
+      foundDecls.push_back(cast<DesiredDeclType>(D));
+      return true;
+    }
+    return select<DesiredDeclType, restOfKinds...>(D, foundDecls);
+  }
+
+  /// Terminate the template recursion.
+  template <typename DesiredDeclType>
+  bool select(const Decl *const D, ConstPtrVec<DesiredDeclType> &foundDecls) {
+    return false;
+  }
+};
+} // namespace
+
+void SerializedModuleFileDepGraphFactory::addAllDefinedDecls() {
+  // TODO: express the multiple provides and depends streams with variadic
+  // templates
+
+  // Many kinds of Decls become top-level depends.
+
+  SerializedModuleFileDeclFinder declFinder(Mod);
+
+  addAllDefinedDeclsOfAGivenType<NodeKind::topLevel>(
+      declFinder.precedenceGroups);
+  addAllDefinedDeclsOfAGivenType<NodeKind::topLevel>(
+      declFinder.memberOperatorDecls);
+  addAllDefinedDeclsOfAGivenType<NodeKind::topLevel>(declFinder.operators);
+  addAllDefinedDeclsOfAGivenType<NodeKind::topLevel>(declFinder.topNominals);
+  addAllDefinedDeclsOfAGivenType<NodeKind::topLevel>(declFinder.topValues);
+  addAllDefinedDeclsOfAGivenType<NodeKind::nominal>(declFinder.allNominals);
+  addAllDefinedDeclsOfAGivenType<NodeKind::potentialMember>(
+      declFinder.potentialMemberHolders);
+  addAllDefinedDeclsOfAGivenType<NodeKind::member>(
+      declFinder.valuesInExtensions);
+  addAllDefinedDeclsOfAGivenType<NodeKind::dynamicLookup>(
+      declFinder.classMembers);
+}
+
+/// Given an array of Decls or pairs of them in \p declsOrPairs
+/// create node pairs for context and name
+template <NodeKind kind, typename ContentsT>
+void SerializedModuleFileDepGraphFactory::addAllDefinedDeclsOfAGivenType(
+    std::vector<ContentsT> &contentsVec) {
+  for (const auto &declOrPair : contentsVec) {
+    Optional<std::string> fp = getFingerprintIfAny(declOrPair);
+    addADefinedDecl(
+        DependencyKey::createForProvidedEntityInterface<kind>(declOrPair),
+        fp ? StringRef(fp.getValue()) : Optional<StringRef>());
+  }
+}
+
+//==============================================================================
+// MARK: SerializedModuleFileDepGraphFactory - adding individual defined Decls
+//==============================================================================
+
+/// At present, only \c NominalTypeDecls have (body) fingerprints
+Optional<std::string> SerializedModuleFileDepGraphFactory::getFingerprintIfAny(
+    std::pair<const NominalTypeDecl *, const ValueDecl *>) {
+  return None;
+}
+Optional<std::string>
+SerializedModuleFileDepGraphFactory::getFingerprintIfAny(const Decl *d) {
   if (const auto *idc = dyn_cast<IterableDeclContext>(d)) {
     auto result = idc->getBodyFingerprint();
     assert((!result || !result->empty()) &&

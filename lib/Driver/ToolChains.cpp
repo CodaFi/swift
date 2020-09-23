@@ -1026,6 +1026,17 @@ ToolChain::constructInvocation(const MergeModuleJobAction &job,
   addCommonFrontendArgs(context.OI, context.Output, context.Args, Arguments);
   addRuntimeLibraryFlags(context.OI, Arguments);
 
+  if (context.Output.getAdditionalOutputForType(file_types::TY_SwiftDeps).empty()) {
+    llvm::SmallString<128> filePath;
+    llvm::sys::path::append(filePath, context.Output.getPrimaryOutputFilename());
+    llvm::sys::path::replace_extension(filePath, "swiftmodule.swiftdeps");
+    Arguments.push_back("-emit-reference-dependencies-path");
+    Arguments.push_back(context.Args.MakeArgString(filePath.str()));
+  } else {
+    addOutputsOfType(
+    Arguments, context.Output, context.Args, file_types::TY_SwiftDeps,
+    "-emit-reference-dependencies-path");
+  }
   addOutputsOfType(Arguments, context.Output, context.Args,
                    file_types::TY_SwiftModuleDocFile, "-emit-module-doc-path");
   addOutputsOfType(Arguments, context.Output, context.Args,

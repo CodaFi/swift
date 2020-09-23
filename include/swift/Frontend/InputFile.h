@@ -134,6 +134,9 @@ public:
   std::string fixItsOutputPath() const {
     return getPrimarySpecificPaths().SupplementaryOutputs.FixItsOutputPath;
   }
+  std::string getReferenceDependenciesPath() const {
+    return getPrimarySpecificPaths().SupplementaryOutputs.ReferenceDependenciesFilePath;
+  }
 };
 } // namespace swift
 

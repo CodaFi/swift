@@ -21,7 +21,7 @@ namespace fine_grained_dependencies {
 /// Reads the information provided by the frontend and builds the
 /// SourceFileDepGraph
 
-class FrontendSourceFileDepGraphFactory
+class FrontendSourceFileDepGraphFactory final
     : public AbstractSourceFileDepGraphFactory {
   SourceFile *const SF;
   const DependencyTracker &depTracker;
@@ -34,13 +34,39 @@ public:
   ~FrontendSourceFileDepGraphFactory() override = default;
 
 private:
-  static std::string getFingerprint(SourceFile *SF);
-
   static bool computeIncludePrivateDeps(SourceFile *SF);
   static std::string getInterfaceHash(SourceFile *SF);
 
   void addAllDefinedDecls() override;
   void addAllUsedDecls() override;
+
+  /// Given an array of Decls or pairs of them in \p declsOrPairs
+  /// create node pairs for context and name
+  template <NodeKind kind, typename ContentsT>
+  void addAllDefinedDeclsOfAGivenType(std::vector<ContentsT> &contentsVec);
+
+  /// At present, only nominals, protocols, and extensions have (body)
+  /// fingerprints
+  static Optional<std::string>
+  getFingerprintIfAny(std::pair<const NominalTypeDecl *, const ValueDecl *>);
+  static Optional<std::string> getFingerprintIfAny(const Decl *d);
+};
+
+class SerializedModuleFileDepGraphFactory final
+    : public AbstractSourceFileDepGraphFactory {
+  ModuleDecl *const Mod;
+  const DependencyTracker &depTracker;
+
+public:
+  SerializedModuleFileDepGraphFactory(ModuleDecl *Mod, StringRef outputPath,
+                                      const DependencyTracker &depTracker,
+                                      bool alsoEmitDotFile);
+
+  ~SerializedModuleFileDepGraphFactory() override = default;
+
+private:
+  void addAllDefinedDecls() override;
+  void addAllUsedDecls() override {}
 
   /// Given an array of Decls or pairs of them in \p declsOrPairs
   /// create node pairs for context and name

@@ -1373,13 +1373,28 @@ static bool dumpAST(CompilerInstance &Instance) {
 static void emitReferenceDependenciesForAllPrimaryInputsIfNeeded(
     CompilerInstance &Instance) {
   const auto &Invocation = Instance.getInvocation();
+  const bool isMergeModules =
+      Invocation.getFrontendOptions().RequestedAction == FrontendOptions::ActionType::MergeModules;
   if (Invocation.getFrontendOptions()
           .InputsAndOutputs.hasReferenceDependenciesPath() &&
-      Instance.getPrimarySourceFiles().empty()) {
+      Instance.getPrimarySourceFiles().empty() &&
+      !isMergeModules) {
     Instance.getDiags().diagnose(
         SourceLoc(), diag::emit_reference_dependencies_without_primary_file);
     return;
   }
+
+  if (isMergeModules) {
+    const std::string &referenceDependenciesFilePath =
+        Invocation.getFrontendOptions().InputsAndOutputs.firstInput().getReferenceDependenciesPath();
+    const auto LangOpts = Invocation.getLangOptions();
+    (void)fine_grained_dependencies::emitSerializedModuleReferenceDependencies(
+        Instance.getDiags(), Instance.getMainModule(), *Instance.getDependencyTracker(),
+        referenceDependenciesFilePath,
+        LangOpts.EmitFineGrainedDependencySourcefileDotFiles);
+    return;
+  }
+
   for (auto *SF : Instance.getPrimarySourceFiles()) {
     const std::string &referenceDependenciesFilePath =
         Invocation.getReferenceDependenciesFilePathForPrimary(
