@@ -5216,7 +5216,7 @@ namespace {
       auto result = ExtensionDecl::create(
                       Impl.SwiftContext, loc,
                       nullptr,
-                      { }, dc, nullptr, decl);
+                      { }, nullptr, dc, nullptr, decl);
       Impl.SwiftContext.evaluator.cacheOutput(ExtendedTypeRequest{result},
                                               objcClass->getDeclaredType());
       Impl.SwiftContext.evaluator.cacheOutput(ExtendedNominalRequest{result},
@@ -9511,7 +9511,8 @@ ClangImporter::Implementation::importDeclContextOf(
 
   // Create a new extension for this nominal type/Clang submodule pair.
   auto ext = ExtensionDecl::create(SwiftContext, SourceLoc(), nullptr, {},
-                                   getClangModuleForDecl(decl), nullptr);
+                                   nullptr, getClangModuleForDecl(decl),
+                                   nullptr);
   SwiftContext.evaluator.cacheOutput(ExtendedTypeRequest{ext},
                                      nominal->getDeclaredType());
   SwiftContext.evaluator.cacheOutput(ExtendedNominalRequest{ext},

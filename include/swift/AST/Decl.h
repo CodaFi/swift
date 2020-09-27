@@ -1316,6 +1316,7 @@ class ExtensionDecl final : public GenericContext, public Decl,
 
   ExtensionDecl(SourceLoc extensionLoc, TypeRepr *extendedType,
                 ArrayRef<InheritedEntry> inherited,
+                GenericParamList *genericParams,
                 DeclContext *parent,
                 TrailingWhereClause *trailingWhereClause);
 
@@ -1341,6 +1342,7 @@ public:
   static ExtensionDecl *create(ASTContext &ctx, SourceLoc extensionLoc,
                                TypeRepr *extendedType,
                                ArrayRef<InheritedEntry> inherited,
+                               GenericParamList *genericParams,
                                DeclContext *parent,
                                TrailingWhereClause *trailingWhereClause,
                                ClangNode clangNode = ClangNode());
