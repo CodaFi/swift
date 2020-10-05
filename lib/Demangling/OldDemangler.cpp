@@ -1035,7 +1035,8 @@ private:
 
     if (parentOrModule->getKind() != Node::Kind::Module &&
         parentOrModule->getKind() != Node::Kind::Function &&
-        parentOrModule->getKind() != Node::Kind::Extension) {
+        parentOrModule->getKind() != Node::Kind::Extension &&
+        parentOrModule->getKind() != Node::Kind::GenericExtension) {
       parentOrModule = demangleBoundGenericArgs(parentOrModule, depth + 1);
       if (!parentOrModule)
         return nullptr;
@@ -1106,6 +1107,7 @@ private:
     // context ::= entity
     // context ::= 'E' module context (extension defined in a different module)
     // context ::= 'e' module context generic-signature (constrained extension)
+    // context ::= 'J' module context generic-signature (parameterized extension)
     if (!Mangled) return nullptr;
     if (Mangled.nextIf('E')) {
       NodePointer ext = Factory.createNode(Node::Kind::Extension);
@@ -1125,6 +1127,20 @@ private:
       // The generic context is currently re-specified by the type mangling.
       // If we ever remove 'self' from manglings, we should stop resetting the
       // context here.
+      if (!sig) return nullptr;
+      NodePointer type = demangleContext(depth + 1);
+      if (!type) return nullptr;
+
+      ext->addChild(def_module, Factory);
+      ext->addChild(type, Factory);
+      ext->addChild(sig, Factory);
+      return ext;
+    }
+    if (Mangled.nextIf('J')) {
+      NodePointer ext = Factory.createNode(Node::Kind::GenericExtension);
+      NodePointer def_module = demangleModule(depth + 1);
+      if (!def_module) return nullptr;
+      NodePointer sig = demangleGenericSignature(depth + 1);
       if (!sig) return nullptr;
       NodePointer type = demangleContext(depth + 1);
       if (!type) return nullptr;

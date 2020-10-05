@@ -894,7 +894,9 @@ LayoutConstraint ASTBuilder::getLayoutConstraintWithSizeAlign(
 
 CanGenericSignature ASTBuilder::demangleGenericSignature(
     NominalTypeDecl *nominalDecl,
-    NodePointer node) {
+    NodePointer node,
+    bool isParameterizedExtension) {
+  SmallVector<GenericTypeParamType *, 2> gpTypes;
   SmallVector<Requirement, 2> requirements;
 
   decodeRequirement<BuiltType, BuiltRequirement, BuiltLayoutConstraint,
@@ -989,7 +991,8 @@ ASTBuilder::findDeclContext(NodePointer node) {
   case Demangle::Node::Kind::Global:
     return findDeclContext(node->getChild(0));
 
-  case Demangle::Node::Kind::Extension: {
+  case Demangle::Node::Kind::Extension:
+  case Demangle::Node::Kind::GenericExtension: {
     auto *moduleDecl = dyn_cast_or_null<ModuleDecl>(
         findDeclContext(node->getChild(0)));
     if (!moduleDecl)
@@ -1000,9 +1003,14 @@ ASTBuilder::findDeclContext(NodePointer node) {
     if (!nominalDecl)
       return nullptr;
 
+    bool isParameterized = false;
+    if (node->getKind() == Demangle::Node::Kind::GenericExtension)
+      isParameterized = true;
+
     CanGenericSignature genericSig;
     if (node->getNumChildren() > 2)
-      genericSig = demangleGenericSignature(nominalDecl, node->getChild(2));
+      genericSig = demangleGenericSignature(nominalDecl, node->getChild(2),
+                                            isParameterized);
 
     for (auto *ext : nominalDecl->getExtensions()) {
       if (ext->getParentModule() != moduleDecl)

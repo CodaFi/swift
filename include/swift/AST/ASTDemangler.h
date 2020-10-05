@@ -173,7 +173,7 @@ private:
   bool validateParentType(TypeDecl *decl, Type parent);
   CanGenericSignature demangleGenericSignature(
       NominalTypeDecl *nominalDecl,
-      NodePointer node);
+      NodePointer node, bool isParameterizedExtension);
   DeclContext *findDeclContext(NodePointer node);
   ModuleDecl *findModule(NodePointer node);
   Demangle::NodePointer findModuleNode(NodePointer node);

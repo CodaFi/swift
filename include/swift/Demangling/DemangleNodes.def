@@ -325,6 +325,7 @@ NODE(NoDerivative)
 NODE(IndexSubset)
 NODE(AsyncAwaitResumePartialFunction)
 NODE(AsyncSuspendResumePartialFunction)
+CONTEXT_NODE(GenericExtension)
 
 // Added in Swift 5.6
 NODE(AccessibleFunctionRecord)

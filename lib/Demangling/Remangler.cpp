@@ -619,10 +619,10 @@ ManglingError Remangler::mangleGenericArgs(Node *node, char &Separator,
     }
 
     case Node::Kind::Extension:
+    case Node::Kind::GenericExtension:
       RETURN_IF_ERROR(mangleGenericArgs(node->getChild(1), Separator, depth + 1,
                                         fullSubstitutionMap));
       break;
-
     default:
       break;
   }
@@ -1242,6 +1242,14 @@ ManglingError Remangler::mangleExtension(Node *node, unsigned depth) {
   if (node->getNumChildren() == 3)
     RETURN_IF_ERROR(mangleChildNode(node, 2, depth + 1)); // generic signature
   Buffer << 'E';
+  return ManglingError::Success;
+}
+
+ManglingError Remangler::mangleGenericExtension(Node *node, unsigned depth) {
+  RETURN_IF_ERROR(mangleChildNode(node, 1, depth + 1)); // context
+  RETURN_IF_ERROR(mangleChildNode(node, 0, depth + 1)); // type
+  RETURN_IF_ERROR(mangleChildNode(node, 2, depth + 1)); // generic signature
+  Buffer << 'J';
   return ManglingError::Success;
 }
 
@@ -3486,6 +3494,10 @@ bool Demangle::isSpecialized(Node *node) {
       assert(node->getNumChildren() > 1);
       return node->getNumChildren() > 1 && isSpecialized(node->getChild(1));
 
+    case Node::Kind::GenericExtension:
+      assert(node->getNumChildren() > 1);
+      return node->getNumChildren() > 1 && isSpecialized(node->getChild(1));
+
     default:
       return false;
   }
@@ -3563,14 +3575,15 @@ ManglingErrorOr<NodePointer> Demangle::getUnspecialized(Node *node,
       return unboundFunction;
     }
 
-    case Node::Kind::Extension: {
+    case Node::Kind::Extension:
+    case Node::Kind::GenericExtension: {
       NodePointer parent = node->getChild(1);
       if (!isSpecialized(parent))
         return node;
       auto unspec = getUnspecialized(parent, Factory);
       if (!unspec.isSuccess())
         return unspec.error();
-      NodePointer result = Factory.createNode(Node::Kind::Extension);
+      NodePointer result = Factory.createNode(node->getKind());
       result->addChild(node->getFirstChild(), Factory);
       result->addChild(unspec.result(), Factory);
       if (node->getNumChildren() == 3) {

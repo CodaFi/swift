@@ -1995,6 +1995,15 @@ ManglingError Remangler::mangleExtension(Node *node, EntityContext &ctx,
   return mangleEntityContext(node->begin()[1], ctx, depth + 1);
 }
 
+ManglingError Remangler::mangleGenericExtension(Node *node, EntityContext &ctx,
+                                                unsigned depth) {
+  assert(node->getNumChildren() == 3);
+  Buffer << 'J';
+  RETURN_IF_ERROR(mangleEntityContext(node->getChild(0), ctx, depth + 1)); // module
+  RETURN_IF_ERROR(mangleDependentGenericSignature(node->getChild(2), depth + 1)); // generic sig
+  return mangleEntityContext(node->getChild(1), ctx, depth + 1); // context
+}
+
 ManglingError Remangler::mangleAnonymousContext(Node *node, EntityContext &ctx,
                                                 unsigned depth) {
   RETURN_IF_ERROR(mangleEntityContext(node->getChild(1), ctx, depth + 1));
@@ -2167,7 +2176,8 @@ ManglingError Remangler::mangleGenericArgs(Node *node, EntityContext &ctx,
   }
 
   case Node::Kind::AnonymousContext:
-  case Node::Kind::Extension: {
+  case Node::Kind::Extension:
+  case Node::Kind::GenericExtension: {
     RETURN_IF_ERROR(mangleGenericArgs(node->getChild(1), ctx, depth + 1));
     break;
   }

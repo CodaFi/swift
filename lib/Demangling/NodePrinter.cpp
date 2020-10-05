@@ -384,6 +384,7 @@ private:
     case Node::Kind::FunctionSignatureSpecializationParamKind:
     case Node::Kind::FunctionSignatureSpecializationParamPayload:
     case Node::Kind::FunctionType:
+    case Node::Kind::GenericExtension:
     case Node::Kind::GenericProtocolWitnessTable:
     case Node::Kind::GenericProtocolWitnessTableInstantiationFunction:
     case Node::Kind::GenericPartialSpecialization:
@@ -1266,6 +1267,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     }
     return nullptr;
   case Node::Kind::Extension:
+  case Node::Kind::GenericExtension:
     assert((Node->getNumChildren() == 2 || Node->getNumChildren() == 3)
            && "Extension expects 2 or 3 children.");
     if (Options.QualifyEntities && Options.DisplayExtensionContexts) {

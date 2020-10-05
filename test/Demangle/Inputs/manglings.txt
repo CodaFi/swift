@@ -423,3 +423,5 @@ $s6Foobar7Vector2VAASdRszlE10simdMatrix5scale6rotate9translateSo0C10_double3x3aA
 $s17distributed_thunk2DAC1fyyFTE ---> distributed thunk for distributed_thunk.DA.f() -> ()
 $s16distributed_test1XC7computeyS2iFTF ---> distributed accessor for distributed_test.X.compute(Swift.Int) -> Swift.Int
 $s27distributed_actor_accessors7MyActorC7simple2ySSSiFTETFHF ---> accessible function runtime record for distributed accessor for distributed thunk for distributed_actor_accessors.MyActor.simple2(Swift.Int) -> Swift.String
+_TtCJ4mainRxzGSqqd___rVS_4Pair6Nested ---> (extension in main):main.Pair<A where A == A1?>.Nested
+$s4main4PairVAAqd__SgRszlJ6NestedC ---> (extension in main):main.Pair<A where A == A1?>.Nested

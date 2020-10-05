@@ -503,7 +503,7 @@ protected:
   NodePointer popTypeAndGetAnyGeneric();
   NodePointer demangleBuiltinType();
   NodePointer demangleAnyGenericType(Node::Kind kind);
-  NodePointer demangleExtensionContext();
+  NodePointer demangleExtensionContext(bool isParameterized);
   NodePointer demanglePlainFunction();
   NodePointer popFunctionType(Node::Kind kind, bool hasClangType = false);
   NodePointer popFunctionParams(Node::Kind kind);

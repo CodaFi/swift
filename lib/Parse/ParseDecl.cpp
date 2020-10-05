@@ -5311,17 +5311,14 @@ Parser::parseDeclExtension(ParseDeclOptions Flags, DeclAttributes &Attributes) {
   DebuggerContextChange DCC (*this);
 
   // Parse the generic params, if present.
-  Optional<Scope> genericScope;
-  genericScope.emplace(this, ScopeKind::Generics);
-  GenericParamList *genericParams;
-  bool gpHasCodeCompletion = false;
-
-  auto genericResult = maybeParseGenericParams();
-  genericParams = genericResult.getPtrOrNull();
-  gpHasCodeCompletion |= genericResult.hasCodeCompletion();
-
-  if (gpHasCodeCompletion && !CodeCompletion)
-    return makeParserCodeCompletionStatus();
+  // Parse the generic-params, if present.
+  GenericParamList *genericParams = nullptr;
+  {
+    auto result = maybeParseGenericParams();
+    genericParams = result.getPtrOrNull();
+    if (result.hasCodeCompletion())
+      return makeParserCodeCompletionStatus();
+  }
 
   // Parse the type being extended.
   ParserStatus status;

@@ -4553,7 +4553,7 @@ TypeBase::getContextSubstitutions(const DeclContext *dc,
     // size of generic requirements) which feels really bad. Is there a better
     // way to do this?
     for (auto missingSub : missingSubs) {
-      for (auto req : genericSig->getRequirements()) {
+      for (auto req : genericSig.getRequirements()) {
         if (req.getKind() != RequirementKind::SameType) {
           continue;
         }
@@ -4582,7 +4582,7 @@ TypeBase::getContextSubstitutions(const DeclContext *dc,
           continue;
         }
 
-        secondTy = genericSig->getGenericEnvironment()
+        secondTy = genericSig.getGenericEnvironment()
                              ->mapTypeIntoContext(secondTy);
 
         // If we found the missing substitution within the second type, walk the
