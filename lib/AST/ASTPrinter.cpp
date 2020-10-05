@@ -2554,8 +2554,14 @@ void PrintAST::printExtension(ExtensionDecl *decl) {
     printDocumentationComment(decl);
     printAttributes(decl);
     Printer.printIntroducerKeyword("extension", Options, " ");
+
+    if (decl->isParameterized()) {
+      printGenericDeclGenericParams(decl);
+    }
+
+    Printer << " ";
+
     recordDeclLoc(decl, [&]{
-      // We cannot extend sugared types.
       Type extendedType = decl->getExtendedType();
       if (!extendedType) {
         // Fallback to TypeRepr.
