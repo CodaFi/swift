@@ -116,6 +116,13 @@ void SILFunctionBuilder::addFunctionAttributes(
     return;
   auto *decl = constant.getDecl();
 
+  // If this is a non-member @test function, we can use it without emitting a
+  // thunk. If this is an instance function , we'll emit the thunk when we emit
+  // that function and mark the thunk @test.
+  if (Attrs.hasAttribute<TestAttr>() && !decl->isInstanceMember()) {
+    F->setTestFunction(true);
+  }
+
   // Only emit replacements for the objc entry point of objc methods.
   // There is one exception: @_dynamicReplacement(for:) of @objc methods in
   // generic classes. In this special case we use native replacement instead of

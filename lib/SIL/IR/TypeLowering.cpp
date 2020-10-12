@@ -2524,7 +2524,15 @@ getFunctionInterfaceTypeWithCaptures(TypeConverter &TC,
                                       funcType->isThrowing())
           .withAsync(funcType->isAsync())
           .build();
-
+  
+  if (constant.isTestThunk) {
+    auto *proto = TC.Context.getProtocol(KnownProtocolKind::AnyTestSuite);
+    auto protoTy = proto->TypeDecl::getDeclaredInterfaceType()->getCanonicalType();
+    return CanAnyFunctionType::get(
+        getCanonicalSignatureOrNull(genericSig),
+        {AnyFunctionType::Param(protoTy)}, funcType.getResult(),
+        innerExtInfo);
+  }
   return CanAnyFunctionType::get(
       getCanonicalSignatureOrNull(genericSig),
       funcType.getParams(), funcType.getResult(),

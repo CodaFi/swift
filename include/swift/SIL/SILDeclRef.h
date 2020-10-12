@@ -174,7 +174,7 @@ struct SILDeclRef {
   /// Produces a null SILDeclRef.
   SILDeclRef()
       : loc(), kind(Kind::Func), isForeign(0),
-        defaultArgIndex(0), isTestThunk(0) {}
+        isTestThunk(0), defaultArgIndex(0) {}
 
   /// Produces a SILDeclRef of the given kind for the given decl.
   explicit SILDeclRef(
@@ -193,7 +193,7 @@ struct SILDeclRef {
   ///   for the containing ClassDecl.
   /// - If 'loc' is a global VarDecl, this returns its GlobalAccessor
   ///   SILDeclRef.
-  explicit SILDeclRef(Loc loc, bool isForeign = false);
+  explicit SILDeclRef(Loc loc, bool isForeign = false, bool isTest = false);
 
   /// See above put produces a prespecialization according to the signature.
   explicit SILDeclRef(Loc loc, GenericSignature prespecializationSig);
@@ -362,8 +362,9 @@ struct SILDeclRef {
   /// Returns the test entry point corresponding to the same
   /// decl.
   SILDeclRef asTestThunk(bool test = true) const {
-    return SILDeclRef(loc.getOpaqueValue(), kind,
-                      isForeign, test, defaultArgIndex);
+    SILDeclRef declRef = *this;
+    declRef.isTestThunk = test;
+    return declRef;
   }
 
   /// True if the decl ref references a thunk from a natively foreign
@@ -476,12 +477,12 @@ template<> struct DenseMapInfo<swift::SILDeclRef> {
   using UnsignedInfo = DenseMapInfo<unsigned>;
 
   static SILDeclRef getEmptyKey() {
-    return SILDeclRef(PointerInfo::getEmptyKey(), Kind::Func, false, 0,
+    return SILDeclRef(PointerInfo::getEmptyKey(), Kind::Func, false, false, 0,
                       nullptr);
   }
   static SILDeclRef getTombstoneKey() {
-    return SILDeclRef(PointerInfo::getTombstoneKey(), Kind::Func, false, 0,
-                      nullptr);
+    return SILDeclRef(PointerInfo::getTombstoneKey(), Kind::Func, false, false,
+                      0, nullptr);
   }
   static unsigned getHashValue(swift::SILDeclRef Val) {
     unsigned h1 = PointerInfo::getHashValue(Val.loc.getOpaqueValue());

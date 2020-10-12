@@ -118,12 +118,13 @@ bool swift::requiresForeignEntryPoint(ValueDecl *vd) {
 }
 
 SILDeclRef::SILDeclRef(ValueDecl *vd, SILDeclRef::Kind kind, bool isForeign,
+                       bool isTestThunk,
                        AutoDiffDerivativeFunctionIdentifier *derivativeId)
-    : loc(vd), kind(kind), isForeign(isForeign), defaultArgIndex(0),
-      pointer(derivativeId) {}
+    : loc(vd), kind(kind), isForeign(isForeign), isTestThunk(isTestThunk),
+      defaultArgIndex(0), pointer(derivativeId) {}
 
-SILDeclRef::SILDeclRef(SILDeclRef::Loc baseLoc, bool asForeign)
-    : defaultArgIndex(0),
+SILDeclRef::SILDeclRef(SILDeclRef::Loc baseLoc, bool asForeign, bool isTest)
+    : isTestThunk(isTest), defaultArgIndex(0),
       pointer((AutoDiffDerivativeFunctionIdentifier *)nullptr) {
   if (auto *vd = baseLoc.dyn_cast<ValueDecl*>()) {
     if (auto *fd = dyn_cast<FuncDecl>(vd)) {
@@ -759,6 +760,8 @@ std::string SILDeclRef::mangle(ManglingKind MKind) const {
         SKind = ASTMangler::SymbolKind::SwiftAsObjCThunk;
       } else if (isForeignToNativeThunk()) {
         SKind = ASTMangler::SymbolKind::ObjCAsSwiftThunk;
+      } else if (isTestThunk) {
+        SKind = ASTMangler::SymbolKind::TestThunk;
       }
       break;
     case SILDeclRef::ManglingKind::DynamicThunk:

@@ -51,7 +51,7 @@ struct AnyTestWitnessTable : WitnessTable {
 };
 
 template <typename Invocation>
-using swift_test_visitor_t = void (*_Nonnull)(const void *_Nonnull section, void *fptr);
+using swift_test_visitor_t = void (*_Nonnull)(const void *_Nonnull section, void *_Nullable fptr);
 
 SWIFT_RUNTIME_EXPORT SWIFT_CC(swift)
 void swift_enumerateTests_f(
@@ -66,7 +66,7 @@ void swift_enumerateTests_f(
 #if __has_feature(blocks)
 template <typename Invocation>
 using swift_test_visitor_block_t =
-    void (^_Nonnull)(const void *_Nonnull section, void *fptr);
+    void (^_Nonnull)(const void *_Nonnull section, void *_Nullable fptr);
 
 SWIFT_RUNTIME_EXPORT SWIFT_CC(swift)
 void swift_enumerateTests(

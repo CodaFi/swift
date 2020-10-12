@@ -121,7 +121,6 @@ public:
   IGNORED_ATTR(OriginallyDefinedIn)
   IGNORED_ATTR(NoDerivative)
   IGNORED_ATTR(SpecializeExtension)
-  IGNORED_ATTR(Test)
 #undef IGNORED_ATTR
 
   void visitAlignmentAttr(AlignmentAttr *attr) {

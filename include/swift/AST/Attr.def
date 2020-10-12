@@ -599,7 +599,7 @@ DECL_ATTR(_test, Test,
   OnNominalType |
   ABIBreakingToAdd | ABIBreakingToRemove | APIBreakingToRemove | APIBreakingToAdd |
   LongAttribute | UserInaccessible,
-  110)
+  107)
 
 #undef TYPE_ATTR
 #undef DECL_ATTR_ALIAS
