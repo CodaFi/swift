@@ -5448,13 +5448,6 @@ ERROR(atomics_ordering_must_be_constant, none,
       "ordering argument must be a static method or property of %0",
       (Identifier))
 
-#define UNDEFINE_DIAGNOSTIC_MACROS
-#include "DefineDiagnosticMacros.h"
-
-ERROR(experimental_differentiable_programming_disabled, none,
-      "differentiable programming is an experimental feature that is "
-      "currently disabled", ())
-
 //------------------------------------------------------------------------------
 // MARK: @_test
 //------------------------------------------------------------------------------
@@ -5468,12 +5461,5 @@ ERROR(test_attribute_cant_have_generic_params, none,
 ERROR(test_func_in_non_test_context, none,
       "@test function %0 cannot be used outside of @test context", (Identifier))
 
-#ifndef DIAG_NO_UNDEF
-# if defined(DIAG)
-#  undef DIAG
-# endif
-# undef NOTE
-# undef WARNING
-# undef ERROR
-# undef FIXIT
-#endif
+#define UNDEFINE_DIAGNOSTIC_MACROS
+#include "DefineDiagnosticMacros.h"

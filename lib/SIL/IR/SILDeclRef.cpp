@@ -116,9 +116,10 @@ bool swift::requiresForeignEntryPoint(ValueDecl *vd) {
 }
 
 SILDeclRef::SILDeclRef(ValueDecl *vd, SILDeclRef::Kind kind, bool isForeign,
+                       bool isTestThunk,
                        AutoDiffDerivativeFunctionIdentifier *derivativeId)
-    : loc(vd), kind(kind), isForeign(isForeign), defaultArgIndex(0),
-      derivativeFunctionIdentifier(derivativeId) {}
+    : loc(vd), kind(kind), isForeign(isForeign), isTestThunk(isTestThunk),
+      defaultArgIndex(0), derivativeFunctionIdentifier(derivativeId) {}
 
 SILDeclRef::SILDeclRef(SILDeclRef::Loc baseLoc, bool asForeign)
     : defaultArgIndex(0), derivativeFunctionIdentifier(nullptr) {

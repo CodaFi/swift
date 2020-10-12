@@ -119,11 +119,6 @@ public:
   IGNORED_ATTR(ReferenceOwnership)
   IGNORED_ATTR(OriginallyDefinedIn)
   IGNORED_ATTR(NoDerivative)
-  // TODO(TF-828): Upstream `@differentiable` attribute type-checking from
-  // tensorflow branch.
-  IGNORED_ATTR(Differentiable)
-
-  IGNORED_ATTR(Test)
 #undef IGNORED_ATTR
 
   void visitAlignmentAttr(AlignmentAttr *attr) {

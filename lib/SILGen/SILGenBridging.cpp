@@ -1428,11 +1428,13 @@ void SILGenFunction::emitTestThunk(SILDeclRef thunk) {
 
   auto subs = F.getForwardingSubstitutionMap();
 
-  auto testInfo = SGM.Types.getConstantInfo(thunk);
-  auto testFnTy = testInfo.SILFnType->substGenericArgs(SGM.M, subs);
+  auto testInfo = getConstantInfo(getTypeExpansionContext(), thunk);
+  auto testFnTy = testInfo.SILFnType->substGenericArgs(
+      SGM.M, subs, getTypeExpansionContext());
 
-  auto swiftInfo = SGM.Types.getConstantInfo(native);
-  auto swiftFnTy = swiftInfo.SILFnType->substGenericArgs(SGM.M, subs);
+  auto swiftInfo = getConstantInfo(getTypeExpansionContext(), native);
+  auto swiftFnTy = swiftInfo.SILFnType->substGenericArgs(
+      SGM.M, subs, getTypeExpansionContext());
   SILFunctionConventions swiftConv(swiftFnTy, SGM.M);
 
   auto loc = thunk.getAsRegularLocation();
@@ -1446,12 +1448,12 @@ void SILGenFunction::emitTestThunk(SILDeclRef thunk) {
   auto *proto = getASTContext().getProtocol(KnownProtocolKind::AnyTestSuite);
   (void)proto;
   assert(testFnTy->getNumParameters() == 1);
-  assert(testFnTy->getParameters()[0].getType()
-         == proto->getDeclaredInterfaceType()->getCanonicalType());
+  assert(testFnTy->getParameters()[0].getInterfaceType() ==
+         proto->getDeclaredInterfaceType()->getCanonicalType());
   ManagedValue converted;
   {
     auto input = testFnTy->getParameters()[0];
-    SILType argTy = getSILType(input);
+    SILType argTy = getSILType(input, testFnTy);
     SILValue arg = F.begin()->createFunctionArgument(argTy);
 
     // Convert the argument to +1 if necessary.
@@ -1461,19 +1463,18 @@ void SILGenFunction::emitTestThunk(SILDeclRef thunk) {
 
     auto argValue = emitManagedRValueWithCleanup(arg);
     auto targetInput = swiftFnTy->getParameters()[0];
-    auto castValue = swift::Lowering::emitUnconditionalCheckedCast2(*this, loc,
-                                                  argValue,
-                                                  input.getType(),
-                                                  targetInput.getType(),
-                                                  CheckedCastKind::ValueCast,
-                                                  SGFContext());
+    auto castValue = swift::Lowering::emitUnconditionalCheckedCast2(
+        *this, loc, argValue, input.getInterfaceType(),
+        targetInput.getInterfaceType(), CheckedCastKind::ValueCast,
+        SGFContext());
 
     auto castResultVal = std::move(castValue).forwardAsSingleValue(*this, loc);
     converted = emitManagedRValueWithCleanup(castResultVal);
   }
 
   SILFunctionConventions testConv(CanSILFunctionType(testFnTy), SGM.M);
-  auto swiftResultTy = F.mapTypeIntoContext(swiftConv.getSILResultType());
+  auto swiftResultTy = F.mapTypeIntoContext(
+      swiftConv.getSILResultType(getTypeExpansionContext()));
   assert(swiftResultTy.isVoid());
 
   // Call the native entry point.
