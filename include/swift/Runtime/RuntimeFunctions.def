@@ -1527,7 +1527,8 @@ FUNCTION(RegisterTestSuite,
          swift_registerTestSuite, C_CC, AlwaysAvailable,
          RETURNS(VoidTy),
          ARGS(TestDescriptorPtrTy, TestDescriptorPtrTy),
-         ATTRS(NoUnwind))
+         ATTRS(NoUnwind),
+         EFFECT(Locking))
 
 FUNCTION(GetOrigOfReplaceable, swift_getOrigOfReplaceable, C_CC,
          DynamicReplacementAvailability,

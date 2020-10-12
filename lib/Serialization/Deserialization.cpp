@@ -4762,6 +4762,7 @@ llvm::Error DeclDeserializer::deserializeDeclCommon() {
         Attr = SPIAccessControlAttr::create(ctx, SourceLoc(),
                                             SourceRange(), spis);
         break;
+      }
       case decls_block::Test_DECL_ATTR: {
         bool hasText;
         serialization::decls_block::TestDeclAttrLayout

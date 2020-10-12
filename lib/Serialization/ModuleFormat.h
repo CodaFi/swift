@@ -2049,6 +2049,7 @@ namespace decls_block {
     BCFixed<1>,     // implicit flag
     BC_AVAIL_TUPLE, // OS version
     BCVBR<5>        // platform
+  >;
 
   using TestDeclAttrLayout = BCRecordLayout<
     Test_DECL_ATTR,

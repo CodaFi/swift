@@ -110,6 +110,7 @@ private:
     case ExplicitlyIBInspectable:
     case ExplicitlyGKInspectable:
     case ExplicitlyObjCByAccessNote:
+    case ExplicitlyTest:
       return true;
 
     case MemberOfObjCProtocol:

@@ -433,7 +433,12 @@ DECL_ATTR(_typeSequence, TypeSequence,
   NotSerialized |
   ABIBreakingToAdd | ABIBreakingToRemove | APIBreakingToAdd | APIBreakingToRemove,
   71)
-// NOTE: 72 is unused
+DECL_ATTR(_test, Test,
+  OnImport | OnFunc | OnConstructor | OnVar | OnSubscript | OnAbstractFunction |
+  OnNominalType |
+  ABIBreakingToAdd | ABIBreakingToRemove | APIBreakingToRemove | APIBreakingToAdd |
+  LongAttribute | UserInaccessible,
+  72)
 DECL_ATTR(_optimize, Optimize,
   OnAbstractFunction | OnSubscript | OnVar |
   UserInaccessible |
@@ -718,13 +723,6 @@ DECL_ATTR(_backDeploy, BackDeploy,
   AllowMultipleAttributes | LongAttribute | UserInaccessible |
   ABIStableToAdd | ABIStableToRemove | APIStableToAdd | APIBreakingToRemove,
   129)
-
-DECL_ATTR(_test, Test,
-  OnImport | OnFunc | OnConstructor | OnVar | OnSubscript | OnAbstractFunction |
-  OnNominalType |
-  ABIBreakingToAdd | ABIBreakingToRemove | APIBreakingToRemove | APIBreakingToAdd |
-  LongAttribute | UserInaccessible,
-  130)
 
 // If you're adding a new underscored attribute here, please document it in
 // docs/ReferenceGuides/UnderscoredAttributes.md.

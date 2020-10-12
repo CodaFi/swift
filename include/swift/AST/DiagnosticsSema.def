@@ -5152,7 +5152,7 @@ ERROR(objc_extension_not_class,none,
       "'@objc' can only be applied to an extension of a class", ())
 
 // If you change this, also change enum ObjCReason
-#define OBJC_ATTR_SELECT "select{marked @_cdecl|marked dynamic|marked @objc|marked @IBOutlet|marked @IBAction|marked @IBSegueAction|marked @NSManaged|a member of an @objc protocol|implicitly @objc|an @objc override|an implementation of an @objc requirement|marked @IBInspectable|marked @GKInspectable|in an @objc extension of a class (without @nonobjc)|marked @objc by an access note}"
+#define OBJC_ATTR_SELECT "select{marked @_cdecl|marked @test|marked dynamic|marked @objc|marked @IBOutlet|marked @IBAction|marked @IBSegueAction|marked @NSManaged|a member of an @objc protocol|implicitly @objc|an @objc override|an implementation of an @objc requirement|marked @IBInspectable|marked @GKInspectable|in an @objc extension of a class (without @nonobjc)|marked @objc by an access note}"
 
 WARNING(attribute_meaningless_when_nonobjc,none,
         "'@%0' attribute is meaningless on a property that cannot be "
@@ -6238,9 +6238,6 @@ ERROR(type_sequence_on_non_generic_param, none,
       "'@_typeSequence' must appear on a generic parameter",
       ())
 
-#define UNDEFINE_DIAGNOSTIC_MACROS
-#include "DefineDiagnosticMacros.h"
-
 ERROR(experimental_differentiable_programming_disabled, none,
       "differentiable programming is an experimental feature that is "
       "currently disabled", ())
@@ -6258,12 +6255,5 @@ ERROR(test_attribute_cant_have_generic_params, none,
 ERROR(test_func_in_non_test_context, none,
       "@test function %0 cannot be used outside of @test context", (Identifier))
 
-#ifndef DIAG_NO_UNDEF
-# if defined(DIAG)
-#  undef DIAG
-# endif
-# undef NOTE
-# undef WARNING
-# undef ERROR
-# undef FIXIT
-#endif
+#define UNDEFINE_DIAGNOSTIC_MACROS
+#include "DefineDiagnosticMacros.h"

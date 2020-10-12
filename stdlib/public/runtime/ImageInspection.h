@@ -109,7 +109,9 @@ void addImageAccessibleFunctionsBlockCallbackUnsafe(const void *baseAddress,
                                                     const void *start,
                                                     uintptr_t size);
 
-void addImageTestSuiteBlockCallback(const void *start, uintptr_t size);
+void addImageTestSuiteBlockCallback(const void *baseAddress,
+                                    const void *start,
+                                    uintptr_t size);
 
 int lookupSymbol(const void *address, SymbolInfo *info);
 

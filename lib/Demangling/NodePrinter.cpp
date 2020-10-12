@@ -2900,7 +2900,6 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << ')';
     }
     return nullptr;
-<<<<<<< HEAD
   case Node::Kind::PredefinedObjCAsyncCompletionHandlerImpl:
     Printer << "predefined ";
     LLVM_FALLTHROUGH;
@@ -2949,12 +2948,10 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << " suspend resume partial function for ";
     }
     return nullptr;
-=======
   case Node::Kind::TestThunk: {
     Printer << "test thunk";
     return nullptr;
   }
->>>>>>> 6b3642c4d6a (XXX)
   }
 
   printer_unreachable("bad node kind!");

@@ -403,8 +403,8 @@ struct SILDeclRef {
   /// decl.
   SILDeclRef asTestThunk(bool test = true) const {
     return SILDeclRef(loc.getOpaqueValue(), kind,
-                      /*foreign=*/foreign,
-                      /*distributed=*/distributed,
+                      /*foreign=*/isForeign,
+                      /*distributed=*/isDistributed,
                       /*testthunk=*/test,
                       defaultArgIndex,
                       pointer.get<AutoDiffDerivativeFunctionIdentifier *>());
@@ -559,8 +559,8 @@ template<> struct DenseMapInfo<swift::SILDeclRef> {
                       nullptr);
   }
   static SILDeclRef getTombstoneKey() {
-    return SILDeclRef(PointerInfo::getTombstoneKey(), Kind::Func, false, false, false,
-                      0, nullptr);
+    return SILDeclRef(PointerInfo::getTombstoneKey(), Kind::Func, false, false, false, 0,
+                      nullptr);
   }
   static unsigned getHashValue(swift::SILDeclRef Val) {
     unsigned h1 = PointerInfo::getHashValue(Val.loc.getOpaqueValue());

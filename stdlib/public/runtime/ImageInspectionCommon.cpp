@@ -130,7 +130,8 @@ void swift_addNewDSOImage(swift::MetadataSections *sections) {
   const void *testsuite =
       reinterpret_cast<void *>(testsuite_section.start);
   if (testsuite_section.length)
-    addImageTestSuiteBlockCallback(testsuite, testsuite_section.length);
+    addImageTestSuiteBlockCallback(
+        baseAddress, testsuite, testsuite_section.length);
 }
 
 void swift::initializeProtocolLookup() {
@@ -150,10 +151,12 @@ void swift::initializeAccessibleFunctionsLookup() {
 
 void swift::initializeTestSuiteLookup() {
   const swift::MetadataSections *sections = registered;
+  auto baseAddress = swift::getMetadataSectionBaseAddress(sections);
   while (true) {
     const swift::MetadataSections::Range &suite = sections->swift5_testsuite;
     if (suite.length)
-      addImageTestSuiteBlockCallback(reinterpret_cast<void *>(suite.start),
+      addImageTestSuiteBlockCallback(baseAddress,
+                                     reinterpret_cast<void *>(suite.start),
                                      suite.length);
 
     if (sections->next == registered)

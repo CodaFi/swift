@@ -996,7 +996,8 @@ void swift::swift_registerTestSuite(const TestDescriptor *begin,
   _registerTests(C, begin, end);
 }
 
-void swift::addImageTestSuiteBlockCallback(const void *testRecs,
+void swift::addImageTestSuiteBlockCallback(const void *baseAddress,
+                                           const void *testRecs,
                                            uintptr_t testSuiteSize) {
   assert(testSuiteSize % sizeof(TestDescriptor) == 0 &&
          "test metadata section not a multiple of TestDescriptor");
@@ -1032,7 +1033,7 @@ void swift::swift_enumerateTests(
       } else if (record.isInstance()) {
         instanceVisitor(&record, (void *)record.getInstanceInvocation());
       } else {
-        fatalError(0, "Found test record with invalid type %s, %lu!", record.getName(), record.getFlags());
+        fatalError(0, "Found test record with invalid type %s, %" PRIu32, record.getName(), record.getFlags());
       }
     }
   }
@@ -1057,7 +1058,7 @@ void swift::swift_enumerateTests_f(
       } else if (record.isInstance()) {
         instanceVisitor(&record, (void *)record.getMangledTypeName().data());
       } else {
-        fatalError(0, "Found test record with invalid type %s, %lu!", record.getName(), record.getFlags());
+        fatalError(0, "Found test record with invalid type %s, %" PRIu32, record.getName(), record.getFlags());
       }
     }
   }

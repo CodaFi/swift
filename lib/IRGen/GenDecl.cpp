@@ -1993,6 +1993,7 @@ llvm::Constant *IRGenModule::emitTestSuiteMetadata() {
 
   StringRef sectionName;
   switch (TargetInfo.OutputObjectFormat) {
+  case llvm::Triple::GOFF:
   case llvm::Triple::UnknownObjectFormat:
     llvm_unreachable("Don't know how to emit tests for "
                      "the selected object format.");
