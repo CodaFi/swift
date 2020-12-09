@@ -1196,13 +1196,13 @@ namespace driver {
         }
       };
 
-      for (auto external : getFineGrainedDepGraph(forRanges)
-                               .getIncrementalExternalDependencies()) {
+      for (const auto &external : getFineGrainedDepGraph(forRanges)
+                                    .getIncrementalExternalDependencies()) {
         llvm::sys::fs::file_status depStatus;
         // Can't `stat` this dependency? Treat it as a plain external
         // dependency and drop schedule all of its consuming jobs to run.
-        if (llvm::sys::fs::status(external, depStatus)) {
-          fallbackToExternalBehavior(external);
+        if (llvm::sys::fs::status(external.first, depStatus)) {
+          fallbackToExternalBehavior(external.first);
           continue;
         }
 
@@ -1213,7 +1213,7 @@ namespace driver {
         // Can we run a cross-module incremental build at all?
         // If not, fall back.
         if (!Comp.getEnableCrossModuleIncrementalBuild()) {
-          fallbackToExternalBehavior(external);
+          fallbackToExternalBehavior(external.first);
           continue;
         }
 
@@ -1221,16 +1221,16 @@ namespace driver {
         // dependency or it could have become corrupted. We need to
         // pessimistically schedule a rebuild to get dependent jobs to drop
         // this dependency from their swiftdeps files if possible.
-        auto buffer = llvm::MemoryBuffer::getFile(external);
+        auto buffer = llvm::MemoryBuffer::getFile(external.first);
         if (!buffer) {
-          fallbackToExternalBehavior(external);
+          fallbackToExternalBehavior(external.first);
           continue;
         }
 
         // Cons up a fake `Job` to satisfy the incremental job tracing
         // code's internal invariants.
-        const auto *externalJob = Comp.addExternalJob(
-            std::make_unique<Job>(Comp.getDerivedOutputFileMap(), external));
+        const auto *externalJob = Comp.addExternalJob(std::make_unique<Job>(
+            Comp.getDerivedOutputFileMap(), external.first));
         auto subChanges =
             getFineGrainedDepGraph(forRanges).loadFromSwiftModuleBuffer(
                 externalJob, *buffer.get(), Comp.getDiags());
@@ -1238,7 +1238,25 @@ namespace driver {
         // If the incremental dependency graph failed to load, fall back to
         // treating this as plain external job.
         if (!subChanges.hasValue()) {
-          fallbackToExternalBehavior(external);
+          fallbackToExternalBehavior(external.first);
+          continue;
+        }
+
+        // Verify that the interface hash of this module is stable.
+        using ExternalFileKey = fine_grained_dependencies::DependencyKey;
+        auto key = ExternalFileKey::createKeyForWholeSourceFile(
+            fine_grained_dependencies::DeclAspect::interface, external.first);
+        bool allFingerprintsDontMatch = true;
+        getFineGrainedDepGraph(forRanges).forEachMatchingNode(
+            key, [&](fine_grained_dependencies::ModuleDepGraphNode *node) {
+              const bool localMismatch =
+                  node->getFingerprint().getValueOr(Fingerprint::ZERO()) !=
+                  external.second;
+              allFingerprintsDontMatch =
+                  allFingerprintsDontMatch && localMismatch;
+            });
+        if (allFingerprintsDontMatch) {
+          fallbackToExternalBehavior(external.first);
           continue;
         }
 
@@ -1709,7 +1727,7 @@ namespace driver {
       return getFineGrainedDepGraph(forRanges).getExternalDependencies();
     }
 
-    std::vector<StringRef>
+    iterator_range<std::unordered_map<std::string, Fingerprint>::const_iterator>
     getIncrementalExternalDependencies(const bool forRanges) const {
       return getFineGrainedDepGraph(forRanges)
           .getIncrementalExternalDependencies();
