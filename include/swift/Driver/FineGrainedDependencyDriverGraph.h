@@ -170,7 +170,7 @@ class ModuleDepGraph {
 
   // Supports requests from the driver to getExternalDependencies.
   std::unordered_set<std::string> externalDependencies;
-  std::unordered_set<std::string> incrementalExternalDependencies;
+  std::unordered_map<std::string, Fingerprint> incrementalExternalDependencies;
 
   /// Keyed by swiftdeps filename, so we can get back to Jobs.
   std::unordered_map<std::string, const driver::Job *> jobsBySwiftDeps;
@@ -530,7 +530,8 @@ public:
 
 public:
   std::vector<StringRef> getExternalDependencies() const;
-  std::vector<StringRef> getIncrementalExternalDependencies() const;
+  iterator_range<std::unordered_map<std::string, Fingerprint>::const_iterator>
+  getIncrementalExternalDependencies() const;
 
   void forEachUntracedJobDirectlyDependentOnExternalSwiftDeps(
       StringRef externalDependency, function_ref<void(const driver::Job *)> fn);

@@ -56,7 +56,7 @@ const uint16_t SWIFTMODULE_VERSION_MAJOR = 0;
 /// describe what change you made. The content of this comment isn't important;
 /// it just ensures a conflict if two people change the module format.
 /// Don't worry about adhering to the 80-column limit for this line.
-const uint16_t SWIFTMODULE_VERSION_MINOR = 587; // fingerprints in modules
+const uint16_t SWIFTMODULE_VERSION_MINOR = 588; // file fingerprints in modules
 
 /// A standard hash seed used for all string hashes in a serialized module.
 ///
@@ -843,6 +843,7 @@ namespace input_block {
     DEPENDENCY_DIRECTORY,
     MODULE_INTERFACE_PATH,
     IMPORTED_MODULE_SPIS,
+    INTERFACE_HASH,
   };
 
   using ImportedModuleLayout = BCRecordLayout<
@@ -907,6 +908,9 @@ namespace input_block {
     BCBlob // file path
   >;
 
+  using InterfaceHashLayout = BCRecordLayout<INTERFACE_HASH,
+    BCBlob // interface hash blob
+  >;
 }
 
 /// The record types within the "decls-and-types" block.

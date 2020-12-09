@@ -1509,6 +1509,52 @@ const clang::Module *ModuleDecl::findUnderlyingClangModule() const {
   return nullptr;
 }
 
+Fingerprint ModuleDecl::getInterfaceHash() const {
+  llvm::MD5 hash;
+  SmallVector<Fingerprint, 16> FPs;
+  for (const FileUnit *FU : getFiles()) {
+    switch (FU->getKind()) {
+    case FileUnitKind::Source: {
+      const auto *SF = cast<SourceFile>(FU);
+      if (SF->hasInterfaceHash()) {
+        FPs.push_back(SF->getInterfaceHash());
+      } else {
+        FPs.push_back(Fingerprint::ZERO());
+      }
+      continue;
+    }
+    case FileUnitKind::SerializedAST: {
+      const auto *SAST = cast<LoadedFile>(FU);
+      FPs.append(SAST->getInterfaceHashes().begin(),
+                 SAST->getInterfaceHashes().end());
+      continue;
+    }
+    case FileUnitKind::Synthesized:
+    case FileUnitKind::Builtin:
+    case FileUnitKind::DWARFModule:
+    case FileUnitKind::ClangModule:
+      FPs.push_back(Fingerprint::ZERO());
+      continue;
+    }
+  }
+
+  // Sort the fingerprints lexicographically so we have a stable hash despite
+  // an unstable ordering of files across rebuilds.
+  // FIXME: If we used a commutative hash combine (say, if we could take an
+  // XOR here) we could avoid this sort.
+  std::sort(FPs.begin(), FPs.end(),
+            [](const Fingerprint &LHS, const Fingerprint &RHS) {
+              return LHS.getRawValue().compare(RHS.getRawValue()) < 0;
+            });
+  for (const auto &FP : FPs) {
+    hash.update(FP.getRawValue());
+  }
+
+  llvm::MD5::MD5Result result;
+  hash.final(result);
+  return Fingerprint{std::move(result)};
+}
+
 //===----------------------------------------------------------------------===//
 // Cross-Import Overlays
 //===----------------------------------------------------------------------===//

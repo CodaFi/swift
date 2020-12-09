@@ -1053,6 +1053,7 @@ void Serializer::writeInputBlock(const SerializationOptions &options) {
   input_block::FileDependencyLayout FileDependency(Out);
   input_block::DependencyDirectoryLayout DependencyDirectory(Out);
   input_block::ModuleInterfaceLayout ModuleInterface(Out);
+  input_block::InterfaceHashLayout InterfaceHash(Out);
 
   if (options.SerializeOptionsForDebugging) {
     const SearchPathOptions &searchPathOpts = M->getASTContext().SearchPathOpts;
@@ -1174,6 +1175,16 @@ void Serializer::writeInputBlock(const SerializationOptions &options) {
   if (!options.ModuleLinkName.empty()) {
     LinkLibrary.emit(ScratchRecord, serialization::LibraryKind::Library,
                      options.AutolinkForceLoad, options.ModuleLinkName);
+  }
+
+  // Write down the interface hash of each primary in this module.
+  // FIXME: We should try to only do this when in incremental mode.
+  for (const auto *FU : M->getFiles()) {
+    const auto *SF = dyn_cast<SourceFile>(FU);
+    if (!SF || !SF->hasInterfaceHash()) {
+      continue;
+    }
+    InterfaceHash.emit(ScratchRecord, SF->getInterfaceHash().getRawValue());
   }
 }
 

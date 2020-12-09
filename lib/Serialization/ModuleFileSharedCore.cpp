@@ -1281,6 +1281,10 @@ ModuleFileSharedCore::ModuleFileSharedCore(
           ModuleInterfacePath = blobData;
           break;
         }
+        case input_block::INTERFACE_HASH: {
+          InterfaceHashes.emplace_back(blobData.str());
+          break;
+        }
         default:
           // Unknown input kind, possibly for use by a future version of the
           // module format.

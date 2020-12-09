@@ -1001,7 +1001,8 @@ SerializedModuleLoaderBase::loadModule(SourceLoc importLoc,
     // Don't record cached artifacts as dependencies.
     if (!isCached(DepPath)) {
       if (M->hasIncrementalInfo()) {
-        dependencyTracker->addIncrementalDependency(DepPath);
+        dependencyTracker->addIncrementalDependency(DepPath,
+                                                    M->getInterfaceHash());
       } else {
         dependencyTracker->addDependency(DepPath, /*isSystem=*/false);
       }
@@ -1218,6 +1219,10 @@ void SerializedASTFile::lookupObjCMethods(
 Optional<Fingerprint>
 SerializedASTFile::loadFingerprint(const IterableDeclContext *IDC) const {
   return File.loadFingerprint(IDC);
+}
+
+ArrayRef<Fingerprint> SerializedASTFile::getInterfaceHashes() const {
+  return File.getInterfaceHashes();
 }
 
 void SerializedASTFile::lookupImportedSPIGroups(

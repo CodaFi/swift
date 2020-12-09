@@ -157,6 +157,10 @@ private:
   /// All of this module's link-time dependencies.
   SmallVector<LinkLibrary, 8> LinkLibraries;
 
+  /// The interface hash of each of the source files that contributed to this
+  /// module.
+  SmallVector<Fingerprint, 8> InterfaceHashes;
+
 public:
   using RawBitOffset = uint64_t;
 

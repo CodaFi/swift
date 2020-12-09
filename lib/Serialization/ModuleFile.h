@@ -693,6 +693,9 @@ public:
   Identifier getDiscriminatorForPrivateValue(const ValueDecl *D);
   Optional<Fingerprint> loadFingerprint(const IterableDeclContext *IDC) const;
 
+  ArrayRef<Fingerprint> getInterfaceHashes() const {
+    return Core->InterfaceHashes;
+  }
 
   // MARK: Deserialization interface
 

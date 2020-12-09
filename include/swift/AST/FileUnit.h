@@ -399,6 +399,12 @@ public:
     return false;
   }
 
+  /// Retrieve an array of fingerprints corresponding to the interface hashes
+  /// of the source files contributing to this serialized file.
+  ///
+  /// Only \c SerializedASTFile has a real implementation of this for now.
+  virtual ArrayRef<Fingerprint> getInterfaceHashes() const { return {}; };
+
   static bool classof(const FileUnit *file) {
     return file->getKind() == FileUnitKind::SerializedAST ||
            file->getKind() == FileUnitKind::ClangModule ||

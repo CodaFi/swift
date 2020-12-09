@@ -443,6 +443,8 @@ public:
 
   StringRef getTargetTriple() const;
 
+  ArrayRef<Fingerprint> getInterfaceHashes() const override;
+
   static bool classof(const FileUnit *file) {
     return file->getKind() == FileUnitKind::SerializedAST;
   }
