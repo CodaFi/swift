@@ -21,6 +21,7 @@
 #include "swift/Basic/Statistic.h"
 #include "swift/Demangling/Demangle.h"
 #include "swift/Driver/Job.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
@@ -100,7 +101,6 @@ ModuleDepGraph::Changes ModuleDepGraph::loadFromSourceFileDepGraph(
     DiagnosticEngine &diags) {
   registerJob(job);
   auto changes = integrate(sourceFileDepGraph, getSwiftDeps(job));
-
   if (verifyFineGrainedDependencyGraphAfterEveryImport)
     verify();
   if (emitFineGrainedDependencyDotFileAfterEveryImport)
@@ -197,10 +197,10 @@ std::vector<StringRef> ModuleDepGraph::getExternalDependencies() const {
                                 externalDependencies.end());
 }
 
-std::vector<StringRef>
+iterator_range<std::unordered_map<std::string, Fingerprint>::const_iterator>
 ModuleDepGraph::getIncrementalExternalDependencies() const {
-  return std::vector<StringRef>(incrementalExternalDependencies.begin(),
-                                incrementalExternalDependencies.end());
+  return {incrementalExternalDependencies.begin(),
+          incrementalExternalDependencies.end()};
 }
 
 // Add every (swiftdeps) use of the external dependency to foundJobs.
@@ -429,7 +429,8 @@ bool ModuleDepGraph::recordWhatUseDependsUpon(
             useHasNewExternalDependency = true;
           } else if (def->getKey().getKind() ==
                      NodeKind::incrementalExternalDepend) {
-            incrementalExternalDependencies.insert(externalSwiftDeps.str());
+            auto fp = def->getFingerprint().getValueOr(Fingerprint::ZERO());
+            incrementalExternalDependencies.emplace(externalSwiftDeps.str(), std::move(fp));
           }
         }
       });
