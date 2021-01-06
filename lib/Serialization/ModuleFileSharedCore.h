@@ -74,7 +74,7 @@ class ModuleFileSharedCore {
   StringRef MiscVersion;
 
   /// \c true if this module has incremental dependency information.
-  bool HasIncrementalInfo = false;
+  std::vector<fine_grained_dependencies::SourceFileDepGraph> SourceFileDepGraphs;
 
 public:
   /// Represents another module that has been imported as a dependency.
@@ -514,7 +514,12 @@ public:
 
   /// Returns \c true if this module file contains a section with incremental
   /// information.
-  bool hasIncrementalInfo() const { return HasIncrementalInfo; }
+  bool hasIncrementalInfo() const { return !SourceFileDepGraphs.empty(); }
+
+  ArrayRef<fine_grained_dependencies::SourceFileDepGraph>
+  getSourceFileDependencyGraphs() const {
+    return SourceFileDepGraphs;
+  }
 };
 
 template <typename T, typename RawData>

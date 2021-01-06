@@ -121,8 +121,13 @@ bool readFineGrainedDependencyGraph(llvm::MemoryBuffer &buffer,
 /// Tries to read the dependency graph from the given buffer, assuming that it
 /// is in the format of a swiftmodule file.
 /// Returns \c true if there was an error.
-bool readFineGrainedDependencyGraphFromSwiftModule(llvm::MemoryBuffer &buffer,
-                                                   SourceFileDepGraph &g);
+bool readFineGrainedDependencyGraphsFromSwiftModule(
+    llvm::MemoryBuffer &buffer,
+    llvm::SmallVectorImpl<SourceFileDepGraph> &g);
+
+bool readFineGrainedDependencyGraphAtCursor(
+    llvm::BitstreamCursor &Cursor,
+    SourceFileDepGraph &g);
 
 /// Tries to read the dependency graph from the given path name.
 /// Returns true if there was an error.

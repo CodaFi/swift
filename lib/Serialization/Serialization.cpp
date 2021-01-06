@@ -19,6 +19,7 @@
 #include "swift/AST/DiagnosticsCommon.h"
 #include "swift/AST/Expr.h"
 #include "swift/AST/FileSystem.h"
+#include "swift/AST/FineGrainedDependencies.h"
 #include "swift/AST/ForeignErrorConvention.h"
 #include "swift/AST/GenericEnvironment.h"
 #include "swift/AST/IndexSubset.h"
@@ -5400,8 +5401,7 @@ SerializerBase::SerializerBase(ArrayRef<unsigned char> signature,
 void Serializer::writeToStream(
     raw_ostream &os, ModuleOrSourceFile DC,
     const SILModule *SILMod,
-    const SerializationOptions &options,
-    const fine_grained_dependencies::SourceFileDepGraph *DepGraph) {
+    const SerializationOptions &options) {
   Serializer S{SWIFTMODULE_SIGNATURE, DC};
 
   // FIXME: This is only really needed for debugging. We don't actually use it.
@@ -5413,9 +5413,24 @@ void Serializer::writeToStream(
     S.writeInputBlock(options);
     S.writeSIL(SILMod, options.SerializeAllSIL);
     S.writeAST(DC);
-    if (options.ExperimentalCrossModuleIncrementalInfo && DepGraph) {
-      fine_grained_dependencies::writeFineGrainedDependencyGraph(
-          S.Out, *DepGraph, fine_grained_dependencies::Purpose::ForSwiftModule);
+    if (options.ExperimentalCrossModuleIncrementalInfo) {
+      using namespace swift::fine_grained_dependencies;
+      if (const auto *SF = DC.dyn_cast<SourceFile *>()) {
+        withWholeModuleReferenceDependencies(
+            SF, /**/ false, [&](SourceFileDepGraph &&DG) -> bool {
+          writeFineGrainedDependencyGraph(
+              S.Out, DG, Purpose::ForSwiftModule);
+          return false;
+        });
+      } else {
+        auto *MD = DC.get<ModuleDecl *>();
+        for (auto file : MD->getFiles()) {
+          for (const auto &DG : file->getSourceFileDependencyGraphs()) {
+            writeFineGrainedDependencyGraph(
+                S.Out, DG, Purpose::ForSwiftModule);
+          }
+        }
+      }
     }
   }
 
@@ -5435,8 +5450,7 @@ void swift::serializeToBuffers(
                                "Serialization, swiftmodule, to buffer");
     llvm::SmallString<1024> buf;
     llvm::raw_svector_ostream stream(buf);
-    Serializer::writeToStream(stream, DC, M, options,
-                              /*dependency info*/ nullptr);
+    Serializer::writeToStream(stream, DC, M, options);
     bool hadError = withOutputFile(getContext(DC).Diags,
                                    options.OutputPath,
                                    [&](raw_ostream &out) {
@@ -5487,13 +5501,12 @@ void swift::serializeToBuffers(
 
 void swift::serialize(ModuleOrSourceFile DC,
                       const SerializationOptions &options,
-                      const SILModule *M,
-                      const fine_grained_dependencies::SourceFileDepGraph *DG) {
+                      const SILModule *M) {
   assert(!StringRef::withNullAsEmpty(options.OutputPath).empty());
 
   if (StringRef(options.OutputPath) == "-") {
     // Special-case writing to stdout.
-    Serializer::writeToStream(llvm::outs(), DC, M, options, DG);
+    Serializer::writeToStream(llvm::outs(), DC, M, options);
     assert(StringRef::withNullAsEmpty(options.DocOutputPath).empty());
     return;
   }
@@ -5503,7 +5516,7 @@ void swift::serialize(ModuleOrSourceFile DC,
                                  [&](raw_ostream &out) {
     FrontendStatsTracer tracer(getContext(DC).Stats,
                                "Serialization, swiftmodule");
-    Serializer::writeToStream(out, DC, M, options, DG);
+    Serializer::writeToStream(out, DC, M, options);
     return false;
   });
   if (hadError)

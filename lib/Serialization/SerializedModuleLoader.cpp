@@ -1220,6 +1220,11 @@ SerializedASTFile::loadFingerprint(const IterableDeclContext *IDC) const {
   return File.loadFingerprint(IDC);
 }
 
+ArrayRef<fine_grained_dependencies::SourceFileDepGraph>
+SerializedASTFile::getSourceFileDependencyGraphs() const {
+  return File.getSourceFileDependencyGraphs();
+}
+
 void SerializedASTFile::lookupImportedSPIGroups(
                         const ModuleDecl *importedModule,
                         llvm::SmallSetVector<Identifier, 4> &spiGroups) const {

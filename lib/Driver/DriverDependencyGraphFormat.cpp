@@ -11,8 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "swift/AST/FileSystem.h"
-#include "swift/AST/FineGrainedDependencies.h"
-#include "swift/AST/FineGrainedDependencyFormat.h"
+#include "swift/Driver/DriverDependencyGraphFormat.h"
+#include "swift/Driver/FineGrainedDependencyDriverGraph.h"
 #include "swift/Basic/PrettyStackTrace.h"
 #include "swift/Basic/Version.h"
 #include "llvm/ADT/SmallVector.h"
@@ -44,14 +44,14 @@ class Deserializer {
 
 public:
   Deserializer(llvm::BitstreamCursor &Cursor) : Cursor(Cursor) {}
-  bool readFineGrainedDependencyGraph(SourceFileDepGraph &g, Purpose purpose);
-  bool readFineGrainedDependencyGraphsFromSwiftModule(llvm::SmallVectorImpl<SourceFileDepGraph> &g);
+  bool readDriverDependencyGraph(ModuleDepGraph &g);
+  bool readDriverDependencyGraphsFromSwiftModule(llvm::SmallVectorImpl<ModuleDepGraph> &g);
 };
 
 } // end namespace
 
 bool Deserializer::readSignature() {
-  for (unsigned char byte : FINE_GRAINED_DEPDENENCY_FORMAT_SIGNATURE) {
+  for (unsigned char byte : DRIVER_DEPDENENCY_FORMAT_SIGNATURE) {
     if (Cursor.AtEndOfStream())
       return true;
     if (auto maybeRead = Cursor.Read(8)) {
@@ -131,8 +131,8 @@ bool Deserializer::readMetadata() {
   unsigned majorVersion, minorVersion;
 
   MetadataLayout::readRecord(Scratch, majorVersion, minorVersion);
-  if (majorVersion != FINE_GRAINED_DEPENDENCY_FORMAT_VERSION_MAJOR ||
-      minorVersion != FINE_GRAINED_DEPENDENCY_FORMAT_VERSION_MINOR) {
+  if (majorVersion != DRIVER_DEPENDENCY_FORMAT_VERSION_MAJOR ||
+      minorVersion != DRIVER_DEPENDENCY_FORMAT_VERSION_MINOR) {
     return true;
   }
 
@@ -151,30 +151,20 @@ static llvm::Optional<DeclAspect> getDeclAspect(unsigned declAspect) {
   return None;
 }
 
-bool Deserializer::readFineGrainedDependencyGraph(SourceFileDepGraph &g,
-                                                  Purpose purpose) {
+bool Deserializer::readDriverDependencyGraph(fine_grained_dependencies::ModuleDepGraph &g) {
   using namespace record_block;
 
-  switch (purpose) {
-  case Purpose::ForSwiftDeps:
-    if (readSignature())
-      return true;
+  if (readSignature())
+    return true;
 
-    if (enterTopLevelBlock())
-      return true;
-    LLVM_FALLTHROUGH;
-  case Purpose::ForSwiftModule:
-    // N.B. Incremental metadata embedded in swiftmodule files does not have
-    // a leading signature, and its top-level block has already been
-    // consumed by the time we get here.
-    break;
-  }
+  if (enterTopLevelBlock())
+    return true;
 
   if (readMetadata())
     return true;
 
-  SourceFileDepGraphNode *node = nullptr;
-  size_t sequenceNumber = 0;
+  DependencyKey key;
+  fine_grained_dependencies::ModuleDepGraphNode *node = nullptr;
 
   while (!Cursor.AtEndOfStream()) {
     auto entry = cantFail(Cursor.advance(), "Advance bitstream cursor");
@@ -200,14 +190,12 @@ bool Deserializer::readFineGrainedDependencyGraph(SourceFileDepGraph &g,
       break;
     }
 
-    case SOURCE_FILE_DEP_GRAPH_NODE: {
+    case MODULE_DEP_GRAPH_NODE: {
       unsigned nodeKindID, declAspectID, contextID, nameID, isProvides;
-      SourceFileDepGraphNodeLayout::readRecord(Scratch, nodeKindID, declAspectID,
-                                               contextID, nameID, isProvides);
-      node = new SourceFileDepGraphNode();
-      node->setSequenceNumber(sequenceNumber++);
-      g.addNode(node);
-
+      unsigned hasSwiftdeps, swiftDepsID;
+      ModuleDepGraphNodeLayout::readRecord(Scratch, nodeKindID, declAspectID,
+                                           contextID, nameID, isProvides,
+                                           hasSwiftdeps, swiftDepsID);
       auto nodeKind = getNodeKind(nodeKindID);
       if (!nodeKind)
         llvm::report_fatal_error("Bad node kind");
@@ -220,10 +208,17 @@ bool Deserializer::readFineGrainedDependencyGraph(SourceFileDepGraph &g,
       auto name = getIdentifier(nameID);
       if (!name)
         llvm::report_fatal_error("Bad identifier");
+      Optional<std::string> swiftDeps = None;
+      if (hasSwiftdeps != 0) {
+        auto swiftDepsIdentifier = getIdentifier(nameID);
+        if (!swiftDepsIdentifier)
+          llvm::report_fatal_error("Bad identifier");
+        swiftDeps.emplace(*swiftDepsIdentifier);
+      }
 
+      node = new fine_grained_dependencies::ModuleDepGraphNode(key, None, swiftDeps);
       node->setKey(DependencyKey(*nodeKind, *declAspect, *context, *name));
-      if (isProvides)
-        node->setIsProvides();
+      g.addToMap(node);
       break;
     }
 
@@ -231,22 +226,8 @@ bool Deserializer::readFineGrainedDependencyGraph(SourceFileDepGraph &g,
       // FINGERPRINT_NODE must follow a SOURCE_FILE_DEP_GRAPH_NODE.
       if (node == nullptr)
         llvm::report_fatal_error("Unexpected FINGERPRINT_NODE record");
-      if (auto fingerprint = Fingerprint::fromString(BlobData))
-        node->setFingerprint(fingerprint.getValue());
-      else
-        llvm::report_fatal_error(Twine("Unconvertable FINGERPRINT_NODE record: '") + BlobData + "'" );
-      break;
-    }
 
-    case DEPENDS_ON_DEFINITION_NODE: {
-      // DEPENDS_ON_DEFINITION_NODE must follow a SOURCE_FILE_DEP_GRAPH_NODE.
-      if (node == nullptr)
-        llvm::report_fatal_error("Unexpected DEPENDS_ON_DEFINITION_NODE record");
-
-      unsigned dependsOnDefID;
-      DependsOnDefNodeLayout::readRecord(Scratch, dependsOnDefID);
-
-      node->addDefIDependUpon(dependsOnDefID);
+      node->setFingerprint(Fingerprint::fromString(BlobData));
       break;
     }
 
@@ -260,6 +241,16 @@ bool Deserializer::readFineGrainedDependencyGraph(SourceFileDepGraph &g,
       break;
     }
 
+    case INCREMENTAL_EXTERNAL_DEPENDENCY_NODE: {
+      // IDENTIFIER_NODE must come before SOURCE_FILE_DEP_GRAPH_NODE.
+      if (node == nullptr)
+        llvm::report_fatal_error("Unexpected INCREMENTAL_EXTERNAL_DEPENDENCY_NODE record");
+
+      IncrementalExternalNodeLayout::readRecord(Scratch);
+      g.insertIncrementalExternalDependency(BlobData);
+      break;
+    }
+
     default: {
       llvm::report_fatal_error("Unknown record ID");
     }
@@ -267,22 +258,6 @@ bool Deserializer::readFineGrainedDependencyGraph(SourceFileDepGraph &g,
   }
 
   return false;
-}
-
-bool swift::fine_grained_dependencies::readFineGrainedDependencyGraph(
-    llvm::MemoryBuffer &buffer, SourceFileDepGraph &g) {
-  llvm::BitstreamCursor cursor{buffer.getMemBufferRef()};
-  Deserializer deserializer{cursor};
-  return deserializer.readFineGrainedDependencyGraph(g, Purpose::ForSwiftDeps);
-}
-
-bool swift::fine_grained_dependencies::readFineGrainedDependencyGraph(
-     StringRef path, SourceFileDepGraph &g) {
-  auto buffer = llvm::MemoryBuffer::getFile(path);
-  if (!buffer)
-    return false;
-
-  return readFineGrainedDependencyGraph(*buffer.get(), g);
 }
 
 llvm::Optional<std::string> Deserializer::getIdentifier(unsigned n) {
@@ -335,8 +310,7 @@ public:
   Serializer(llvm::BitstreamWriter &ExistingOut) : Out(ExistingOut) {}
 
 public:
-  void writeFineGrainedDependencyGraph(const SourceFileDepGraph &g,
-                                       Purpose purpose);
+  void writeDriverDependencyGraph(const fine_grained_dependencies::ModuleDepGraph &g);
 };
 
 } // end namespace
@@ -366,7 +340,7 @@ void Serializer::emitRecordID(unsigned ID, StringRef name,
 }
 
 void Serializer::writeSignature() {
-  for (auto c : FINE_GRAINED_DEPDENENCY_FORMAT_SIGNATURE)
+  for (auto c : DRIVER_DEPDENENCY_FORMAT_SIGNATURE)
     Out.Emit((unsigned) c, 8);
 }
 
@@ -379,9 +353,8 @@ void Serializer::writeBlockInfoBlock() {
 
   BLOCK(RECORD_BLOCK);
   BLOCK_RECORD(record_block, METADATA);
-  BLOCK_RECORD(record_block, SOURCE_FILE_DEP_GRAPH_NODE);
+  BLOCK_RECORD(record_block, MODULE_DEP_GRAPH_NODE);
   BLOCK_RECORD(record_block, FINGERPRINT_NODE);
-  BLOCK_RECORD(record_block, DEPENDS_ON_DEFINITION_NODE);
   BLOCK_RECORD(record_block, IDENTIFIER_NODE);
 }
 
@@ -390,43 +363,41 @@ void Serializer::writeMetadata() {
 
   MetadataLayout::emitRecord(Out, ScratchRecord,
                              AbbrCodes[MetadataLayout::Code],
-                             FINE_GRAINED_DEPENDENCY_FORMAT_VERSION_MAJOR,
-                             FINE_GRAINED_DEPENDENCY_FORMAT_VERSION_MINOR,
+                             DRIVER_DEPENDENCY_FORMAT_VERSION_MAJOR,
+                             DRIVER_DEPENDENCY_FORMAT_VERSION_MINOR,
                              version::getSwiftFullVersion());
 }
 
 void
-Serializer::writeFineGrainedDependencyGraph(const SourceFileDepGraph &g,
-                                            Purpose purpose) {
-  unsigned blockID = 0;
-  switch (purpose) {
-  case Purpose::ForSwiftDeps:
-    writeSignature();
-    writeBlockInfoBlock();
-    blockID = RECORD_BLOCK_ID;
-    break;
-  case Purpose::ForSwiftModule:
-    blockID = INCREMENTAL_INFORMATION_BLOCK_ID;
-    break;
-  }
+Serializer::writeDriverDependencyGraph(const ModuleDepGraph &g) {
+  writeSignature();
+  writeBlockInfoBlock();
 
-  llvm::BCBlockRAII restoreBlock(Out, blockID, 8);
+  llvm::BCBlockRAII restoreBlock(Out, RECORD_BLOCK_ID, 8);
 
   using namespace record_block;
 
   registerRecordAbbr<MetadataLayout>();
-  registerRecordAbbr<SourceFileDepGraphNodeLayout>();
+  registerRecordAbbr<ModuleDepGraphNodeLayout>();
   registerRecordAbbr<FingerprintNodeLayout>();
-  registerRecordAbbr<DependsOnDefNodeLayout>();
   registerRecordAbbr<IdentifierNodeLayout>();
+  registerRecordAbbr<IncrementalExternalNodeLayout>();
 
   writeMetadata();
 
   // Make a pass to collect all unique strings
-  g.forEachNode([&](SourceFileDepGraphNode *node) {
+  addIdentifier("");
+  g.forEachNode([&](fine_grained_dependencies::ModuleDepGraphNode *node) {
+    if (auto swiftDeps = node->getSwiftDeps()) {
+      addIdentifier(*swiftDeps);
+    }
     addIdentifier(node->getKey().getContext());
     addIdentifier(node->getKey().getName());
   });
+
+  for (auto dep : g.getIncrementalExternalDependencies()) {
+    addIdentifier(dep);
+  }
 
   // Write the strings
   for (auto str : IdentifiersToWrite) {
@@ -435,33 +406,28 @@ Serializer::writeFineGrainedDependencyGraph(const SourceFileDepGraph &g,
                                      str);
   }
 
-  size_t sequenceNumber = 0;
-
   // Now write each graph node
-  g.forEachNode([&](SourceFileDepGraphNode *node) {
-    SourceFileDepGraphNodeLayout::emitRecord(Out, ScratchRecord,
-                                             AbbrCodes[SourceFileDepGraphNodeLayout::Code],
-                                             unsigned(node->getKey().getKind()),
-                                             unsigned(node->getKey().getAspect()),
-                                             getIdentifier(node->getKey().getContext()),
-                                             getIdentifier(node->getKey().getName()),
-                                             node->getIsProvides() ? 1 : 0);
-    assert(sequenceNumber == node->getSequenceNumber());
-    sequenceNumber++;
-    (void) sequenceNumber;
-
+  g.forEachNode([&](fine_grained_dependencies::ModuleDepGraphNode *node) {
+    ModuleDepGraphNodeLayout::emitRecord(Out, ScratchRecord,
+                                         AbbrCodes[ModuleDepGraphNodeLayout::Code],
+                                         unsigned(node->getKey().getKind()),
+                                         unsigned(node->getKey().getAspect()),
+                                         getIdentifier(node->getKey().getContext()),
+                                         getIdentifier(node->getKey().getName()),
+                                         node->getIsProvides() ? 1 : 0,
+                                         node->getSwiftDeps().hasValue(),
+                                         getIdentifier(node->getSwiftDepsOrEmpty()));
     if (auto fingerprint = node->getFingerprint()) {
       FingerprintNodeLayout::emitRecord(Out, ScratchRecord,
                                         AbbrCodes[FingerprintNodeLayout::Code],
                                         fingerprint->getRawValue());
     }
-
-    node->forEachDefIDependUpon([&](size_t defIDependOn) {
-      DependsOnDefNodeLayout::emitRecord(Out, ScratchRecord,
-                                         AbbrCodes[DependsOnDefNodeLayout::Code],
-                                         defIDependOn);
-    });
   });
+
+  for (auto dep : g.getIncrementalExternalDependencies()) {
+    IncrementalExternalNodeLayout::emitRecord(Out, ScratchRecord,
+                                              AbbrCodes[IncrementalExternalNodeLayout::Code], dep);
+  }
 }
 
 void Serializer::addIdentifier(StringRef str) {
@@ -491,139 +457,27 @@ unsigned Serializer::getIdentifier(StringRef str) {
   return iter->second;
 }
 
-void swift::fine_grained_dependencies::writeFineGrainedDependencyGraph(
-    llvm::BitstreamWriter &Out, const SourceFileDepGraph &g,
-    Purpose purpose) {
-  Serializer serializer{Out};
-  serializer.writeFineGrainedDependencyGraph(g, purpose);
-}
-
-bool swift::fine_grained_dependencies::writeFineGrainedDependencyGraphToPath(
+void swift::writeDriverDependencyGraphToPath(
     DiagnosticEngine &diags, StringRef path,
-    const SourceFileDepGraph &g) {
-  PrettyStackTraceStringAction stackTrace("saving fine-grained dependency graph", path);
-  return withOutputFile(diags, path, [&](llvm::raw_ostream &out) {
+    const fine_grained_dependencies::ModuleDepGraph &g) {
+  PrettyStackTraceStringAction stackTrace("saving dependency dependency graph", path);
+  withOutputFile(diags, path, [&](llvm::raw_ostream &out) {
     SmallVector<char, 0> Buffer;
     llvm::BitstreamWriter Writer{Buffer};
-    writeFineGrainedDependencyGraph(Writer, g, Purpose::ForSwiftDeps);
+    Serializer serializer{Writer};
+    serializer.writeDriverDependencyGraph(g);
     out.write(Buffer.data(), Buffer.size());
     out.flush();
     return false;
   });
 }
 
-static bool checkModuleSignature(llvm::BitstreamCursor &cursor,
-                                 ArrayRef<unsigned char> signature) {
-  for (unsigned char byte : signature) {
-    if (cursor.AtEndOfStream())
-      return false;
-    if (llvm::Expected<llvm::SimpleBitstreamCursor::word_t> maybeRead =
-            cursor.Read(8)) {
-      if (maybeRead.get() != byte)
-        return false;
-    } else {
-      consumeError(maybeRead.takeError());
-      return false;
-    }
-  }
-  return true;
-}
-
-static bool enterTopLevelModuleBlock(llvm::BitstreamCursor &cursor, unsigned ID,
-                                     bool shouldReadBlockInfo = true) {
-  llvm::Expected<llvm::BitstreamEntry> maybeNext = cursor.advance();
-  if (!maybeNext) {
-    consumeError(maybeNext.takeError());
+bool swift::readDriverDependencyGraph(
+    StringRef path, fine_grained_dependencies::ModuleDepGraph &g) {
+  auto buffer = llvm::MemoryBuffer::getFile(path);
+  if (!buffer)
     return false;
-  }
-  llvm::BitstreamEntry next = maybeNext.get();
-
-  if (next.Kind != llvm::BitstreamEntry::SubBlock)
-    return false;
-
-  if (next.ID == llvm::bitc::BLOCKINFO_BLOCK_ID) {
-    if (shouldReadBlockInfo) {
-      if (!cursor.ReadBlockInfoBlock())
-        return false;
-    } else {
-      if (cursor.SkipBlock())
-        return false;
-    }
-    return enterTopLevelModuleBlock(cursor, ID, false);
-  }
-
-  if (next.ID != ID)
-    return false;
-
-  if (llvm::Error Err = cursor.EnterSubBlock(ID)) {
-    consumeError(std::move(Err));
-    return false;
-  }
-
-  return true;
-}
-
-bool swift::fine_grained_dependencies::
-    readFineGrainedDependencyGraphsFromSwiftModule(
-    llvm::MemoryBuffer &buffer,
-    SmallVectorImpl<SourceFileDepGraph> &gs) {
-  llvm::BitstreamCursor cursor{buffer.getMemBufferRef()};
+  llvm::BitstreamCursor cursor{buffer.get()->getMemBufferRef()};
   Deserializer deserializer{cursor};
-  return deserializer.readFineGrainedDependencyGraphsFromSwiftModule(gs);
-}
-
-bool swift::fine_grained_dependencies::
-    readFineGrainedDependencyGraphAtCursor(llvm::BitstreamCursor &Cursor,
-                                           SourceFileDepGraph &g) {
-  Deserializer deserializer{Cursor};
-  return deserializer.readFineGrainedDependencyGraph(g, Purpose::ForSwiftModule);
-}
-
-bool Deserializer::readFineGrainedDependencyGraphsFromSwiftModule(
-    SmallVectorImpl<SourceFileDepGraph> &g) {
-  if (!checkModuleSignature(Cursor, {0xE2, 0x9C, 0xA8, 0x0E}) ||
-      !enterTopLevelModuleBlock(Cursor, llvm::bitc::FIRST_APPLICATION_BLOCKID, false)) {
-    return true;
-  }
-
-  llvm::BitstreamEntry topLevelEntry;
-  bool DidNotReadFineGrainedDependencies = true;
-  while (!Cursor.AtEndOfStream()) {
-    llvm::Expected<llvm::BitstreamEntry> maybeEntry =
-        Cursor.advance(llvm::BitstreamCursor::AF_DontPopBlockAtEnd);
-    if (!maybeEntry) {
-      consumeError(maybeEntry.takeError());
-      return true;
-    }
-    topLevelEntry = maybeEntry.get();
-    if (topLevelEntry.Kind != llvm::BitstreamEntry::SubBlock)
-      break;
-
-    switch (topLevelEntry.ID) {
-    case INCREMENTAL_INFORMATION_BLOCK_ID: {
-      if (llvm::Error Err =
-              Cursor.EnterSubBlock(INCREMENTAL_INFORMATION_BLOCK_ID)) {
-        consumeError(std::move(Err));
-        return true;
-      }
-      g.emplace_back(SourceFileDepGraph{});
-      if (readFineGrainedDependencyGraph(g.back(), Purpose::ForSwiftModule)) {
-        break;
-      }
-
-      DidNotReadFineGrainedDependencies = false;
-      break;
-    }
-
-    default:
-      // Unknown top-level block, possibly for use by a future version of the
-      // module format.
-      if (Cursor.SkipBlock()) {
-        return true;
-      }
-      break;
-    }
-  }
-
-  return DidNotReadFineGrainedDependencies;
+  return !deserializer.readDriverDependencyGraph(g);
 }

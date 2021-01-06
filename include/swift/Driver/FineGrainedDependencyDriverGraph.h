@@ -191,6 +191,15 @@ public:
   bool verifyFineGrainedDependencyGraphAfterEveryImport;
   bool emitFineGrainedDependencyDotFileAfterEveryImport;
 
+public:
+  /// Encapsulate the invariant between where the node resides in
+  /// nodesBySwiftDepsFile and the swiftDeps node instance variable here.
+  void addToMap(ModuleDepGraphNode *n) {
+    nodeMap.insert(n->getSwiftDepsForMapKey(), n->getKey(), n);
+  }
+
+  void insertIncrementalExternalDependency(StringRef dep);
+  
 private:
   /// If tracing dependencies, holds a vector used to hold the current path
   /// def - use/def - use/def - ...
@@ -208,12 +217,6 @@ private:
   //==============================================================================
   // MARK: ModuleDepGraph - mutating dependencies
   //==============================================================================
-
-  /// Encapsulate the invariant between where the node resides in
-  /// nodesBySwiftDepsFile and the swiftDeps node instance variable here.
-  void addToMap(ModuleDepGraphNode *n) {
-    nodeMap.insert(n->getSwiftDepsForMapKey(), n->getKey(), n);
-  }
 
   /// When integrating a SourceFileDepGraph, there might be a node representing
   /// a Decl that had previously been read as an expat, that is a node

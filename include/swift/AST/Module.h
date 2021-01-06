@@ -19,6 +19,7 @@
 
 #include "swift/AST/Decl.h"
 #include "swift/AST/DeclContext.h"
+#include "swift/AST/FineGrainedDependencies.h"
 #include "swift/AST/Identifier.h"
 #include "swift/AST/Import.h"
 #include "swift/AST/LookupKinds.h"

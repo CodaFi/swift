@@ -605,26 +605,26 @@ populateOutOfDateMap(InputInfoMap &map, llvm::sys::TimePoint<> &LastBuildTime,
     }
   }
 
-  if (!versionValid) {
-    if (ShowIncrementalBuildDecisions) {
-      auto v = version::getSwiftFullVersion(
-          version::Version::getCurrentLanguageVersion());
-      llvm::outs() << "Incremental compilation has been disabled, due to a "
-                   << "compiler version mismatch.\n"
-                   << "\tCompiling with: " << v << "\n"
-                   << "\tPreviously compiled with: "
-                   << CompilationRecordSwiftVersion << "\n";
-    }
-    return "compiler version mismatch";
-  }
-
-  if (!optionsMatch) {
-    if (ShowIncrementalBuildDecisions) {
-      llvm::outs() << "Incremental compilation has been disabled, because "
-                   << "different arguments were passed to the compiler.\n";
-    }
-    return "different arguments passed to compiler";
-  }
+//  if (!versionValid) {
+//    if (ShowIncrementalBuildDecisions) {
+//      auto v = version::getSwiftFullVersion(
+//          version::Version::getCurrentLanguageVersion());
+//      llvm::outs() << "Incremental compilation has been disabled, due to a "
+//                   << "compiler version mismatch.\n"
+//                   << "\tCompiling with: " << v << "\n"
+//                   << "\tPreviously compiled with: "
+//                   << CompilationRecordSwiftVersion << "\n";
+//    }
+//    return "compiler version mismatch";
+//  }
+//
+//  if (!optionsMatch) {
+//    if (ShowIncrementalBuildDecisions) {
+//      llvm::outs() << "Incremental compilation has been disabled, because "
+//                   << "different arguments were passed to the compiler.\n";
+//    }
+//    return "different arguments passed to compiler";
+//  }
 
   unsigned numMatchingPreviouslyCompiledInputs = 0;
   for (auto &inputPair : inputs) {

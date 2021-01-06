@@ -116,17 +116,29 @@ ModuleDepGraph::Changes ModuleDepGraph::loadFromSwiftModuleBuffer(
       "loading fine-grained dependency graph from swiftmodule",
       buffer.getBufferIdentifier());
 
-   Optional<SourceFileDepGraph> sourceFileDepGraph =
-      SourceFileDepGraph::loadFromSwiftModuleBuffer(buffer);
-  if (!sourceFileDepGraph)
+  llvm::SmallVector<SourceFileDepGraph, 8> sourceFileDepGraphs;
+  if (SourceFileDepGraph::loadFromSwiftModuleBuffer(buffer, sourceFileDepGraphs))
     return None;
   jobsBySwiftDeps[buffer.getBufferIdentifier().str()] = Cmd;
-  auto changes = integrate(*sourceFileDepGraph, buffer.getBufferIdentifier());
-  if (verifyFineGrainedDependencyGraphAfterEveryImport)
-    verify();
-  if (emitFineGrainedDependencyDotFileAfterEveryImport)
-    emitDotFileForJob(diags, Cmd);
-  return changes;
+
+  ModuleDepGraph::Changes moduleWideChanges = None;
+  for (const auto &depGraph : sourceFileDepGraphs) {
+    auto changes = integrate(depGraph, buffer.getBufferIdentifier());
+    if (!changes.hasValue())
+      return None;
+
+    if (!moduleWideChanges.hasValue()) {
+      moduleWideChanges = changes;
+    } else {
+      moduleWideChanges.getValue().insert(changes->begin(), changes->end());
+    }
+
+    if (verifyFineGrainedDependencyGraphAfterEveryImport)
+      verify();
+    if (emitFineGrainedDependencyDotFileAfterEveryImport)
+      emitDotFileForJob(diags, Cmd);
+  }
+  return moduleWideChanges;
 }
 
 bool ModuleDepGraph::haveAnyNodesBeenTraversedIn(const Job *cmd) const {
@@ -287,29 +299,14 @@ ModuleDepGraph::Changes ModuleDepGraph::integrate(const SourceFileDepGraph &g,
 
   g.forEachNode([&](const SourceFileDepGraphNode *integrand) {
     const auto &key = integrand->getKey();
-    StringRef realSwiftDepsPath = swiftDepsOfJob;
-    // If we're doing a cross-module incremental build, we'll see these
-    // `.external` "swiftdeps" files. See \c writePriorDependencyGraph for
-    // the structure of the graph we're traversing here. Essentially, follow
-    // the arc laid down there to discover the file path for the swiftmodule
-    // where this dependency node originally came from.
-    if (swiftDepsOfJob.endswith(file_types::getExtension(file_types::TY_ExternalSwiftDeps)) &&
-        integrand->getKey().getKind() != NodeKind::sourceFileProvide) {
-      integrand->forEachDefIDependUpon([&](size_t seqNum) {
-        auto &external = g.getNode(seqNum)->getKey();
-        if (external.getKind() == NodeKind::incrementalExternalDepend) {
-          realSwiftDepsPath = external.getName();
-        }
-      });
-    }
-    auto preexistingMatch = findPreexistingMatch(realSwiftDepsPath, integrand);
+    auto preexistingMatch = findPreexistingMatch(swiftDepsOfJob, integrand);
     if (preexistingMatch.hasValue() &&
         preexistingMatch.getValue().first == LocationOfPreexistingNode::here)
       disappearedNodes.erase(key); // Node was and still is. Do not erase it.
 
     Optional<NullablePtr<ModuleDepGraphNode>> newNodeOrChangedNode =
         integrateSourceFileDepGraphNode(g, integrand, preexistingMatch,
-                                        realSwiftDepsPath);
+                                        swiftDepsOfJob);
 
     if (!newNodeOrChangedNode)
       changedNodes = None;
@@ -443,11 +440,15 @@ bool ModuleDepGraph::recordWhatUseDependsUpon(
             useHasNewExternalDependency = true;
           } else if (def->getKey().getKind() ==
                      NodeKind::incrementalExternalDepend) {
-            incrementalExternalDependencies.insert(externalSwiftDeps.str());
+            insertIncrementalExternalDependency(externalSwiftDeps);
           }
         }
       });
   return useHasNewExternalDependency;
+}
+
+void ModuleDepGraph::insertIncrementalExternalDependency(StringRef dep) {
+  incrementalExternalDependencies.insert(dep.str());
 }
 
 void ModuleDepGraph::eraseNodeFromGraphAndFreeIt(ModuleDepGraphNode *n) {

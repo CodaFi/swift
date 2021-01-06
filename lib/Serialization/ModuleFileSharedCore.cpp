@@ -1454,10 +1454,14 @@ ModuleFileSharedCore::ModuleFileSharedCore(
     }
 
     case INCREMENTAL_INFORMATION_BLOCK_ID: {
-      HasIncrementalInfo = true;
-      // Skip incremental info if present. The Frontend currently doesn't do
-      // anything with this.
-      if (cursor.SkipBlock()) {
+      if (llvm::Error Err =
+              cursor.EnterSubBlock(INCREMENTAL_INFORMATION_BLOCK_ID)) {
+        consumeError(std::move(Err));
+        info.status = error(Status::Malformed);
+        return;
+      }
+      SourceFileDepGraphs.emplace_back(fine_grained_dependencies::SourceFileDepGraph{});
+      if (fine_grained_dependencies::readFineGrainedDependencyGraphAtCursor(cursor, SourceFileDepGraphs.back())) {
         info.status = error(Status::Malformed);
         return;
       }

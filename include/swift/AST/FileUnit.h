@@ -113,6 +113,9 @@ public:
   virtual Optional<Fingerprint>
   loadFingerprint(const IterableDeclContext *IDC) const { return None; }
 
+  virtual ArrayRef<fine_grained_dependencies::SourceFileDepGraph>
+  getSourceFileDependencyGraphs() const { return {}; };
+
 protected:
   /// Look up an operator declaration. Do not call directly, use
   /// \c DirectOperatorLookupRequest instead.

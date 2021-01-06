@@ -39,10 +39,10 @@ private:
 };
 
 class ModuleDepGraphFactory : public AbstractSourceFileDepGraphFactory {
-  const ModuleDecl *Mod;
+  const SourceFile *SF;
 
 public:
-  ModuleDepGraphFactory(const ModuleDecl *Mod, bool emitDot);
+  ModuleDepGraphFactory(const SourceFile *SF, bool emitDot);
 
   ~ModuleDepGraphFactory() override = default;
 

@@ -413,8 +413,7 @@ public:
   static void
   writeToStream(raw_ostream &os, ModuleOrSourceFile DC,
                 const SILModule *M,
-                const SerializationOptions &options,
-                const fine_grained_dependencies::SourceFileDepGraph *DepGraph);
+                const SerializationOptions &options);
 
   /// Records the use of the given Type.
   ///

@@ -180,8 +180,7 @@ namespace swift {
   /// Serializes a module or single source file to the given output file.
   void
   serialize(ModuleOrSourceFile DC, const SerializationOptions &options,
-            const SILModule *M = nullptr,
-            const fine_grained_dependencies::SourceFileDepGraph *DG = nullptr);
+            const SILModule *M = nullptr);
 
   /// Serializes a module or single source file to the given output file and
   /// returns back the file's contents as a memory buffer.

@@ -347,14 +347,24 @@ private:
 // MARK: Start of fine-grained-dependency-specific code
 //==============================================================================
 
-/// Uses the provided module or source file to construct a dependency graph,
+/// Uses the provided source file to construct a dependency graph,
 /// which is provided back to the caller in the continuation callback.
 ///
 /// \Note The returned graph should not be escaped from the callback.
 bool withReferenceDependencies(
-    llvm::PointerUnion<const ModuleDecl *, const SourceFile *> MSF,
+    const SourceFile *SF,
     const DependencyTracker &depTracker, StringRef outputPath,
-    bool alsoEmitDotFile, llvm::function_ref<bool(SourceFileDepGraph &&)>);
+    bool alsoEmitDotFile,
+    llvm::function_ref<bool(SourceFileDepGraph &&)> cont);
+
+/// Uses the provided module or source file to construct a dependency graph,
+/// which is provided back to the caller in the continuation callback.
+///
+/// \Note The returned graphs should not be escaped from the callback.
+bool withWholeModuleReferenceDependencies(
+    const SourceFile *SF,
+    bool alsoEmitDotFile,
+    llvm::function_ref<bool(SourceFileDepGraph &&)> cont);
 
 //==============================================================================
 // MARK: Enums
@@ -838,8 +848,8 @@ public:
   /// Read a swiftdeps file from \p buffer and return a SourceFileDepGraph if
   /// successful.
   Optional<SourceFileDepGraph> static loadFromBuffer(llvm::MemoryBuffer &);
-  Optional<SourceFileDepGraph> static loadFromSwiftModuleBuffer(
-      llvm::MemoryBuffer &);
+  bool static loadFromSwiftModuleBuffer(llvm::MemoryBuffer &,
+                                        SmallVectorImpl<SourceFileDepGraph> &);
 
   void verifySame(const SourceFileDepGraph &other) const;
 

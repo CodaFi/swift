@@ -376,6 +376,9 @@ public:
   Optional<Fingerprint>
   loadFingerprint(const IterableDeclContext *IDC) const override;
 
+  ArrayRef<fine_grained_dependencies::SourceFileDepGraph>
+  getSourceFileDependencyGraphs() const override;
+
   virtual void
   lookupImportedSPIGroups(
                 const ModuleDecl *importedModule,

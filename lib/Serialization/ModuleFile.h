@@ -697,6 +697,10 @@ public:
   void collectBasicSourceFileInfo(
       llvm::function_ref<void(const BasicSourceFileInfo &)> callback) const;
 
+  ArrayRef<fine_grained_dependencies::SourceFileDepGraph>
+  getSourceFileDependencyGraphs() const {
+    return Core->getSourceFileDependencyGraphs();
+  }
 
   // MARK: Deserialization interface
 

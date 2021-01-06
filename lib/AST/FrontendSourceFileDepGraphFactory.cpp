@@ -193,21 +193,23 @@ std::string DependencyKey::computeNameForProvidedEntity<
 //==============================================================================
 
 bool fine_grained_dependencies::withReferenceDependencies(
-    llvm::PointerUnion<const ModuleDecl *, const SourceFile *> MSF,
+    const SourceFile *SF,
     const DependencyTracker &depTracker, StringRef outputPath,
     bool alsoEmitDotFile,
     llvm::function_ref<bool(SourceFileDepGraph &&)> cont) {
-  if (auto *MD = MSF.dyn_cast<const ModuleDecl *>()) {
-    SourceFileDepGraph g =
-        ModuleDepGraphFactory(MD, alsoEmitDotFile).construct();
-    return cont(std::move(g));
-  } else {
-    auto *SF = MSF.get<const SourceFile *>();
-    SourceFileDepGraph g = FrontendSourceFileDepGraphFactory(
-                               SF, outputPath, depTracker, alsoEmitDotFile)
-                               .construct();
-    return cont(std::move(g));
-  }
+  SourceFileDepGraph g = FrontendSourceFileDepGraphFactory(
+                             SF, outputPath, depTracker, alsoEmitDotFile)
+                             .construct();
+  return cont(std::move(g));
+}
+
+bool fine_grained_dependencies::withWholeModuleReferenceDependencies(
+    const SourceFile *SF,
+    bool alsoEmitDotFile,
+  llvm::function_ref<bool(SourceFileDepGraph &&)> cont) {
+  SourceFileDepGraph g = ModuleDepGraphFactory(SF, alsoEmitDotFile)
+                             .construct();
+  return cont(std::move(g));
 }
 
 //==============================================================================
@@ -497,33 +499,22 @@ void FrontendSourceFileDepGraphFactory::addAllUsedDecls() {
 // MARK: ModuleDepGraphFactory
 //==============================================================================
 
-ModuleDepGraphFactory::ModuleDepGraphFactory(const ModuleDecl *Mod,
+ModuleDepGraphFactory::ModuleDepGraphFactory(const SourceFile *SF,
                                              bool emitDot)
-    : AbstractSourceFileDepGraphFactory(Mod->getASTContext().hadError(),
-                                        Mod->getNameStr(), Fingerprint::ZERO(),
-                                        emitDot, Mod->getASTContext().Diags),
-
-      Mod(Mod) {
-  // Since a fingerprint only summarizes the state of the module but not
-  // the state of its fingerprinted sub-declarations, and since a module
-  // contains no state other than sub-declarations, its fingerprint does not
-  // matter and can just be some arbitrary value. Should it be the case that a
-  // change in a declaration that does not have a fingerprint must cause
-  // a rebuild of a file outside of the module, this assumption will need
-  // to be revisited.
-}
+    : AbstractSourceFileDepGraphFactory(SF->getASTContext().hadError(),
+                                        SF->getFilename(),
+                                        SF->getInterfaceHash(),
+                                        emitDot, SF->getASTContext().Diags),
+      SF(SF) {}
 
 void ModuleDepGraphFactory::addAllDefinedDecls() {
   // TODO: express the multiple provides and depends streams with variadic
   // templates
 
   // Many kinds of Decls become top-level depends.
-
-  SmallVector<Decl *, 32> TopLevelDecls;
-  Mod->getTopLevelDecls(TopLevelDecls);
-  DeclFinder declFinder(TopLevelDecls,
+  DeclFinder declFinder(SF->getTopLevelDecls(),
                         [this](VisibleDeclConsumer &consumer) {
-                          return Mod->lookupClassMembers({}, consumer);
+                          return SF->lookupClassMembers({}, consumer);
                         });
 
   addAllDefinedDeclsOfAGivenType<NodeKind::topLevel>(

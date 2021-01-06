@@ -556,6 +556,10 @@ ToolChain::constructInvocation(const CompileJobAction &job,
       options::
           OPT_disable_autolinking_runtime_compatibility_dynamic_replacements);
 
+  context.Args.AddLastArg(
+      Arguments,
+      options::OPT_enable_experimental_cross_module_incremental_build);
+
   return II;
 }
 
