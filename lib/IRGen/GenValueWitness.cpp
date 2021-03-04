@@ -394,12 +394,12 @@ static CanType getFormalTypeInContext(CanType abstractType, DeclContext *dc) {
                                     nominalType->getDecl()->getASTContext()));
 
   // Map unbound types into their defining context.
-  } else if (auto ugt = dyn_cast<UnboundGenericType>(abstractType)) {
+  } /*else if (auto ugt = dyn_cast<UnboundGenericType>(abstractType)) {
     return dc->mapTypeIntoContext(ugt->getDecl()->getDeclaredInterfaceType())
         ->getCanonicalType();
 
   // Everything else stays the same.
-  } else {
+  }*/ else {
     return abstractType;
   }
 }

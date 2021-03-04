@@ -171,12 +171,6 @@ class Traversal : public TypeVisitor<Traversal, bool>
     return doIt(ty->getObjectType());
   }
 
-  bool visitUnboundGenericType(UnboundGenericType *ty) {
-    if (auto parent = ty->getParent())
-      return doIt(parent);
-    return false;
-  }
-
   bool visitBoundGenericType(BoundGenericType *ty) {
     if (auto parent = ty->getParent())
       if (doIt(parent))

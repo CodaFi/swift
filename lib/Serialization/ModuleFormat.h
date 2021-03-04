@@ -1140,12 +1140,6 @@ namespace decls_block {
     TypeIDField              // implementation type
   >;
 
-  using UnboundGenericTypeLayout = BCRecordLayout<
-    UNBOUND_GENERIC_TYPE,
-    DeclIDField, // generic decl
-    TypeIDField  // parent
-  >;
-
   using TypeAliasLayout = BCRecordLayout<
     TYPE_ALIAS_DECL,
     IdentifierIDField, // name

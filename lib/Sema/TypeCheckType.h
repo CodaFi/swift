@@ -272,11 +272,15 @@ public:
 /// out of them.
 ///
 /// \returns the \c null type on failure.
-using OpenUnboundGenericTypeFn = llvm::function_ref<Type(UnboundGenericType *)>;
+using HandlePlaceholderTypeFn =
+    llvm::function_ref<llvm::Optional<Type>(GenericTypeDecl *, Type)>;
 
-/// A function reference used to handle a PlaceholderTypeRepr.
-using HandlePlaceholderTypeReprFn =
-    llvm::function_ref<Type(PlaceholderTypeRepr *)>;
+class AllowPlaceholderTypes {
+public:
+  llvm::Optional<Type> operator()(GenericTypeDecl *, Type) const {
+    return Type();
+  }
+};
 
 /// Handles the resolution of types within a given declaration context,
 /// which might involve resolving generic parameters to a particular
@@ -285,8 +289,7 @@ class TypeResolution {
   DeclContext *dc;
   TypeResolutionStage stage;
   TypeResolutionOptions options;
-  OpenUnboundGenericTypeFn unboundTyOpener;
-  HandlePlaceholderTypeReprFn placeholderHandler;
+  HandlePlaceholderTypeFn placeholderHandler;
 
 private:
   union {
@@ -306,10 +309,8 @@ private:
 
   TypeResolution(DeclContext *dc, TypeResolutionStage stage,
                  TypeResolutionOptions options,
-                 OpenUnboundGenericTypeFn unboundTyOpener,
-                 HandlePlaceholderTypeReprFn placeholderHandler)
+                 HandlePlaceholderTypeFn placeholderHandler)
       : dc(dc), stage(stage), options(options),
-        unboundTyOpener(unboundTyOpener),
         placeholderHandler(placeholderHandler) {}
 
   GenericSignatureBuilder *getGenericSignatureBuilder() const;
@@ -324,23 +325,20 @@ public:
   /// associated type.
   static TypeResolution
   forStructural(DeclContext *dc, TypeResolutionOptions opts,
-                OpenUnboundGenericTypeFn unboundTyOpener,
-                HandlePlaceholderTypeReprFn placeholderHandler);
+                HandlePlaceholderTypeFn placeholderHandler);
 
   /// Form a type resolution for an interface type, which is a complete
   /// description of the type using generic parameters.
   static TypeResolution
   forInterface(DeclContext *dc, TypeResolutionOptions opts,
-               OpenUnboundGenericTypeFn unboundTyOpener,
-               HandlePlaceholderTypeReprFn placeholderHandler);
+               HandlePlaceholderTypeFn placeholderHandler);
 
   /// Form a type resolution for a contextual type, which is a complete
   /// description of the type using the archetypes of the given declaration
   /// context.
   static TypeResolution
   forContextual(DeclContext *dc, TypeResolutionOptions opts,
-                OpenUnboundGenericTypeFn unboundTyOpener,
-                HandlePlaceholderTypeReprFn placeholderHandler);
+                HandlePlaceholderTypeFn placeholderHandler);
 
   /// Form a type resolution for a contextual type, which is a complete
   /// description of the type using the archetypes of the given generic
@@ -348,8 +346,7 @@ public:
   static TypeResolution
   forContextual(DeclContext *dc, GenericEnvironment *genericEnv,
                 TypeResolutionOptions opts,
-                OpenUnboundGenericTypeFn unboundTyOpener,
-                HandlePlaceholderTypeReprFn placeholderHandler);
+                HandlePlaceholderTypeFn placeholderHandler);
 
 public:
   TypeResolution withOptions(TypeResolutionOptions opts) const;
@@ -367,11 +364,7 @@ public:
 
   TypeResolutionOptions getOptions() const { return options; }
 
-  OpenUnboundGenericTypeFn getUnboundTypeOpener() const {
-    return unboundTyOpener;
-  }
-
-  HandlePlaceholderTypeReprFn getPlaceholderHandler() const {
+  HandlePlaceholderTypeFn getPlaceholderHandler() const {
     return placeholderHandler;
   }
 

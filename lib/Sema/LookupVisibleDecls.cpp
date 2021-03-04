@@ -448,7 +448,7 @@ static void lookupDeclsFromProtocolsBeingConformedTo(
     // Skip unsatisfied conditional conformances.
     // We can't check them if this type has an UnboundGenericType or if they
     // couldn't be computed, so assume they conform in such cases.
-    if (!BaseTy->hasUnboundGenericType()) {
+    if (!BaseTy->hasPlaceholder()) {
       if (auto res = Conformance->getConditionalRequirementsIfAvailable()) {
         if (!res->empty() && !Module->conformsToProtocol(BaseTy, Proto))
           continue;
@@ -924,7 +924,7 @@ public:
       // don't substitute either.
       bool shouldSubst = (Reason != DeclVisibilityKind::DynamicLookup &&
                           !BaseTy->isAnyObject() && !BaseTy->hasTypeVariable() &&
-                          !BaseTy->hasUnboundGenericType() &&
+                          !BaseTy->hasPlaceholder() &&
                           (BaseTy->getNominalOrBoundGenericNominal() ||
                            BaseTy->is<ArchetypeType>()) &&
                           VD->getDeclContext()->isTypeContext());

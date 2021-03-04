@@ -389,7 +389,6 @@ struct ASTContext::Implementation {
     llvm::DenseMap<std::pair<StructDecl*, Type>, StructType*> StructTypes;
     llvm::DenseMap<std::pair<ClassDecl*, Type>, ClassType*> ClassTypes;
     llvm::DenseMap<std::pair<ProtocolDecl*, Type>, ProtocolType*> ProtocolTypes;
-    llvm::FoldingSet<UnboundGenericType> UnboundGenericTypes;
     llvm::FoldingSet<BoundGenericType> BoundGenericTypes;
     llvm::FoldingSet<ProtocolCompositionType> ProtocolCompositionTypes;
     llvm::FoldingSet<LayoutConstraintInfo> LayoutConstraints;
@@ -2329,7 +2328,6 @@ size_t ASTContext::Implementation::Arena::getTotalMemory() const {
     llvm::capacity_in_bytes(ProtocolTypes) +
     llvm::capacity_in_bytes(DynamicSelfTypes);
     // FunctionTypes ?
-    // UnboundGenericTypes ?
     // BoundGenericTypes ?
     // NormalConformances ?
     // SpecializedConformances ?
@@ -2718,31 +2716,6 @@ AnyFunctionType::Param swift::computeSelfParam(AbstractFunctionDecl *AFD,
   return AnyFunctionType::Param(selfTy, Identifier(), flags);
 }
 
-void UnboundGenericType::Profile(llvm::FoldingSetNodeID &ID,
-                                 GenericTypeDecl *TheDecl, Type Parent) {
-  ID.AddPointer(TheDecl);
-  ID.AddPointer(Parent.getPointer());
-}
-
-UnboundGenericType *UnboundGenericType::
-get(GenericTypeDecl *TheDecl, Type Parent, const ASTContext &C) {
-  llvm::FoldingSetNodeID ID;
-  UnboundGenericType::Profile(ID, TheDecl, Parent);
-  void *InsertPos = nullptr;
-  RecursiveTypeProperties properties;
-  if (Parent) properties |= Parent->getRecursiveProperties();
-  auto arena = getArena(properties);
-
-  if (auto unbound = C.getImpl().getArena(arena).UnboundGenericTypes
-                        .FindNodeOrInsertPos(ID, InsertPos))
-    return unbound;
-
-  auto result = new (C, arena) UnboundGenericType(TheDecl, Parent, C,
-                                                  properties);
-  C.getImpl().getArena(arena).UnboundGenericTypes.InsertNode(result, InsertPos);
-  return result;
-}
-
 void BoundGenericType::Profile(llvm::FoldingSetNodeID &ID,
                                NominalTypeDecl *TheDecl, Type Parent,
                                ArrayRef<Type> GenericArgs) {
@@ -2773,8 +2746,7 @@ BoundGenericType *BoundGenericType::get(NominalTypeDecl *TheDecl,
                                         ArrayRef<Type> GenericArgs) {
   assert(TheDecl->getGenericParams() && "must be a generic type decl");
   assert((!Parent || Parent->is<NominalType>() ||
-          Parent->is<BoundGenericType>() ||
-          Parent->is<UnboundGenericType>()) &&
+          Parent->is<BoundGenericType>()) &&
          "parent must be a nominal type");
 
   ASTContext &C = TheDecl->getDeclContext()->getASTContext();
@@ -2828,12 +2800,24 @@ BoundGenericType *BoundGenericType::get(NominalTypeDecl *TheDecl,
   return newType;
 }
 
+BoundGenericType *BoundGenericType::getWithPlaceholders(GenericTypeDecl *TheDecl,
+                                                        Type Parent) {
+  assert(TheDecl->getGenericParams());
+  assert((!Parent || Parent->is<NominalType>() ||
+          Parent->is<BoundGenericType>()) &&
+         "parent must be a nominal type");
+  SmallVector<Type, 4> args;
+  for (auto param : TheDecl->getGenericParams()->getParams())
+    args.push_back(PlaceholderType::get(TheDecl->getASTContext(), param));
+
+  return BoundGenericType::get(cast<NominalTypeDecl>(TheDecl), Parent, args);
+}
+
 NominalType *NominalType::get(NominalTypeDecl *D, Type Parent, const ASTContext &C) {
   assert((isa<ProtocolDecl>(D) || !D->getGenericParams()) &&
          "must be a non-generic type decl");
   assert((!Parent || Parent->is<NominalType>() ||
-          Parent->is<BoundGenericType>() ||
-          Parent->is<UnboundGenericType>()) &&
+          Parent->is<BoundGenericType>()) &&
          "parent must be a nominal type");
 
   switch (D->getKind()) {

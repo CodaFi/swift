@@ -1238,9 +1238,7 @@ namespace {
         // FIXME: We should eliminate this case.
         if (auto *PD = dyn_cast<ParamDecl>(VD)) {
           if (!CS.hasType(PD)) {
-            if (knownType &&
-                (knownType->hasUnboundGenericType() ||
-                 knownType->hasPlaceholder())) {
+            if (knownType && knownType->hasPlaceholder()) {
               knownType = CS.replaceInferableTypesWithTypeVars(knownType,
                                                                locator);
             }
@@ -1293,10 +1291,8 @@ namespace {
     resolveTypeReferenceInExpression(TypeRepr *repr, TypeResolverContext resCtx,
                                      const ConstraintLocatorBuilder &locator) {
       // Introduce type variables for unbound generics.
-      const auto genericOpener = OpenUnboundGenericType(CS, locator);
       const auto placeholderHandler = HandlePlaceholderType(CS, locator);
       const auto result = TypeResolution::forContextual(CS.DC, resCtx,
-                                                        genericOpener,
                                                         placeholderHandler)
               .resolveType(repr);
       if (result->hasError()) {
@@ -1562,7 +1558,6 @@ namespace {
             const auto resolution = TypeResolution::forContextual(
                 CS.DC, options,
                 // Introduce type variables for unbound generics.
-                OpenUnboundGenericType(CS, locator),
                 HandlePlaceholderType(CS, locator));
             const auto result = resolution.resolveType(specializations[i]);
             if (result->hasError())
@@ -3575,7 +3570,7 @@ static bool generateWrappedPropertyTypeConstraints(
 
   auto wrapperAttributes = wrappedVar->getAttachedPropertyWrappers();
   for (unsigned i : indices(wrapperAttributes)) {
-    // FIXME: We should somehow pass an OpenUnboundGenericTypeFn to
+    // FIXME: We should somehow pass an HandlePlaceholderTypeFn to
     // AttachedPropertyWrapperTypeRequest::evaluate to open up unbound
     // generics on the fly.
     Type rawWrapperType = wrappedVar->getAttachedPropertyWrapperType(i);

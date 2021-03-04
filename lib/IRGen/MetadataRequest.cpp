@@ -1048,7 +1048,7 @@ MetadataAccessStrategy irgen::getTypeMetadataAccessStrategy(CanType type) {
     if (nominal->isGenericContext() && !nominal->isObjC()) {
       if (type->isSpecialized())
         return MetadataAccessStrategy::NonUniqueAccessor;
-      assert(type->hasUnboundGenericType());
+      assert(type->hasPlaceholder());
     }
 
     if (requiresForeignTypeMetadata(nominal))
@@ -2223,7 +2223,7 @@ irgen::emitCanonicalSpecializedGenericTypeMetadataAccessFunction(
   assert(nominal);
   assert(isa<ClassDecl>(nominal));
   assert(nominal->isGenericContext());
-  assert(!theType->hasUnboundGenericType());
+  assert(!theType->hasPlaceholder());
 
   auto requirements = GenericTypeRequirements(IGF.IGM, nominal);
   auto substitutions =
@@ -2320,8 +2320,8 @@ static llvm::Function *getAccessFunctionPrototype(IRGenModule &IGM,
   assert(!type->hasArchetype());
   // Type should be bound unless it's type erased.
   assert(type.isTypeErasedGenericClassType()
-           ? !isa<BoundGenericType>(type)
-           : !isa<UnboundGenericType>(type));
+           ? type->hasPlaceholder()
+           : !type->hasPlaceholder());
 
   return IGM.getAddrOfTypeMetadataAccessFunction(type, forDefinition);
 }

@@ -1031,7 +1031,7 @@ void ConstraintSystem::shrink(Expr *expr) {
                     // example:
                     // let foo: [Array<Float>] = [[0], [1], [2]] as [Array]
                     // let foo: [Array<Float>] = [[0], [1], [2]] as [Array<_>]
-                    /*unboundTyOpener*/ nullptr, /*placeholderHandler*/ nullptr)
+                    /*placeholderHandler*/ nullptr)
                     .resolveType(typeRepr);
 
             // Looks like coercion type is invalid, let's skip this sub-tree.

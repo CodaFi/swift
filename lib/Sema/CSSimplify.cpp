@@ -5190,9 +5190,6 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
                         ConstraintKind::Bind, subflags,
                   locator.withPathElement(ConstraintLocator::LValueConversion));
 
-    case TypeKind::UnboundGeneric:
-      llvm_unreachable("Unbound generic type should have been opened");
-
     case TypeKind::BoundGenericClass:
     case TypeKind::BoundGenericEnum:
     case TypeKind::BoundGenericStruct: {
@@ -5756,9 +5753,6 @@ ConstraintSystem::simplifyConstructionConstraint(
   case TypeKind::Protocol:
     // Break out to handle the actual construction below.
     break;
-
-  case TypeKind::UnboundGeneric:
-    llvm_unreachable("Unbound generic type should have been opened");
 
 #define BUILTIN_TYPE(id, parent) case TypeKind::id:
 #define TYPE(id, parent)

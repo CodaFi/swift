@@ -134,7 +134,6 @@ OpaqueResultTypeRequest::evaluate(Evaluator &evaluator,
                             dc, TypeResolverContext::GenericRequirement,
                             // Unbound generics and placeholders are meaningless
                             // in opaque types.
-                            /*unboundTyOpener*/ nullptr,
                             /*placeholderHandler*/ nullptr)
                             .resolveType(repr->getConstraint());
 
@@ -516,13 +515,14 @@ static Type formExtensionInterfaceType(
                                  sameTypeReqs, mustInferRequirements);
   }
 
+  TypeAliasDecl *typealias = nullptr;
+  if (auto typealiasTy = dyn_cast<TypeAliasType>(type.getPointer())) {
+    typealias = typealiasTy->getDecl();
+  }
+
   // Find the nominal type.
   auto nominal = dyn_cast<NominalTypeDecl>(genericDecl);
-  auto typealias = dyn_cast<TypeAliasDecl>(genericDecl);
-  if (!nominal) {
-    Type underlyingType = typealias->getUnderlyingType();
-    nominal = underlyingType->getNominalOrBoundGenericNominal();
-  }
+  assert(nominal);
 
   // Form the result.
   Type resultType;
@@ -541,7 +541,7 @@ static Type formExtensionInterfaceType(
       auto gpType = gp->getDeclaredInterfaceType();
       genericArgs.push_back(gpType);
 
-      if (currentBoundType) {
+      if (currentBoundType && !currentBoundType->hasPlaceholder()) {
         sameTypeReqs.emplace_back(RequirementKind::SameType, gpType,
                                   currentBoundType->getGenericArgs()[gpIndex]);
       }
@@ -668,7 +668,6 @@ GenericSignatureRequest::evaluate(Evaluator &evaluator,
 
       const auto resolution =
           TypeResolution::forStructural(GC, baseOptions,
-                                        /*unboundTyOpener*/ nullptr,
                                         /*placeholderHandler*/ nullptr);
       auto params = func ? func->getParameters() : subscr->getIndices();
       for (auto param : *params) {
@@ -913,13 +912,11 @@ RequirementRequest::evaluate(Evaluator &evaluator,
   switch (stage) {
   case TypeResolutionStage::Structural:
     resolution = TypeResolution::forStructural(owner.dc, options,
-                                               /*unboundTyOpener*/ nullptr,
                                                /*placeholderHandler*/ nullptr);
     break;
 
   case TypeResolutionStage::Interface:
     resolution = TypeResolution::forInterface(owner.dc, options,
-                                              /*unboundTyOpener*/ nullptr,
                                               /*placeholderHandler*/ nullptr);
     break;
 
@@ -968,7 +965,6 @@ Type StructuralTypeRequest::evaluate(Evaluator &evaluator,
 
   const auto type =
       TypeResolution::forStructural(typeAlias, options,
-                                    /*unboundTyOpener*/ nullptr,
                                     /*placeholderHandler*/ nullptr)
           .resolveType(underlyingTypeRepr);
 

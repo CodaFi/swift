@@ -4353,10 +4353,6 @@ public:
     Printer << ")";
   }
 
-  void visitUnboundGenericType(UnboundGenericType *T) {
-    printQualifiedType(T);
-  }
-
   void visitBoundGenericType(BoundGenericType *T) {
     if (Options.SynthesizeSugarOnTypes) {
       auto *NT = T->getDecl();

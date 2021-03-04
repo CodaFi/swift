@@ -2415,7 +2415,7 @@ const TypeInfo *TypeConverter::convertAnyNominalType(CanType type,
   // FIXME: this isn't really inherently good; we might want to use
   // different type implementations for different applications.
   assert(decl->getDeclaredType()->isCanonical());
-  assert(decl->getDeclaredType()->hasUnboundGenericType());
+  assert(decl->getDeclaredType()->hasPlaceholder());
   TypeBase *key = decl->getDeclaredType().getPointer();
   auto &Cache = Types.getCacheFor(/*isDependent*/ false, LoweringMode);
   auto entry = Cache.find(key);

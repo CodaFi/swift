@@ -457,7 +457,7 @@ bool TypeChecker::typeCheckBinding(
   // Assign error types to the pattern and its variables, to prevent it from
   // being referenced by the constraint system.
   if (patternType->hasUnresolvedType() ||
-      patternType->hasUnboundGenericType()) {
+      patternType->hasPlaceholder()) {
     pattern->setType(ErrorType::get(Context));
   }
 
@@ -465,7 +465,7 @@ bool TypeChecker::typeCheckBinding(
     // Don't change the type of a variable that we've been able to
     // compute a type for.
     if (var->hasInterfaceType() &&
-        !var->getType()->hasUnboundGenericType() &&
+        !var->getType()->hasPlaceholder() &&
         !var->isInvalid())
       return;
 

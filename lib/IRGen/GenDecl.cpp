@@ -3864,7 +3864,7 @@ IRGenModule::getAddrOfGenericTypeMetadataAccessFunction(
   IRGen.noteUseOfTypeMetadata(nominal);
 
   auto type = nominal->getDeclaredType()->getCanonicalType();
-  assert(type->hasUnboundGenericType());
+  assert(type->hasPlaceholder());
   LinkEntity entity = LinkEntity::forTypeMetadataAccessFunction(type);
   llvm::Function *&entry = GlobalFuncs[entity];
   if (entry) {
@@ -3902,7 +3902,7 @@ llvm::Function *
 IRGenModule::getAddrOfCanonicalSpecializedGenericTypeMetadataAccessFunction(
     CanType theType, ForDefinition_t forDefinition) {
   assert(shouldPrespecializeGenericMetadata());
-  assert(!theType->hasUnboundGenericType());
+  assert(!theType->hasPlaceholder());
   auto *nominal = theType->getAnyNominal();
   assert(nominal);
   assert(nominal->isGenericContext());
@@ -4155,7 +4155,7 @@ ConstantReference
 IRGenModule::getAddrOfTypeMetadata(CanType concreteType,
                                    SymbolReferenceKind refKind,
                                    TypeMetadataCanonicality canonicality) {
-  assert(!isa<UnboundGenericType>(concreteType));
+  assert(!concreteType->hasPlaceholder());
 
   auto nominal = concreteType->getAnyNominal();
 

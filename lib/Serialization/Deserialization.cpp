@@ -5751,24 +5751,6 @@ public:
     return OptionalType::get(baseTy.get());
   }
 
-  Expected<Type> deserializeUnboundGenericType(ArrayRef<uint64_t> scratch,
-                                               StringRef blobData) {
-    DeclID genericID;
-    TypeID parentID;
-    decls_block::UnboundGenericTypeLayout::readRecord(scratch,
-                                                      genericID, parentID);
-
-    auto nominalOrError = MF.getDeclChecked(genericID);
-    if (!nominalOrError)
-      return nominalOrError.takeError();
-    auto genericDecl = cast<GenericTypeDecl>(nominalOrError.get());
-
-    // FIXME: Check this?
-    auto parentTy = MF.getType(parentID);
-
-    return UnboundGenericType::get(genericDecl, parentTy, ctx);
-  }
-
   Expected<Type> deserializeErrorType(ArrayRef<uint64_t> scratch,
                                       StringRef blobData) {
     TypeID origID;
@@ -5877,7 +5859,6 @@ Expected<Type> TypeDeserializer::getTypeCheckedImpl() {
   CASE(ArraySlice)
   CASE(Dictionary)
   CASE(Optional)
-  CASE(UnboundGeneric)
   CASE(Error)
 
 #undef CASE

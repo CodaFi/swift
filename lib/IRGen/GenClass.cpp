@@ -281,7 +281,7 @@ namespace {
         !superclass ||
         (rootClass->isGenericContext() && !rootClassType.getASTType()
                                                ->getRecursiveProperties()
-                                               .hasUnboundGeneric());
+                                               .hasPlaceholder());
 
       forEachField(IGM, theClass, [&](Field field) {
         // Ignore missing properties here; we should have flagged these

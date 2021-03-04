@@ -1409,18 +1409,6 @@ private:
                                 Flags, MangledName);
     }
 
-    case TypeKind::UnboundGeneric: {
-      auto *UnboundTy = BaseTy->castTo<UnboundGenericType>();
-      auto *Decl = UnboundTy->getDecl();
-      auto L = getFilenameAndLocation(*this, Decl);
-      auto *File = getOrCreateFile(L.filename);
-      unsigned FwdDeclLine = 0;
-      assert(SizeInBits == CI.getTargetInfo().getPointerWidth(0));
-      return createPointerSizedStruct(Scope,
-                                      Decl ? Decl->getNameStr() : MangledName,
-                                      File, FwdDeclLine, Flags, MangledName);
-    }
-
     case TypeKind::BoundGenericStruct: {
       auto *StructTy = BaseTy->castTo<BoundGenericStructType>();
       auto *Decl = StructTy->getDecl();

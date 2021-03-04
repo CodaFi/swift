@@ -594,7 +594,8 @@ namespace {
         SmallString<8> name("SIMD");
         name.append(std::to_string(count));
         if (auto vector = Impl.getNamedSwiftType(Impl.getStdlibModule(), name)) {
-          if (auto unbound = vector->getAs<UnboundGenericType>()) {
+          auto unbound = vector->getAs<BoundGenericType>();
+          if (unbound && unbound->hasPlaceholder()) {
             // All checks passed: the imported element type is SIMDScalar,
             // and a generic SIMDn type exists with n == count. Construct the
             // bound generic type and return that.
@@ -1103,7 +1104,8 @@ namespace {
           }
 
           // If we have an unbound generic bridged type, get the arguments.
-          if (auto unboundType = bridgedType->getAs<UnboundGenericType>()) {
+          auto unboundType = bridgedType->getAs<BoundGenericType>();
+          if (unboundType && unboundType->hasPlaceholder()) {
             auto unboundDecl = unboundType->getDecl();
             auto bridgedSig = unboundDecl->getGenericSignature();
             assert(bridgedSig && "Bridged signature");

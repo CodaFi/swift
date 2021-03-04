@@ -63,18 +63,16 @@ using namespace swift;
 
 TypeResolution
 TypeResolution::forStructural(DeclContext *dc, TypeResolutionOptions options,
-                              OpenUnboundGenericTypeFn unboundTyOpener,
-                              HandlePlaceholderTypeReprFn placeholderHandler) {
+                              HandlePlaceholderTypeFn placeholderHandler) {
   return TypeResolution(dc, TypeResolutionStage::Structural, options,
-                        unboundTyOpener, placeholderHandler);
+                        placeholderHandler);
 }
 
 TypeResolution
 TypeResolution::forInterface(DeclContext *dc, TypeResolutionOptions options,
-                             OpenUnboundGenericTypeFn unboundTyOpener,
-                             HandlePlaceholderTypeReprFn placeholderHandler) {
+                             HandlePlaceholderTypeFn placeholderHandler) {
   TypeResolution result(dc, TypeResolutionStage::Interface, options,
-                        unboundTyOpener, placeholderHandler);
+                        placeholderHandler);
   result.complete.genericSig = dc->getGenericSignatureOfContext();
   result.complete.builder = nullptr;
   return result;
@@ -82,25 +80,23 @@ TypeResolution::forInterface(DeclContext *dc, TypeResolutionOptions options,
 
 TypeResolution
 TypeResolution::forContextual(DeclContext *dc, TypeResolutionOptions options,
-                              OpenUnboundGenericTypeFn unboundTyOpener,
-                              HandlePlaceholderTypeReprFn placeholderHandler) {
+                              HandlePlaceholderTypeFn placeholderHandler) {
   return forContextual(dc, dc->getGenericEnvironmentOfContext(), options,
-                       unboundTyOpener, placeholderHandler);
+                       placeholderHandler);
 }
 
 TypeResolution
 TypeResolution::forContextual(DeclContext *dc, GenericEnvironment *genericEnv,
                               TypeResolutionOptions options,
-                              OpenUnboundGenericTypeFn unboundTyOpener,
-                              HandlePlaceholderTypeReprFn placeholderHandler) {
+                              HandlePlaceholderTypeFn placeholderHandler) {
   TypeResolution result(dc, TypeResolutionStage::Contextual, options,
-                        unboundTyOpener, placeholderHandler);
+                        placeholderHandler);
   result.genericEnv = genericEnv;
   return result;
 }
 
 TypeResolution TypeResolution::withOptions(TypeResolutionOptions opts) const {
-  TypeResolution result(dc, stage, opts, unboundTyOpener, placeholderHandler);
+  TypeResolution result(dc, stage, opts, placeholderHandler);
   result.genericEnv = genericEnv;
   result.complete = complete;
   return result;
@@ -419,6 +415,25 @@ TypeChecker::getDynamicBridgedThroughObjCClass(DeclContext *dc,
   return dc->getASTContext().getBridgedToObjC(dc, valueType);
 }
 
+static TypeAliasType *getUnboundGenericType(TypeAliasDecl *TAD, Type parentTy) {
+  assert(TAD->getGenericParams());
+
+  auto subs = SubstitutionMap::get(TAD->getGenericSignature(),
+                                   [](SubstitutableType *t) -> Type {
+                                      return Type(PlaceholderType::get(t->getASTContext(), cast<GenericTypeParamType>(t)));
+                                    },
+                                    MakeAbstractConformanceForGenericType());
+
+  if (parentTy.isNull()) {
+    auto parentDC = TAD->getDeclContext();
+    if (auto nominal = parentDC->getSelfNominalTypeDecl())
+      parentTy = nominal->getDeclaredType();
+  }
+
+  return TypeAliasType::get(TAD, parentTy, subs,
+                            TAD->getUnderlyingType());
+}
+
 Type TypeChecker::resolveTypeInContext(TypeDecl *typeDecl, DeclContext *foundDC,
                                        TypeResolution resolution,
                                        bool isSpecialized) {
@@ -461,8 +476,9 @@ Type TypeChecker::resolveTypeInContext(TypeDecl *typeDecl, DeclContext *foundDC,
            parentDC = parentDC->getParent()) {
         if (auto *ext = dyn_cast<ExtensionDecl>(parentDC)) {
           auto extendedType = ext->getExtendedType();
-          if (auto *unboundGeneric =
-                  dyn_cast<UnboundGenericType>(extendedType.getPointer())) {
+          auto *unboundGeneric =
+              dyn_cast<BoundGenericType>(extendedType.getPointer());
+          if (unboundGeneric && unboundGeneric->hasPlaceholder()) {
             if (auto *ugAliasDecl =
                     dyn_cast<TypeAliasDecl>(unboundGeneric->getAnyGeneric())) {
               if (ugAliasDecl == aliasDecl) {
@@ -504,7 +520,7 @@ Type TypeChecker::resolveTypeInContext(TypeDecl *typeDecl, DeclContext *foundDC,
     if (auto *aliasDecl = dyn_cast<TypeAliasDecl>(typeDecl)) {
       // For a generic typealias, return the unbound generic form of the type.
       if (aliasDecl->getGenericParams())
-        return aliasDecl->getUnboundGenericType();
+        return getUnboundGenericType(aliasDecl, Type());
 
       // Otherwise, return the appropriate type.
       if (resolution.getStage() == TypeResolutionStage::Structural &&
@@ -626,7 +642,7 @@ bool TypeChecker::checkContextualRequirements(GenericTypeDecl *decl,
                                               Type parentTy,
                                               SourceLoc loc,
                                               DeclContext *dc) {
-  if (!parentTy || parentTy->hasUnboundGenericType() ||
+  if (!parentTy || parentTy->hasPlaceholder() ||
       parentTy->hasTypeVariable()) {
     return true;
   }
@@ -707,15 +723,27 @@ static Type applyGenericArguments(Type type, TypeResolution resolution,
 
   auto *generic = dyn_cast<GenericIdentTypeRepr>(comp);
   if (!generic) {
-    if (auto *const unboundTy = type->getAs<UnboundGenericType>()) {
-      if (!options.is(TypeResolverContext::TypeAliasDecl)) {
+    if (!options.is(TypeResolverContext::TypeAliasDecl)) {
+      auto *unboundTy = type->getAs<BoundGenericType>();
+      auto *typealiasTy = dyn_cast<TypeAliasType>(type.getPointer());
+      if ((unboundTy || typealiasTy) && type->hasPlaceholder()) {
+        GenericTypeDecl *decl = nullptr;
+        Type parent;
+        if (unboundTy) {
+          decl = unboundTy->getDecl();
+          parent = unboundTy->getParent();
+        } else {
+          decl = typealiasTy->getDecl();
+          parent = typealiasTy->getParent();
+        }
+
         // If the resolution object carries an opener, attempt to open
         // the unbound generic type.
         // TODO: We should be able to just open the generic arguments as N
         // different PlaceholderTypes.
-        if (const auto openerFn = resolution.getUnboundTypeOpener())
-          if (const auto boundTy = openerFn(unboundTy))
-            return boundTy;
+        if (const auto openerFn = resolution.getPlaceholderHandler())
+          if (const auto boundTy = openerFn(decl, parent))
+            return boundTy->isNull() ? type : *boundTy;
 
         // Complain if we're allowed to and bail out with an error.
         if (!options.contains(TypeResolutionFlags::SilenceErrors))
@@ -755,7 +783,7 @@ static Type applyGenericArguments(Type type, TypeResolution resolution,
   auto &diags = ctx.Diags;
 
   // We must either have an unbound generic type, or a generic type alias.
-  if (!type->is<UnboundGenericType>()) {
+  if (!type->hasPlaceholder() && !isa<TypeAliasType>(type.getPointer())) {
      if (!options.contains(TypeResolutionFlags::SilenceErrors)) {
       auto diag = diags.diagnose(loc, diag::not_a_generic_type, type);
 
@@ -774,8 +802,16 @@ static Type applyGenericArguments(Type type, TypeResolution resolution,
     return type;
   }
 
-  auto *unboundType = type->castTo<UnboundGenericType>();
-  auto *decl = unboundType->getDecl();
+  GenericTypeDecl *decl = nullptr;
+  Type parent;
+  if (auto Alias = dyn_cast<TypeAliasType>(type.getPointer())) {
+    decl = Alias->getDecl();
+    parent = Alias->getParent();
+  } else {
+    auto *unboundType = type->castTo<BoundGenericType>();
+    decl = unboundType->getDecl();
+    parent = unboundType->getParent();
+  }
 
   // Make sure we have the right number of generic arguments.
   // FIXME: If we have fewer arguments than we need, that might be okay, if
@@ -832,7 +868,7 @@ static Type applyGenericArguments(Type type, TypeResolution resolution,
   }
 
   const auto result = TypeChecker::applyUnboundGenericArguments(
-      decl, unboundType->getParent(), loc, resolution, args);
+      decl, parent, loc, resolution, args);
 
   // Migration hack.
   bool isMutablePointer;
@@ -913,7 +949,7 @@ Type TypeChecker::applyUnboundGenericArguments(GenericTypeDecl *decl,
   // Get the substitutions for outer generic parameters from the parent
   // type.
   if (parentTy) {
-    if (parentTy->hasUnboundGenericType()) {
+    if (parentTy->hasPlaceholder()) {
       // If we're working with a nominal type declaration, just construct
       // a bound generic type without checking the generic arguments.
       if (auto *nominalDecl = dyn_cast<NominalTypeDecl>(decl)) {
@@ -952,7 +988,7 @@ Type TypeChecker::applyUnboundGenericArguments(GenericTypeDecl *decl,
       substTy;
 
     skipRequirementsCheck |=
-        substTy->hasTypeVariable() || substTy->hasUnboundGenericType();
+        substTy->hasTypeVariable() || substTy->hasPlaceholder();
   }
 
   // Check the generic arguments against the requirements of the declaration's
@@ -964,7 +1000,7 @@ Type TypeChecker::applyUnboundGenericArguments(GenericTypeDecl *decl,
       resolution.getStage() > TypeResolutionStage::Structural) {
     auto result = checkGenericArguments(
         dc, loc, noteLoc,
-        UnboundGenericType::get(decl, parentTy, dc->getASTContext()),
+        parentTy,
         genericSig->getGenericParams(), genericSig->getRequirements(),
         QueryTypeSubstitutionMap{subs});
 
@@ -1003,7 +1039,8 @@ Type TypeChecker::applyUnboundGenericArguments(GenericTypeDecl *decl,
 /// Diagnose a use of an unbound generic type.
 static void diagnoseUnboundGenericType(Type ty, SourceLoc loc) {
   auto &ctx = ty->getASTContext();
-  if (auto unbound = ty->getAs<UnboundGenericType>()) {
+  auto unbound = ty->getAs<BoundGenericType>();
+  if (unbound && unbound->hasPlaceholder()) {
     auto *decl = unbound->getDecl();
     {
       InFlightDiagnostic diag = ctx.Diags.diagnose(loc,
@@ -1019,7 +1056,7 @@ static void diagnoseUnboundGenericType(Type ty, SourceLoc loc) {
                    decl->getName());
   } else {
     ty.findIf([&](Type t) -> bool {
-      if (auto unbound = t->getAs<UnboundGenericType>()) {
+      if (auto unbound = t->hasPlaceholder()) {
         ctx.Diags.diagnose(loc,
             diag::generic_type_requires_arguments, t);
         return true;
@@ -1530,7 +1567,7 @@ static Type resolveNestedIdentTypeComponent(TypeResolution resolution,
     // Only the last component of the underlying type of a type alias may
     // be an unbound generic.
     if (options.is(TypeResolverContext::TypeAliasDecl)) {
-      if (parentTy->is<UnboundGenericType>()) {
+      if (parentTy->hasPlaceholder()) {
         if (!options.contains(TypeResolutionFlags::SilenceErrors))
           diagnoseUnboundGenericType(parentTy, parentRange.End);
 
@@ -2028,17 +2065,8 @@ NeverNullType TypeResolver::resolveType(TypeRepr *repr,
   }
 
   case TypeReprKind::Placeholder: {
-    // Fill in the placeholder if there's an appropriate handler.
-    if (const auto handlerFn = resolution.getPlaceholderHandler())
-      if (const auto ty = handlerFn(cast<PlaceholderTypeRepr>(repr)))
-        return ty;
-
-    // Complain if we're allowed to and bail out with an error.
-    if (!options.contains(TypeResolutionFlags::SilenceErrors))
-      getASTContext().Diags.diagnose(repr->getLoc(),
-                                     diag::placeholder_type_not_allowed);
-
-    return ErrorType::get(resolution.getASTContext());
+    auto placeholderRepr = cast<PlaceholderTypeRepr>(repr);
+    return PlaceholderType::get(resolution.getASTContext(), placeholderRepr);
   }
 
   case TypeReprKind::Fixed:
@@ -2901,7 +2929,6 @@ NeverNullType TypeResolver::resolveSILBoxType(SILBoxTypeRepr *repr,
     if (genericParams) {
       fieldResolution = TypeResolution::forContextual(
           getDeclContext(), genericEnv, options,
-          resolution.getUnboundTypeOpener(),
           resolution.getPlaceholderHandler());
     }
 
@@ -2987,7 +3014,6 @@ NeverNullType TypeResolver::resolveSILFunctionType(
     if (componentTypeEnv) {
       functionResolution = TypeResolution::forContextual(
           getDeclContext(), componentTypeEnv, options,
-          resolution.getUnboundTypeOpener(),
           resolution.getPlaceholderHandler());
     }
     
@@ -3052,7 +3078,6 @@ NeverNullType TypeResolver::resolveSILFunctionType(
     if (genericEnv) {
       auto resolveSILParameters =
           TypeResolution::forContextual(getDeclContext(), genericEnv, options,
-                                        resolution.getUnboundTypeOpener(),
                                         resolution.getPlaceholderHandler());
       patternSubs = resolveSubstitutions(repr->getPatternGenericEnvironment(),
                                          repr->getPatternSubstitutions(),
@@ -3815,9 +3840,7 @@ Type TypeChecker::substMemberTypeWithBase(ModuleDecl *module,
 
     if (!isa<ProtocolDecl>(nominalDecl) &&
         nominalDecl->getGenericParams()) {
-      return UnboundGenericType::get(
-          nominalDecl, baseTy,
-          nominalDecl->getASTContext());
+      return BoundGenericType::getWithPlaceholders(nominalDecl, baseTy);
     }
 
     if (baseTy && baseTy->is<ErrorType>())
@@ -3831,9 +3854,7 @@ Type TypeChecker::substMemberTypeWithBase(ModuleDecl *module,
   auto *aliasDecl = dyn_cast<TypeAliasDecl>(member);
   if (aliasDecl) {
     if (aliasDecl->getGenericParams()) {
-      return UnboundGenericType::get(
-          aliasDecl, baseTy,
-          aliasDecl->getASTContext());
+      return getUnboundGenericType(aliasDecl, baseTy);
     }
   }
 
@@ -3844,7 +3865,7 @@ Type TypeChecker::substMemberTypeWithBase(ModuleDecl *module,
   if (baseTy) {
     // Cope with the presence of unbound generic types, which are ill-formed
     // at this point but break the invariants of getContextSubstitutionMap().
-    if (baseTy->hasUnboundGenericType()) {
+    if (baseTy->hasPlaceholder()) {
       if (memberType->hasTypeParameter())
         return ErrorType::get(memberType);
 
@@ -4027,19 +4048,13 @@ Type CustomAttrTypeRequest::evaluate(Evaluator &eval, CustomAttr *attr,
                                      CustomAttrTypeKind typeKind) const {
   const TypeResolutionOptions options(TypeResolverContext::PatternBindingDecl);
 
-  OpenUnboundGenericTypeFn unboundTyOpener = nullptr;
+  HandlePlaceholderTypeFn unboundTyOpener = nullptr;
   // Property delegates allow their type to be an unbound generic.
   if (typeKind == CustomAttrTypeKind::PropertyWrapper) {
-    unboundTyOpener = [](auto unboundTy) {
-      // FIXME: Don't let unbound generic types
-      // escape type resolution. For now, just
-      // return the unbound generic type.
-      return unboundTy;
-    };
+    unboundTyOpener = AllowPlaceholderTypes{};
   }
 
-  const auto type = TypeResolution::forContextual(dc, options, unboundTyOpener,
-                                                  /*placeholderHandler*/nullptr)
+  const auto type = TypeResolution::forContextual(dc, options, unboundTyOpener)
                         .resolveType(attr->getTypeRepr());
 
   // We always require the type to resolve to a nominal type. If the type was

@@ -4509,15 +4509,6 @@ public:
         S.addTypeRef(refTy->getReferentType()));
   }
 
-  void visitUnboundGenericType(const UnboundGenericType *generic) {
-    using namespace decls_block;
-    unsigned abbrCode = S.DeclTypeAbbrCodes[UnboundGenericTypeLayout::Code];
-    UnboundGenericTypeLayout::emitRecord(
-        S.Out, S.ScratchRecord, abbrCode,
-        S.addDeclRef(generic->getDecl(), /*allowTypeAliasXRef*/true),
-        S.addTypeRef(generic->getParent()));
-  }
-
   void visitBoundGenericType(const BoundGenericType *generic) {
     using namespace decls_block;
     SmallVector<TypeID, 8> genericArgIDs;
@@ -4681,7 +4672,6 @@ void Serializer::writeAllDeclsAndTypes() {
   registerDeclTypeAbbr<ArraySliceTypeLayout>();
   registerDeclTypeAbbr<DictionaryTypeLayout>();
   registerDeclTypeAbbr<ReferenceStorageTypeLayout>();
-  registerDeclTypeAbbr<UnboundGenericTypeLayout>();
   registerDeclTypeAbbr<OptionalTypeLayout>();
   registerDeclTypeAbbr<DynamicSelfTypeLayout>();
 

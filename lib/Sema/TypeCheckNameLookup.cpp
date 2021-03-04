@@ -367,7 +367,7 @@ TypeChecker::isUnsupportedMemberTypeAccess(Type type, TypeDecl *typeDecl) {
   // For generic typealiases, the typealias itself has an unbound
   // generic form whose parent type can be another unbound generic
   // type.
-  if (type->hasUnboundGenericType()) {
+  if (type->hasPlaceholder()) {
     // Generic typealiases can be accessed with an unbound generic
     // base, since we represent the member type as an unbound generic
     // type.

@@ -4997,25 +4997,10 @@ public:
   void print(raw_ostream &out, Expr *) const;
 };
 
-/// A function object suitable for use as an \c OpenUnboundGenericTypeFn that
-/// "opens" the given unbound type by introducing fresh type variables for
+/// A function object suitable for use as an \c HandlePlaceholderTypeFn that
+/// "opens" the given placeholder type by introducing fresh type variables for
 /// generic parameters and constructing a bound generic type from these
 /// type variables.
-class OpenUnboundGenericType {
-  ConstraintSystem &cs;
-  const ConstraintLocatorBuilder &locator;
-
-public:
-  explicit OpenUnboundGenericType(ConstraintSystem &cs,
-                                  const ConstraintLocatorBuilder &locator)
-      : cs(cs), locator(locator) {}
-
-  Type operator()(UnboundGenericType *unboundTy) const {
-    return cs.openUnboundGenericType(unboundTy->getDecl(),
-                                     unboundTy->getParent(), locator);
-  }
-};
-
 class HandlePlaceholderType {
   ConstraintSystem &cs;
   ConstraintLocator *locator;
@@ -5027,12 +5012,8 @@ public:
     this->locator = cs.getConstraintLocator(locator);
   }
 
-  Type operator()(PlaceholderTypeRepr *placeholderRepr) const {
-    return cs.createTypeVariable(
-        cs.getConstraintLocator(
-            locator, LocatorPathElt::PlaceholderType(placeholderRepr)),
-        TVO_CanBindToNoEscape | TVO_PrefersSubtypeBinding |
-            TVO_CanBindToHole);
+  llvm::Optional<Type> operator()(GenericTypeDecl *GTD, Type parent) const {
+    return cs.openUnboundGenericType(GTD, parent, locator);
   }
 };
 

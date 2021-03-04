@@ -130,9 +130,6 @@ public:
     /// This type expression contains an UnresolvedType.
     HasUnresolvedType    = 0x08,
 
-    /// Whether this type expression contains an unbound generic type.
-    HasUnboundGeneric    = 0x10,
-
     /// This type expression contains an LValueType other than as a
     /// function input, and can be loaded to convert to an rvalue.
     IsLValue             = 0x20,
@@ -205,10 +202,6 @@ public:
   /// Does a type with these properties structurally contain a
   /// reference to DynamicSelf?
   bool hasDynamicSelf() const { return Bits & HasDynamicSelf; }
-
-  /// Does a type with these properties structurally contain an unbound
-  /// generic type?
-  bool hasUnboundGeneric() const { return Bits & HasUnboundGeneric; }
 
   /// Does a type with these properties structurally contain a placeholder?
   bool hasPlaceholder() const { return Bits & HasPlaceholder; }
@@ -684,11 +677,6 @@ public:
   /// Determine whether the type is dependent on DynamicSelf.
   bool hasDynamicSelfType() const {
     return getRecursiveProperties().hasDynamicSelf();
-  }
-
-  /// Determine whether the type contains an unbound generic type.
-  bool hasUnboundGenericType() const {
-    return getRecursiveProperties().hasUnboundGeneric();
   }
 
   /// Determine whether this type contains an error type.
@@ -2228,36 +2216,6 @@ BEGIN_CAN_TYPE_WRAPPER(TupleType, Type)
   }
 END_CAN_TYPE_WRAPPER(TupleType, Type)
 
-/// UnboundGenericType - Represents a generic type where the type arguments have
-/// not yet been resolved.
-///
-/// This type is on its way out. Try to avoid introducing new usages.
-class UnboundGenericType : public AnyGenericType,
-    public llvm::FoldingSetNode {
-private:
-  UnboundGenericType(GenericTypeDecl *TheDecl, Type Parent, const ASTContext &C,
-                     RecursiveTypeProperties properties)
-    : AnyGenericType(TheDecl, Parent, TypeKind::UnboundGeneric,
-                     (!Parent || Parent->isCanonical()) ? &C : nullptr,
-                     properties | RecursiveTypeProperties::HasUnboundGeneric) {}
-
-public:
-  static UnboundGenericType* get(GenericTypeDecl *TheDecl, Type Parent,
-                                 const ASTContext &C);
-
-  void Profile(llvm::FoldingSetNodeID &ID) {
-    Profile(ID, getDecl(), getParent());
-  }
-  static void Profile(llvm::FoldingSetNodeID &ID, GenericTypeDecl *D,
-                      Type Parent);
-
-  // Implement isa/cast/dyncast/etc.
-  static bool classof(const TypeBase *T) {
-    return T->getKind() == TypeKind::UnboundGeneric;
-  }
-};
-DEFINE_EMPTY_CAN_TYPE_WRAPPER(UnboundGenericType, AnyGenericType)
-
 inline CanType getAsCanType(const Type &type) { return CanType(type); }
 typedef ArrayRefView<Type,CanType,getAsCanType> CanTypeArrayRef;
 
@@ -2279,8 +2237,11 @@ protected:
                    RecursiveTypeProperties properties);
 
 public:
-  static BoundGenericType* get(NominalTypeDecl *TheDecl, Type Parent,
+  static BoundGenericType *get(NominalTypeDecl *TheDecl, Type Parent,
                                ArrayRef<Type> GenericArgs);
+
+  static BoundGenericType *getWithPlaceholders(GenericTypeDecl *TheDecl,
+                                               Type Parent);
 
   /// Retrieve the set of generic arguments provided at this level.
   ArrayRef<Type> getGenericArgs() const {
@@ -5827,7 +5788,7 @@ DEFINE_EMPTY_CAN_TYPE_WRAPPER(TypeVariableType, Type)
 class PlaceholderType : public TypeBase {
   using Originator =
       llvm::PointerUnion<TypeVariableType *, DependentMemberType *, VarDecl *,
-                         ErrorExpr *, PlaceholderTypeRepr *>;
+                         ErrorExpr *, PlaceholderTypeRepr *, GenericTypeParamDecl *, GenericTypeParamType *>;
 
   Originator O;
 

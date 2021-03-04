@@ -3946,14 +3946,6 @@ namespace {
       PrintWithColorRAII(OS, ParenthesisColor) << ')';
     }
 
-    void visitUnboundGenericType(UnboundGenericType *T, StringRef label) {
-      printCommon(label, "unbound_generic_type");
-      printField("decl", T->getDecl()->printRef());
-      if (T->getParent())
-        printRec("parent", T->getParent());
-      PrintWithColorRAII(OS, ParenthesisColor) << ')';
-    }
-
     void visitBoundGenericClassType(BoundGenericClassType *T, StringRef label) {
       printCommon(label, "bound_generic_class_type");
       printField("decl", T->getDecl()->printRef());

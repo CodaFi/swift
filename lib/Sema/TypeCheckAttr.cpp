@@ -2737,7 +2737,6 @@ ResolveTypeEraserTypeRequest::evaluate(Evaluator &evaluator,
                                          // Unbound generics and placeholders
                                          // are not allowed within this
                                          // attribute.
-                                         /*unboundTyOpener*/ nullptr,
                                          /*placeholderHandler*/ nullptr)
         .resolveType(typeEraserRepr);
   } else {
@@ -2920,8 +2919,7 @@ void AttributeChecker::visitImplementsAttr(ImplementsAttr *attr) {
 
   Type T = attr->getProtocolType();
   if (!T && attr->getProtocolTypeRepr()) {
-    T = TypeResolution::forContextual(DC, None, /*unboundTyOpener*/ nullptr,
-                                      /*placeholderHandler*/ nullptr)
+    T = TypeResolution::forContextual(DC, None, /*placeholderHandler*/ nullptr)
             .resolveType(attr->getProtocolTypeRepr());
   }
 
@@ -4724,7 +4722,6 @@ static bool typeCheckDerivativeAttr(ASTContext &Ctx, Decl *D,
         TypeResolutionOptions(None) | TypeResolutionFlags::AllowModule;
     baseType =
         TypeResolution::forContextual(derivative->getDeclContext(), options,
-                                      /*unboundTyOpener*/ nullptr,
                                       /*placeholderHandler*/ nullptr)
             .resolveType(baseTypeRepr);
   }
@@ -5332,7 +5329,6 @@ void AttributeChecker::visitTransposeAttr(TransposeAttr *attr) {
   Type baseType;
   if (attr->getBaseTypeRepr()) {
     baseType = TypeResolution::forContextual(transpose->getDeclContext(), None,
-                                             /*unboundTyOpener*/ nullptr,
                                              /*placeholderHandler*/ nullptr)
                    .resolveType(attr->getBaseTypeRepr());
   }

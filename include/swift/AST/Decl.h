@@ -96,7 +96,6 @@ namespace swift {
   class TypeAliasDecl;
   class Stmt;
   class SubscriptDecl;
-  class UnboundGenericType;
   class ValueDecl;
   class VarDecl;
   class OpaqueReturnTypeRepr;
@@ -2655,14 +2654,6 @@ public:
   /// Returns the interface type of the underlying type if computed, null
   /// otherwise. Should only be used for dumping.
   Type getCachedUnderlyingType() const { return UnderlyingTy.getType(); }
-
-  /// For generic typealiases, return the unbound generic type.
-  ///
-  /// Since UnboundGenericType is on its way out, so is this method. Try to
-  /// avoid introducing new callers if possible. Instead of passing around
-  /// an UnboundGenericType, considering passing around the Decl itself
-  /// instead.
-  UnboundGenericType *getUnboundGenericType() const;
 
   /// Retrieve a sugared interface type containing the structure of the interface
   /// type before any semantic validation has occurred.

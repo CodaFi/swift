@@ -1098,19 +1098,20 @@ public:
     : TypeRepr(TypeReprKind::Placeholder), UnderscoreLoc(loc)
   {}
 
-    SourceLoc getUnderscoreLoc() const { return UnderscoreLoc; }
+public:
+  SourceLoc getUnderscoreLoc() const { return UnderscoreLoc; }
 
-    static bool classof(const TypeRepr *T) {
-      return T->getKind() == TypeReprKind::Placeholder;
-    }
-    static bool classof(const PlaceholderTypeRepr *T) { return true; }
+  static bool classof(const TypeRepr *T) {
+    return T->getKind() == TypeReprKind::Placeholder;
+  }
+  static bool classof(const PlaceholderTypeRepr *T) { return true; }
 
-  private:
-    SourceLoc getStartLocImpl() const { return UnderscoreLoc; }
-    SourceLoc getEndLocImpl() const { return UnderscoreLoc; }
-    SourceLoc getLocImpl() const { return UnderscoreLoc; }
-    void printImpl(ASTPrinter &Printer, const PrintOptions &Opts) const;
-    friend class TypeRepr;
+private:
+  SourceLoc getStartLocImpl() const { return UnderscoreLoc; }
+  SourceLoc getEndLocImpl() const { return UnderscoreLoc; }
+  SourceLoc getLocImpl() const { return UnderscoreLoc; }
+  void printImpl(ASTPrinter &Printer, const PrintOptions &Opts) const;
+  friend class TypeRepr;
 };
 
 /// SIL-only TypeRepr for box types.

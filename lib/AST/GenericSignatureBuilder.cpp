@@ -5262,7 +5262,8 @@ public:
   Action walkToTypePre(Type ty) override {
     // Unbound generic types are the result of recovered-but-invalid code, and
     // don't have enough info to do any useful substitutions.
-    if (ty->is<UnboundGenericType>())
+    auto *BGT = ty->getAs<BoundGenericType>();
+    if (BGT && BGT->hasPlaceholder())
       return Action::Stop;
 
     return Action::Continue;

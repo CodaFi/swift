@@ -174,9 +174,6 @@ namespace {
     Decl *visitType(TypeBase *type) {
       return nullptr;
     }
-    Decl *visitUnboundGenericType(UnboundGenericType *type) {
-      return type->getDecl();
-    }
     Decl *visitBoundGenericType(BoundGenericType *type) {
       return type->getDecl();
     }

@@ -694,8 +694,7 @@ Type ConstraintSystem::openUnboundGenericType(
   // call to BoundGenericType::get().
   return TypeChecker::applyUnboundGenericArguments(
       decl, parentTy, SourceLoc(),
-      TypeResolution::forContextual(DC, None, /*unboundTyOpener*/ nullptr,
-                                    /*placeholderHandler*/ nullptr),
+      TypeResolution::forContextual(DC, None, /*placeholderHandler*/ nullptr),
       arguments);
 }
 
@@ -741,7 +740,7 @@ static void checkNestedTypeConstraints(ConstraintSystem &cs, Type type,
   // Reference to `A.CodingKeys.foo` would point to `A` as an
   // unbound generic type. Conditional requirements would be
   // added when `A` is "opened". Les delay this check until then.
-  if (parentTy->hasUnboundGenericType())
+  if (parentTy->hasPlaceholder())
     return;
 
   auto extension = dyn_cast<ExtensionDecl>(decl->getDeclContext());
@@ -782,27 +781,19 @@ Type ConstraintSystem::replaceInferableTypesWithTypeVars(
     Type type, ConstraintLocatorBuilder locator) {
   assert(!type->getCanonicalType()->hasTypeParameter());
 
-  if (!type->hasUnboundGenericType() && !type->hasPlaceholder())
+  if (!type->hasPlaceholder())
     return type;
 
   type = type.transform([&](Type type) -> Type {
-      if (auto unbound = type->getAs<UnboundGenericType>()) {
-        return openUnboundGenericType(unbound->getDecl(), unbound->getParent(),
-                                      locator);
-      } else if (auto *placeholderTy = type->getAs<PlaceholderType>()) {
-        if (auto *placeholderRepr = placeholderTy->getOriginator()
-                                        .dyn_cast<PlaceholderTypeRepr *>()) {
+    auto unbound = type->getAs<BoundGenericType>();
+    if (unbound && unbound->hasPlaceholder()) {
+      return openUnboundGenericType(unbound->getDecl(),
+                                    unbound->getParent(),
+                                    locator);
+    }
 
-          return createTypeVariable(
-              getConstraintLocator(
-                  locator, LocatorPathElt::PlaceholderType(placeholderRepr)),
-              TVO_CanBindToNoEscape | TVO_PrefersSubtypeBinding |
-                  TVO_CanBindToHole);
-        }
-      }
-
-      return type;
-    });
+    return type;
+  });
 
   if (!type)
     return ErrorType::get(getASTContext());
@@ -811,7 +802,7 @@ Type ConstraintSystem::replaceInferableTypesWithTypeVars(
 }
 
 Type ConstraintSystem::openType(Type type, OpenedTypeMap &replacements) {
-  assert(!type->hasUnboundGenericType());
+  assert(!type->hasPlaceholder());
 
   if (!type->hasTypeParameter())
     return type;
@@ -1284,7 +1275,6 @@ ConstraintSystem::getTypeOfReference(ValueDecl *value,
     auto type = TypeChecker::resolveTypeInContext(
         typeDecl, nullptr,
         TypeResolution::forContextual(useDC, TypeResolverContext::InExpression,
-                                      /*unboundTyOpener*/ nullptr,
                                       /*placeholderHandler*/ nullptr),
         /*isSpecialized=*/false);
 
@@ -1311,7 +1301,7 @@ ConstraintSystem::getTypeOfReference(ValueDecl *value,
       getUnopenedTypeOfReference(varDecl, Type(), useDC, /*base=*/nullptr,
                                  wantInterfaceType);
 
-  assert(!valueType->hasUnboundGenericType() &&
+  assert(!valueType->hasPlaceholder() &&
          !valueType->hasTypeParameter());
   return { valueType, valueType };
 }
@@ -2381,7 +2371,6 @@ FunctionType::ExtInfo ConstraintSystem::closureEffects(ClosureExpr *expr) {
         if (auto castTypeRepr = isp->getCastTypeRepr()) {
           castType = TypeResolution::forContextual(
                          DC, TypeResolverContext::InExpression,
-                         /*unboundTyOpener*/ nullptr,
                          /*placeholderHandler*/ nullptr)
                          .resolveType(castTypeRepr);
         } else {

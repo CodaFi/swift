@@ -51,7 +51,6 @@ bool PotentialBinding::isViableForJoin() const {
          !BindingType->hasUnresolvedType() &&
          !BindingType->hasTypeVariable() &&
          !BindingType->hasPlaceholder() &&
-         !BindingType->hasUnboundGenericType() &&
          !hasDefaultedLiteralProtocol() &&
          !isDefaultableBinding();
 }
@@ -783,7 +782,7 @@ void PotentialBindings::addDefault(Constraint *constraint) {
 
 bool LiteralRequirement::isCoveredBy(Type type, DeclContext *useDC) const {
   auto coversDefaultType = [](Type type, Type defaultType) -> bool {
-    if (!defaultType->hasUnboundGenericType())
+    if (!defaultType->hasPlaceholder())
       return type->isEqual(defaultType);
 
     // For generic literal types, check whether we already have a

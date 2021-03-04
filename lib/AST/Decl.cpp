@@ -3639,8 +3639,13 @@ static Type computeNominalType(NominalTypeDecl *decl, DeclTypeKind kind) {
 
   if (!isa<ProtocolDecl>(decl) && decl->getGenericParams()) {
     switch (kind) {
-    case DeclTypeKind::DeclaredType:
-      return UnboundGenericType::get(decl, ParentTy, ctx);
+    case DeclTypeKind::DeclaredType: {
+      // Note that here, we need to be able to produce a type
+      // before the decl has been validated, so we rely on
+      // the generic parameter list directly instead of looking
+      // at the signature.
+      return BoundGenericType::getWithPlaceholders(decl, ParentTy);
+    }
     case DeclTypeKind::DeclaredInterfaceType: {
       // Note that here, we need to be able to produce a type
       // before the decl has been validated, so we rely on
@@ -3810,19 +3815,6 @@ void TypeAliasDecl::setUnderlyingType(Type underlying) {
   getASTContext().evaluator.cacheOutput(
           UnderlyingTypeRequest{const_cast<TypeAliasDecl *>(this)},
           std::move(underlying));
-}
-
-UnboundGenericType *TypeAliasDecl::getUnboundGenericType() const {
-  assert(getGenericParams());
-
-  Type parentTy;
-  auto parentDC = getDeclContext();
-  if (auto nominal = parentDC->getSelfNominalTypeDecl())
-    parentTy = nominal->getDeclaredType();
-
-  return UnboundGenericType::get(
-      const_cast<TypeAliasDecl *>(this),
-      parentTy, getASTContext());
 }
 
 Type TypeAliasDecl::getStructuralType() const {

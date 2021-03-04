@@ -151,8 +151,6 @@ TypeDecl *DebugTypeInfo::getDecl() const {
     return N->getDecl();
   if (auto *BTA = dyn_cast<TypeAliasType>(Type))
     return BTA->getDecl();
-  if (auto *UBG = dyn_cast<UnboundGenericType>(Type))
-    return UBG->getDecl();
   if (auto *BG = dyn_cast<BoundGenericType>(Type))
     return BG->getDecl();
   return nullptr;

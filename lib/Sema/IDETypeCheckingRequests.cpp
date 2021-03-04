@@ -48,7 +48,7 @@ static bool isExtensionAppliedInternal(const DeclContext *DC, Type BaseTy,
                                        const ExtensionDecl *ED) {
   // We can't do anything if the base type has unbound generic parameters.
   // We can't leak type variables into another constraint system.
-  if (BaseTy->hasTypeVariable() || BaseTy->hasUnboundGenericType() ||
+  if (BaseTy->hasTypeVariable() || BaseTy->hasPlaceholder() ||
       BaseTy->hasUnresolvedType() || BaseTy->hasError())
     return true;
 
@@ -69,7 +69,7 @@ static bool isMemberDeclAppliedInternal(const DeclContext *DC, Type BaseTy,
 
   // We can't leak type variables into another constraint system.
   // We can't do anything if the base type has unbound generic parameters.
-  if (BaseTy->hasTypeVariable() || BaseTy->hasUnboundGenericType()||
+  if (BaseTy->hasTypeVariable() || BaseTy->hasPlaceholder()||
       BaseTy->hasUnresolvedType() || BaseTy->hasError())
     return true;
 

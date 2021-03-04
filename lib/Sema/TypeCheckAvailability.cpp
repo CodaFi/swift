@@ -3326,7 +3326,7 @@ public:
     visitTypeDecl(ty->getDecl());
 
     // If some generic parameters are missing, don't check conformances.
-    if (ty->hasUnboundGenericType())
+    if (ty->hasPlaceholder())
       return Action::Continue;
 
     // When the DeclContext parameter to getContextSubstitutionMap()

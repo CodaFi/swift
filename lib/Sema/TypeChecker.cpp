@@ -384,17 +384,7 @@ Type swift::performTypeResolution(TypeRepr *TyR, ASTContext &Ctx,
 
   const auto resolution = TypeResolution::forContextual(
       DC, GenericEnv, options,
-      [](auto unboundTy) {
-        // FIXME: Don't let unbound generic types escape type resolution.
-        // For now, just return the unbound generic type.
-        return unboundTy;
-      },
-      /*placeholderHandler*/
-      [&](auto placeholderRepr) {
-        // FIXME: Don't let placeholder types escape type resolution.
-        // For now, just return the placeholder type.
-        return PlaceholderType::get(Ctx, placeholderRepr);
-      });
+      /*placeholderHandler*/ AllowPlaceholderTypes{});
 
   Optional<DiagnosticSuppression> suppression;
   if (!ProduceDiagnostics)

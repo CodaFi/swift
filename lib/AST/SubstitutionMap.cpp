@@ -690,7 +690,7 @@ void SubstitutionMap::verify() const {
     }
     assert(conformance.isConcrete() && "Conformance should be concrete");
     
-    if (substType->is<UnboundGenericType>())
+    if (substType->hasPlaceholder())
       continue;
     
     auto conformanceTy = conformance.getConcrete()->getType();

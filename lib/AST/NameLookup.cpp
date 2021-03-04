@@ -1587,7 +1587,7 @@ static void extractDirectlyReferencedNominalTypes(
     return;
   }
 
-  if (auto unbound = type->getAs<UnboundGenericType>()) {
+  if (auto unbound = type->getAs<BoundGenericType>()) {
     if (auto nominal = dyn_cast<NominalTypeDecl>(unbound->getDecl()))
       decls.push_back(nominal);
     return;

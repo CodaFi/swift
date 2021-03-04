@@ -1196,7 +1196,6 @@ void ASTMangler::appendType(Type type, const ValueDecl *forDecl) {
       return appendOperator("p");
     }
 
-    case TypeKind::UnboundGeneric:
     case TypeKind::Class:
     case TypeKind::Enum:
     case TypeKind::Struct:
@@ -1517,10 +1516,7 @@ void ASTMangler::appendBoundGenericArgs(Type type, bool &isFirstArgList) {
     return;
   }
 
-  if (auto *unboundType = dyn_cast<UnboundGenericType>(typePtr)) {
-    if (Type parent = unboundType->getParent())
-      appendBoundGenericArgs(parent->getDesugaredType(), isFirstArgList);
-  } else if (auto *nominalType = dyn_cast<NominalType>(typePtr)) {
+  if (auto *nominalType = dyn_cast<NominalType>(typePtr)) {
     if (Type parent = nominalType->getParent())
       appendBoundGenericArgs(parent->getDesugaredType(), isFirstArgList);
   } else {
@@ -1640,7 +1636,7 @@ void ASTMangler::appendRetroactiveConformances(Type type) {
     module = Mod ? Mod : typeAlias->getDecl()->getModuleContext();
     subMap = typeAlias->getSubstitutionMap();
   } else {
-    if (type->hasUnboundGenericType())
+    if (type->hasPlaceholder())
       return;
 
     auto nominal = type->getAnyNominal();

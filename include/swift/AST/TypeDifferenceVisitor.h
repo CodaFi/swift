@@ -147,12 +147,6 @@ public:
     return asImpl().visit(type1.getReferentType(), type2.getReferentType());
   }
 
-  bool visitUnboundGenericType(CanUnboundGenericType type1,
-                               CanUnboundGenericType type2) {
-    assert(type1->getDecl() != type2->getDecl());
-    return asImpl().visitDifferentTypeStructure(type1, type2);
-  }
-
   bool visitNominalType(CanNominalType type1, CanNominalType type2) {
     assert(type1->getDecl() != type2->getDecl());
     return asImpl().visitDifferentTypeStructure(type1, type2);

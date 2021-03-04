@@ -193,9 +193,6 @@ bool CanType::isReferenceTypeImpl(CanType type, const GenericSignatureImpl *sig,
   case TypeKind::ProtocolComposition:
     return cast<ProtocolCompositionType>(type)->requiresClass();
 
-  case TypeKind::UnboundGeneric:
-    return isa<ClassDecl>(cast<UnboundGenericType>(type)->getDecl());
-
   // Functions have reference semantics, but are not class references.
   case TypeKind::Function:
   case TypeKind::GenericFunction:
@@ -364,7 +361,7 @@ bool TypeBase::isSpecialized() {
   for (;;) {
     if (!t || !t->getAnyNominal())
       return false;
-    if (t->is<BoundGenericType>())
+    if (t->is<BoundGenericType>() && !t->hasPlaceholder())
       return true;
     t = t->getNominalParent();
   }
@@ -1318,13 +1315,6 @@ CanType TypeBase::computeCanonicalType() {
     Result = DynamicSelfType::get(SelfTy, SelfTy->getASTContext());
     break;
   }
-  case TypeKind::UnboundGeneric: {
-    auto unbound = cast<UnboundGenericType>(this);
-    Type parentTy = unbound->getParent()->getCanonicalType();
-    Result = UnboundGenericType::get(unbound->getDecl(), parentTy,
-                                     parentTy->getASTContext());
-    break;
-  }
   case TypeKind::BoundGenericClass:
   case TypeKind::BoundGenericEnum:
   case TypeKind::BoundGenericStruct: {
@@ -1589,7 +1579,7 @@ Type TypeBase::getSuperclass(bool useArchetypes) {
 
   // If there's no superclass, or it is fully concrete, we're done.
   if (!superclassTy || !superclassTy->hasTypeParameter() ||
-      hasUnboundGenericType())
+      hasPlaceholder())
     return superclassTy;
 
   // Gather substitutions from the self type, and apply them to the original
@@ -3635,7 +3625,8 @@ operator()(CanType dependentType, Type conformingReplacementType,
   assert((conformingReplacementType->is<ErrorType>()
           || conformingReplacementType->is<SubstitutableType>()
           || conformingReplacementType->is<DependentMemberType>()
-          || conformingReplacementType->is<TypeVariableType>())
+          || conformingReplacementType->is<TypeVariableType>()
+          || conformingReplacementType->is<PlaceholderType>())
          && "replacement requires looking up a concrete conformance");
   // Lookup conformances for opened existential.
   if (conformingReplacementType->isOpenedExistential()) {
@@ -4464,24 +4455,6 @@ case TypeKind::Id:
                                      Ptr->getASTContext());
   }
 
-  case TypeKind::UnboundGeneric: {
-    auto unbound = cast<UnboundGenericType>(base);
-    Type substParentTy;
-    if (auto parentTy = unbound->getParent()) {
-      substParentTy = parentTy.transformRec(fn);
-      if (!substParentTy)
-        return Type();
-
-      if (substParentTy.getPointer() == parentTy.getPointer())
-        return *this;
-
-      return UnboundGenericType::get(unbound->getDecl(), substParentTy,
-                                     Ptr->getASTContext());
-    }
-
-    return *this;
-  }
-
   case TypeKind::BoundGenericClass:
   case TypeKind::BoundGenericEnum:
   case TypeKind::BoundGenericStruct: {
@@ -4988,10 +4961,6 @@ ReferenceCounting TypeBase::getReferenceCounting() {
   case TypeKind::BoundGenericClass:
     return getClassReferenceCounting(
                                   cast<BoundGenericClassType>(type)->getDecl());
-  case TypeKind::UnboundGeneric:
-    return getClassReferenceCounting(
-                    cast<ClassDecl>(cast<UnboundGenericType>(type)->getDecl()));
-
   case TypeKind::DynamicSelf:
     return cast<DynamicSelfType>(type).getSelfType()
         ->getReferenceCounting();

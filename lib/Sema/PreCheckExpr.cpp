@@ -1434,17 +1434,7 @@ TypeExpr *PreCheckExpression::simplifyNestedTypeExpr(UnresolvedDotExpr *UDE) {
         TypeResolutionOptions(TypeResolverContext::InExpression);
     const auto resolution = TypeResolution::forContextual(
         DC, options,
-        [](auto unboundTy) {
-          // FIXME: Don't let unbound generic types escape type resolution.
-          // For now, just return the unbound generic type.
-          return unboundTy;
-        },
-        /*placeholderHandler*/
-        [&](auto placeholderRepr) {
-          // FIXME: Don't let placeholder types escape type resolution.
-          // For now, just return the placeholder type.
-          return PlaceholderType::get(getASTContext(), placeholderRepr);
-        });
+        /*placeholderHandler*/ AllowPlaceholderTypes{});
     const auto BaseTy = resolution.resolveType(InnerTypeRepr);
 
     if (BaseTy->mayHaveMembers()) {
@@ -1971,17 +1961,7 @@ Expr *PreCheckExpression::simplifyTypeConstructionWithLiteralArg(Expr *E) {
 
     const auto resolution = TypeResolution::forContextual(
         DC, options,
-        [](auto unboundTy) {
-          // FIXME: Don't let unbound generic types escape type resolution.
-          // For now, just return the unbound generic type.
-          return unboundTy;
-        },
-        /*placeholderHandler*/
-        [&](auto placeholderRepr) {
-          // FIXME: Don't let placeholder types escape type resolution.
-          // For now, just return the placeholder type.
-          return PlaceholderType::get(getASTContext(), placeholderRepr);
-        });
+        /*placeholderHandler*/ AllowPlaceholderTypes{});
     const auto result = resolution.resolveType(typeExpr->getTypeRepr());
     if (result->hasError())
       return nullptr;
