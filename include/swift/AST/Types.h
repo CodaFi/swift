@@ -5701,7 +5701,8 @@ class GenericTypeParamType : public SubstitutableType {
 
 public:
   /// Retrieve a generic type parameter at the given depth and index.
-  static GenericTypeParamType *get(unsigned depth, unsigned index,
+  static GenericTypeParamType *get(bool isVariadic,
+                                   unsigned depth, unsigned index,
                                    const ASTContext &ctx);
 
   /// Retrieve the declaration of the generic type parameter, or null if
@@ -5737,6 +5738,8 @@ public:
   /// Here 'T' and 'U' have indexes 0 and 1, respectively. 'V' has index 0.
   unsigned getIndex() const;
 
+  bool isVariadic() const;
+
   // Implement isa/cast/dyncast/etc.
   static bool classof(const TypeBase *T) {
     return T->getKind() == TypeKind::GenericTypeParam;
@@ -5758,9 +5761,11 @@ private:
       ParamOrDepthIndex(depth << 16 | index) { }
 };
 BEGIN_CAN_TYPE_WRAPPER(GenericTypeParamType, SubstitutableType)
-  static CanGenericTypeParamType get(unsigned depth, unsigned index,
+  static CanGenericTypeParamType get(bool isVariadic,
+                                     unsigned depth, unsigned index,
                                      const ASTContext &C) {
-    return CanGenericTypeParamType(GenericTypeParamType::get(depth, index, C));
+    return CanGenericTypeParamType(GenericTypeParamType::get(isVariadic,
+                                                             depth, index, C));
   }
 END_CAN_TYPE_WRAPPER(GenericTypeParamType, SubstitutableType)
 
@@ -5993,6 +5998,27 @@ public:
   }
 };
 DEFINE_EMPTY_CAN_TYPE_WRAPPER(PlaceholderType, Type)
+
+/// The type \c T...
+class TypeSequenceType : public TypeBase {
+  TypeSequenceType(ASTContext &ctx, Type root,
+                   RecursiveTypeProperties properties)
+    : TypeBase(TypeKind::TypeSequence, &ctx, properties) {}
+  Type Root;
+
+public:
+  /// Return a uniqued array slice type with the specified base type.
+  static TypeSequenceType *get(Type rootTy);
+
+  Type getRootType() const {
+    return Root;
+  }
+
+  static bool classof(const TypeBase *T) {
+    return T->getKind() == TypeKind::TypeSequence;
+  }
+};
+DEFINE_EMPTY_CAN_TYPE_WRAPPER(TypeSequenceType, Type)
 
 inline bool TypeBase::isTypeVariableOrMember() {
   if (is<TypeVariableType>())

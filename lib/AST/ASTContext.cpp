@@ -3574,7 +3574,8 @@ GenericFunctionType::GenericFunctionType(
   }
 }
 
-GenericTypeParamType *GenericTypeParamType::get(unsigned depth, unsigned index,
+GenericTypeParamType *GenericTypeParamType::get(bool isVariadic,
+                                                unsigned depth, unsigned index,
                                                 const ASTContext &ctx) {
   auto known = ctx.getImpl().GenericParamTypes.find({ depth, index });
   if (known != ctx.getImpl().GenericParamTypes.end())
@@ -3584,6 +3585,10 @@ GenericTypeParamType *GenericTypeParamType::get(unsigned depth, unsigned index,
                   GenericTypeParamType(depth, index, ctx);
   ctx.getImpl().GenericParamTypes[{depth, index}] = result;
   return result;
+}
+
+bool GenericTypeParamType::isVariadic() const {
+  return false;
 }
 
 TypeArrayView<GenericTypeParamType>
@@ -4227,7 +4232,8 @@ CanOpenedArchetypeType OpenedArchetypeType::get(Type existential,
       ::new (mem) OpenedArchetypeType(ctx, existential,
                                 protos, layoutSuperclass,
                                 layoutConstraint, *knownID);
-  result->InterfaceType = GenericTypeParamType::get(0, 0, ctx);
+  result->InterfaceType = GenericTypeParamType::get(/*variadic*/false,
+                                                    0, 0, ctx);
   
   openedExistentialArchetypes[*knownID] = result;
   return CanOpenedArchetypeType(result);
@@ -4874,7 +4880,8 @@ CanGenericSignature ASTContext::getSingleGenericParameterSignature() const {
   if (auto theSig = getImpl().SingleGenericParameterSignature)
     return theSig;
   
-  auto param = GenericTypeParamType::get(0, 0, *this);
+  auto param = GenericTypeParamType::get(/*variadic*/false,
+                                         0, 0, *this);
   auto sig = GenericSignature::get(param, { });
   auto canonicalSig = CanGenericSignature(sig);
   getImpl().SingleGenericParameterSignature = canonicalSig;
@@ -4903,7 +4910,8 @@ CanGenericSignature ASTContext::getOpenedArchetypeSignature(Type type) {
   if (found != getImpl().ExistentialSignatures.end())
     return found->second;
 
-  auto genericParam = GenericTypeParamType::get(0, 0, *this);
+  auto genericParam = GenericTypeParamType::get(/*variadic*/false,
+                                                0, 0, *this);
   Requirement requirement(RequirementKind::Conformance, genericParam,
                           existential);
   auto genericSig = evaluateOrDefault(
@@ -4988,6 +4996,7 @@ ASTContext::getOverrideGenericSignature(const ValueDecl *base,
     }
 
     return CanGenericTypeParamType::get(
+        /*variadic*/false,
         gp->getDepth() - baseDepth + derivedDepth, gp->getIndex(), *this);
   };
 

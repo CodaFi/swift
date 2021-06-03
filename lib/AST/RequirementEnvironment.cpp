@@ -56,11 +56,13 @@ RequirementEnvironment::RequirementEnvironment(
   auto conformanceToSyntheticTypeFn = [&](SubstitutableType *type) {
     auto *genericParam = cast<GenericTypeParamType>(type);
     if (covariantSelf) {
-      return GenericTypeParamType::get(genericParam->getDepth() + 1,
+      return GenericTypeParamType::get(genericParam->isVariadic(),
+                                       genericParam->getDepth() + 1,
                                        genericParam->getIndex(), ctx);
     }
 
-    return GenericTypeParamType::get(genericParam->getDepth(),
+    return GenericTypeParamType::get(genericParam->isVariadic(),
+                                     genericParam->getDepth(),
                                      genericParam->getIndex(), ctx);
   };
   auto conformanceToSyntheticConformanceFn =
@@ -94,7 +96,8 @@ RequirementEnvironment::RequirementEnvironment(
       // type.
       if (type->isEqual(selfType)) {
         if (covariantSelf)
-          return GenericTypeParamType::get(/*depth=*/0, /*index=*/0, ctx);
+          return GenericTypeParamType::get(/*variadic*/false,
+                                           /*depth=*/0, /*index=*/0, ctx);
         return substConcreteType;
       }
       // Other requirement generic parameters map 1:1 with their depth
@@ -106,7 +109,8 @@ RequirementEnvironment::RequirementEnvironment(
       if (genericParam->getDepth() != 1)
         return Type();
       auto substGenericParam =
-        GenericTypeParamType::get(depth, genericParam->getIndex(), ctx);
+        GenericTypeParamType::get(genericParam->isVariadic(),
+                                  depth, genericParam->getIndex(), ctx);
       return substGenericParam;
     },
     [selfType, substConcreteType, conformance, conformanceDC, &ctx](
@@ -156,7 +160,8 @@ RequirementEnvironment::RequirementEnvironment(
   // If the conforming type is a class, add a class-constrained 'Self'
   // parameter.
   if (covariantSelf) {
-    auto paramTy = GenericTypeParamType::get(/*depth=*/0, /*index=*/0, ctx);
+    auto paramTy = GenericTypeParamType::get(/*variadic=*/false,
+                                             /*depth=*/0, /*index=*/0, ctx);
     genericParamTypes.push_back(paramTy);
   }
 
@@ -172,7 +177,8 @@ RequirementEnvironment::RequirementEnvironment(
   // Next, add requirements.
   SmallVector<Requirement, 2> requirements;
   if (covariantSelf) {
-    auto paramTy = GenericTypeParamType::get(/*depth=*/0, /*index=*/0, ctx);
+    auto paramTy = GenericTypeParamType::get(/*variadic=*/false,
+                                             /*depth=*/0, /*index=*/0, ctx);
     Requirement reqt(RequirementKind::Superclass, paramTy, substConcreteType);
     requirements.push_back(reqt);
   }
@@ -195,7 +201,8 @@ RequirementEnvironment::RequirementEnvironment(
 
     // Create an equivalent generic parameter at the next depth.
     auto substGenericParam =
-      GenericTypeParamType::get(depth, genericParam->getIndex(), ctx);
+      GenericTypeParamType::get(genericParam->isVariadic(),
+                                depth, genericParam->getIndex(), ctx);
 
     genericParamTypes.push_back(substGenericParam);
   }

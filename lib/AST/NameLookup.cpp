@@ -2530,7 +2530,8 @@ GenericParamListRequest::evaluate(Evaluator &evaluator, GenericContext *value) c
     auto &ctx = value->getASTContext();
     auto selfId = ctx.Id_Self;
     auto selfDecl = new (ctx) GenericTypeParamDecl(
-        proto, selfId, SourceLoc(), /*depth=*/0, /*index=*/0);
+        proto, selfId, SourceLoc(), /*variadic=*/false,
+        /*depth=*/0, /*index=*/0);
     auto protoType = proto->getDeclaredInterfaceType();
     TypeLoc selfInherited[1] = { TypeLoc::withoutLoc(protoType) };
     selfDecl->setInherited(ctx.AllocateCopy(selfInherited));

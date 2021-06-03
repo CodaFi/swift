@@ -623,7 +623,7 @@ Type ASTBuilder::createMetatypeType(Type instance,
 
 Type ASTBuilder::createGenericTypeParameterType(unsigned depth,
                                                 unsigned index) {
-  return GenericTypeParamType::get(depth, index, Ctx);
+  return GenericTypeParamType::get(/*variadic*/false, depth, index, Ctx);
 }
 
 Type ASTBuilder::createDependentMemberType(StringRef member,

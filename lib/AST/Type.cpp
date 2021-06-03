@@ -229,6 +229,7 @@ bool CanType::isReferenceTypeImpl(CanType type, const GenericSignatureImpl *sig,
   case TypeKind::BoundGenericEnum:
   case TypeKind::BoundGenericStruct:
   case TypeKind::SILToken:
+  case TypeKind::TypeSequence:
 #define REF_STORAGE(Name, ...) \
   case TypeKind::Name##Storage:
 #include "swift/AST/ReferenceStorage.def"
@@ -1299,6 +1300,7 @@ CanType TypeBase::computeCanonicalType() {
   case TypeKind::Unresolved:
   case TypeKind::TypeVariable:
   case TypeKind::Placeholder:
+  case TypeKind::TypeSequence:
     llvm_unreachable("these types are always canonical");
 
 #define SUGARED_TYPE(id, parent) \
@@ -1352,7 +1354,8 @@ CanType TypeBase::computeCanonicalType() {
 
     assert(gpDecl->getDepth() != GenericTypeParamDecl::InvalidDepth &&
            "parameter hasn't been validated");
-    Result = GenericTypeParamType::get(gpDecl->getDepth(), gpDecl->getIndex(),
+    Result = GenericTypeParamType::get(gpDecl->isVariadic(),
+                                       gpDecl->getDepth(), gpDecl->getIndex(),
                                        gpDecl->getASTContext());
     break;
   }
@@ -4450,6 +4453,7 @@ case TypeKind::Id:
   case TypeKind::Unresolved:
   case TypeKind::TypeVariable:
   case TypeKind::Placeholder:
+  case TypeKind::TypeSequence:
   case TypeKind::GenericTypeParam:
   case TypeKind::SILToken:
   case TypeKind::Module:
@@ -5039,6 +5043,17 @@ case TypeKind::Id:
                                         substMembers,
                                         pc->hasExplicitAnyObject());
   }
+  case TypeKind::TypeSequence: {
+    auto seq = cast<TypeSequenceType>(base);
+    auto rootTy = slice->getRootType().transformRec(fn);
+    if (!rootTy)
+      return Type();
+
+    if (rootTy.getPointer() == seq->getRootType().getPointer())
+      return *this;
+
+    return TypeSequence::get(rootTy);
+  }
   }
   
   llvm_unreachable("Unhandled type in transformation");
@@ -5224,6 +5239,7 @@ ReferenceCounting TypeBase::getReferenceCounting() {
   case TypeKind::InOut:
   case TypeKind::TypeVariable:
   case TypeKind::Placeholder:
+  case TypeKind::TypeSequence:
   case TypeKind::BoundGenericEnum:
   case TypeKind::BoundGenericStruct:
   case TypeKind::SILToken:

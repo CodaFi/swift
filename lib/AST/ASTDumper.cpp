@@ -3695,6 +3695,7 @@ namespace {
       printCommon(label, "generic_type_param_type");
       printField("depth", T->getDepth());
       printField("index", T->getIndex());
+      printField("variadic", T->isVariadic());
       if (auto decl = T->getDecl())
         printField("decl", decl->printRef());
       PrintWithColorRAII(OS, ParenthesisColor) << ')';

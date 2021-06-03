@@ -786,7 +786,7 @@ void Lexer::lexOperatorIdentifier() {
   bool didStart = advanceIfValidStartOfOperator(CurPtr, BufferEnd);
   assert(didStart && "unexpected operator start");
   (void) didStart;
-  
+
   do {
     if (CurPtr != BufferEnd && InSILBody &&
         (*CurPtr == '!' || *CurPtr == '?'))
@@ -888,6 +888,17 @@ void Lexer::lexOperatorIdentifier() {
     case ('*' << 8) | '/': // */
       diagnose(TokStart, diag::lex_unexpected_block_comment_end);
       return formToken(tok::unknown, TokStart);
+    }
+  } else if (CurPtr-TokStart == 4) {
+    // Break an ambiguity with trailing ... and the end of a generic parameter
+    // list as in foo<T...> wherein ...> parses as a contiguous operator.
+    switch ((TokStart[0] << 24) | (TokStart[1] << 16) | (TokStart[2] << 8) | TokStart[3]) {
+    case ('.' << 24) | ('.' << 16) | ('.' << 8) | '>': // ...>
+      CurPtr--;
+      return formToken(tok::ellipsis, TokStart);
+    default:
+      // Else fall through and parse this as an unspaced binary operator.
+      break;
     }
   } else {
     // Verify there is no "*/" in the middle of the identifier token, we reject

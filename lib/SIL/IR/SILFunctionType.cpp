@@ -445,7 +445,8 @@ static CanSILFunctionType getAutoDiffDifferentialType(
           {paramTan->getCanonicalType(), paramConv});
     } else {
       auto gpIndex = substGenericParams.size();
-      auto gpType = CanGenericTypeParamType::get(0, gpIndex, ctx);
+      auto gpType = CanGenericTypeParamType::get(/*variadic*/false,
+                                                 0, gpIndex, ctx);
       substGenericParams.push_back(gpType);
       substReplacements.push_back(paramTanType);
       differentialParams.push_back({gpType, paramConv});
@@ -468,7 +469,8 @@ static CanSILFunctionType getAutoDiffDifferentialType(
             {resultTan->getCanonicalType(), resultConv});
       } else {
         auto gpIndex = substGenericParams.size();
-        auto gpType = CanGenericTypeParamType::get(0, gpIndex, ctx);
+        auto gpType = CanGenericTypeParamType::get(/*variadic*/false,
+                                                   0, gpIndex, ctx);
         substGenericParams.push_back(gpType);
         substReplacements.push_back(resultTanType);
         differentialResults.push_back({gpType, resultConv});
@@ -608,7 +610,8 @@ static CanSILFunctionType getAutoDiffPullbackType(
         pullbackParams.push_back({resultTanType, paramTanConvention});
       } else {
         auto gpIndex = substGenericParams.size();
-        auto gpType = CanGenericTypeParamType::get(0, gpIndex, ctx);
+        auto gpType = CanGenericTypeParamType::get(/*variadic*/false,
+                                                   0, gpIndex, ctx);
         substGenericParams.push_back(gpType);
         substReplacements.push_back(resultTanType);
         pullbackParams.push_back({gpType, paramTanConvention});
@@ -639,7 +642,8 @@ static CanSILFunctionType getAutoDiffPullbackType(
           SILParameterInfo(paramTanType, paramTanConvention));
     } else {
       auto gpIndex = substGenericParams.size();
-      auto gpType = CanGenericTypeParamType::get(0, gpIndex, ctx);
+      auto gpType = CanGenericTypeParamType::get(/*variadic*/false,
+                                                 0, gpIndex, ctx);
       substGenericParams.push_back(gpType);
       substReplacements.push_back(paramTanType);
       pullbackParams.push_back({gpType, paramTanConvention});
@@ -665,7 +669,8 @@ static CanSILFunctionType getAutoDiffPullbackType(
       pullbackResults.push_back({paramTanType, resultTanConvention});
     } else {
       auto gpIndex = substGenericParams.size();
-      auto gpType = CanGenericTypeParamType::get(0, gpIndex, ctx);
+      auto gpType = CanGenericTypeParamType::get(/*variadic*/false,
+                                                 0, gpIndex, ctx);
       substGenericParams.push_back(gpType);
       substReplacements.push_back(paramTanType);
       pullbackResults.push_back({gpType, resultTanConvention});
@@ -1137,7 +1142,8 @@ public:
                           ArchetypeType *upperBound,
                       ArrayRef<ProtocolConformanceRef> substTypeConformances) {
     auto paramIndex = substGenericParams.size();
-    auto param = CanGenericTypeParamType::get(0, paramIndex, TC.Context);
+    auto param = CanGenericTypeParamType::get(/*variadic*/false,
+                                              0, paramIndex, TC.Context);
     
     // Expand the bound type according to the expansion context.
     if (Expansion.shouldLookThroughOpaqueTypeArchetypes()

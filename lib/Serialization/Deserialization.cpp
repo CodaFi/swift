@@ -955,6 +955,7 @@ ModuleFile::getGenericSignatureChecked(serialization::GenericSignatureID ID) {
           createDecl<GenericTypeParamDecl>(getAssociatedModule(),
                                            name,
                                            SourceLoc(),
+                                           /*variadic*/ false,
                                            paramTy->getDepth(),
                                            paramTy->getIndex());
         paramTy = paramDecl->getDeclaredInterfaceType()
@@ -2579,11 +2580,13 @@ public:
                                   StringRef blobData) {
     IdentifierID nameID;
     bool isImplicit;
+    bool isVariadic;
     unsigned depth;
     unsigned index;
 
     decls_block::GenericTypeParamDeclLayout::readRecord(scratch, nameID,
                                                         isImplicit,
+                                                        isVariadic,
                                                         depth,
                                                         index);
 
@@ -2591,7 +2594,7 @@ public:
     // context will reparent them.
     auto *DC = MF.getFile();
     auto genericParam = MF.createDecl<GenericTypeParamDecl>(
-        DC, MF.getIdentifier(nameID), SourceLoc(), depth, index);
+        DC, MF.getIdentifier(nameID), SourceLoc(), isVariadic, depth, index);
     declOrOffset = genericParam;
 
     if (isImplicit)
@@ -5358,7 +5361,8 @@ public:
     if (!sig)
       MF.fatal();
 
-    Type interfaceType = GenericTypeParamType::get(depth, index, ctx);
+    Type interfaceType = GenericTypeParamType::get(/*variadic*/false,
+                                                   depth, index, ctx);
     Type contextType = sig->getGenericEnvironment()
         ->mapTypeIntoContext(interfaceType);
 
@@ -5426,7 +5430,8 @@ public:
       return genericParam->getDeclaredInterfaceType();
     }
 
-    return GenericTypeParamType::get(declIDOrDepth,indexPlusOne-1,ctx);
+    return GenericTypeParamType::get(/*variadic*/false,
+                                     declIDOrDepth,indexPlusOne-1,ctx);
   }
 
   Expected<Type> deserializeProtocolCompositionType(ArrayRef<uint64_t> scratch,

@@ -585,6 +585,7 @@ SubstitutionMap::combineSubstitutionMaps(SubstitutionMap firstSubMap,
         if (gp->getDepth() < firstDepthOrIndex)
           return Type();
         return GenericTypeParamType::get(
+          gp->isVariadic(),
           gp->getDepth() + secondDepthOrIndex - firstDepthOrIndex,
           gp->getIndex(),
           ctx);
@@ -594,6 +595,7 @@ SubstitutionMap::combineSubstitutionMaps(SubstitutionMap firstSubMap,
       if (gp->getIndex() < firstDepthOrIndex)
         return Type();
       return GenericTypeParamType::get(
+        gp->isVariadic(),
         gp->getDepth(),
         gp->getIndex() + secondDepthOrIndex - firstDepthOrIndex,
         ctx);

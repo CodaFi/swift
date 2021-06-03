@@ -1644,6 +1644,7 @@ private:
     case TypeKind::LValue:
     case TypeKind::TypeVariable:
     case TypeKind::Placeholder:
+    case TypeKind::TypeSequence:
     case TypeKind::Module:
     case TypeKind::SILBlockStorage:
     case TypeKind::SILToken:

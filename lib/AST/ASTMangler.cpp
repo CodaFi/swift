@@ -1020,7 +1020,9 @@ void ASTMangler::appendType(Type type, const ValueDecl *forDecl) {
     case TypeKind::TypeVariable:
     case TypeKind::Placeholder:
       llvm_unreachable("mangling type variable");
-
+    case TypeKind::TypeSequence:
+      llvm_unreachable("Cannot mangle type sequence yet");
+      
     case TypeKind::Module:
       llvm_unreachable("Cannot mangle module type yet");
 

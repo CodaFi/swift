@@ -483,11 +483,12 @@ protected:
   SWIFT_INLINE_BITFIELD_EMPTY(TypeDecl, ValueDecl);
   SWIFT_INLINE_BITFIELD_EMPTY(AbstractTypeParamDecl, TypeDecl);
 
-  SWIFT_INLINE_BITFIELD_FULL(GenericTypeParamDecl, AbstractTypeParamDecl, 16+16,
+  SWIFT_INLINE_BITFIELD_FULL(GenericTypeParamDecl, AbstractTypeParamDecl, 16+16+1,
     : NumPadBits,
 
     Depth : 16,
-    Index : 16
+    Index : 16,
+    Variadic : 1
   );
 
   SWIFT_INLINE_BITFIELD_EMPTY(GenericTypeDecl, TypeDecl);
@@ -2858,6 +2859,7 @@ public:
   /// \param name The name of the generic parameter.
   /// \param nameLoc The location of the name.
   GenericTypeParamDecl(DeclContext *dc, Identifier name, SourceLoc nameLoc,
+                       bool isVariadic,
                        unsigned depth, unsigned index);
 
   /// The depth of this generic type parameter, i.e., the number of outer
@@ -2891,6 +2893,8 @@ public:
   ///
   /// Here 'T' and 'U' have indexes 0 and 1, respectively. 'V' has index 0.
   unsigned getIndex() const { return Bits.GenericTypeParamDecl.Index; }
+
+  bool isVariadic() const { return Bits.GenericTypeParamDecl.Variadic; }
 
   SourceLoc getStartLoc() const { return getNameLoc(); }
   SourceRange getSourceRange() const;

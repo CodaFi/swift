@@ -496,8 +496,10 @@ SILGenModule::getKeyPathProjectionCoroutine(bool isReadAccess,
   auto fn = M.lookUpFunction(functionName);
   if (fn) return fn;
 
-  auto rootType = CanGenericTypeParamType::get(0, 0, getASTContext());
-  auto valueType = CanGenericTypeParamType::get(0, 1, getASTContext());
+  auto rootType = CanGenericTypeParamType::get(/*variadic*/false,
+                                               0, 0, getASTContext());
+  auto valueType = CanGenericTypeParamType::get(/*variadic*/false,
+                                                0, 1, getASTContext());
 
   // Build the generic signature <A, B>.
   auto sig = GenericSignature::get({rootType, valueType}, {});

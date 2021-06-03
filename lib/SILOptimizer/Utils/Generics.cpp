@@ -1307,7 +1307,8 @@ public:
 
 GenericTypeParamType *
 FunctionSignaturePartialSpecializer::createGenericParam() {
-  auto GP = GenericTypeParamType::get(0, GPIdx++, Ctx);
+  auto GP = GenericTypeParamType::get(/*variadic*/false,
+                                      0, GPIdx++, Ctx);
   AllGenericParams.push_back(GP);
   return GP;
 }

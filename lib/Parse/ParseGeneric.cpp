@@ -77,6 +77,10 @@ Parser::parseGenericParametersBeforeWhere(SourceLoc LAngleLoc,
       break;
     }
 
+    // Parse optional '...'.
+    SourceLoc ellipsesLoc;
+    consumeIf(tok::ellipsis, ellipsesLoc);
+
     // Parse the ':' followed by a type.
     SmallVector<TypeLoc, 1> Inherited;
     if (Tok.is(tok::colon)) {
@@ -108,6 +112,7 @@ Parser::parseGenericParametersBeforeWhere(SourceLoc LAngleLoc,
     // Semantic analysis fills in the depth when it processes the generic
     // parameter list.
     auto Param = new (Context) GenericTypeParamDecl(CurDeclContext, Name, NameLoc,
+                                                    ellipsesLoc.isValid(),
                                             GenericTypeParamDecl::InvalidDepth,
                                                     GenericParams.size());
     if (!Inherited.empty())

@@ -173,7 +173,8 @@ OpaqueResultTypeRequest::evaluate(Evaluator &evaluator,
                outerGenericSignature->getGenericParams().back()->getDepth() + 1;
   }
   
-  auto returnTypeParam = GenericTypeParamType::get(returnTypeDepth, 0, ctx);
+  auto returnTypeParam = GenericTypeParamType::get(/*variadic*/ false,
+                                                   returnTypeDepth, 0, ctx);
 
   SmallVector<GenericTypeParamType *, 2> genericParamTypes;
   genericParamTypes.push_back(returnTypeParam);

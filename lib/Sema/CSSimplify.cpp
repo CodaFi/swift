@@ -6000,6 +6000,7 @@ ConstraintSystem::simplifyConstructionConstraint(
   case TypeKind::Unresolved:
   case TypeKind::Error:
   case TypeKind::Placeholder:
+  case TypeKind::TypeSequence:
     return SolutionKind::Error;
 
   case TypeKind::GenericFunction:

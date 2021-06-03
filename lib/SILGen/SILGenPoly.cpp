@@ -3041,16 +3041,19 @@ buildThunkSignature(SILGenFunction &SGF,
   // Add the existing generic signature.
   int depth = 0;
   GenericSignature baseGenericSig;
+  bool variadic = false;
   if (inheritGenericSig) {
     if (auto genericSig =
           SGF.F.getLoweredFunctionType()->getInvocationGenericSignature()) {
       baseGenericSig = genericSig;
       depth = genericSig->getGenericParams().back()->getDepth() + 1;
+      variadic = genericSig->getGenericParams().back()->isVariadic();
     }
   }
 
   // Add a new generic parameter to replace the opened existential.
-  auto *newGenericParam = GenericTypeParamType::get(depth, 0, ctx);
+  auto *newGenericParam = GenericTypeParamType::get(variadic,
+                                                    depth, 0, ctx);
   Requirement newRequirement(RequirementKind::Conformance, newGenericParam,
                              openedExistential->getOpenedExistentialType());
 

@@ -482,6 +482,7 @@ computeDesignatedInitOverrideSignature(ASTContext &ctx,
         auto *newParam = new (ctx) GenericTypeParamDecl(classDecl,
                                                         param->getName(),
                                                         SourceLoc(),
+                                                        /*variadic*/ false,
                                                         depth,
                                                         param->getIndex());
         newParams.push_back(newParam);

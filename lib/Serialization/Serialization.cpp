@@ -3287,6 +3287,7 @@ public:
     GenericTypeParamDeclLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
                                 S.addDeclBaseNameRef(genericParam->getName()),
                                 genericParam->isImplicit(),
+                                genericParam->isVariadic(),
                                 genericParam->getDepth(),
                                 genericParam->getIndex());
   }
