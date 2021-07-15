@@ -2728,9 +2728,7 @@ TypeConverter::getConstantGenericSignature(SILDeclRef c) {
 
 GenericEnvironment *
 TypeConverter::getConstantGenericEnvironment(SILDeclRef c) {
-  if (auto sig = getConstantGenericSignature(c))
-    return sig->getGenericEnvironment();
-  return nullptr;
+  return getConstantGenericSignature(c).getGenericEnvironment();
 }
 
 SILType TypeConverter::getSubstitutedStorageType(TypeExpansionContext context,
@@ -3412,7 +3410,7 @@ TypeConverter::getInterfaceBoxTypeForCapture(ValueDecl *captured,
   auto loweredContextType = loweredInterfaceType;
   auto contextBoxTy = boxTy;
   if (signature) {
-    auto env = signature->getGenericEnvironment();
+    auto env = signature.getGenericEnvironment();
     loweredContextType = env->mapTypeIntoContext(loweredContextType)
                             ->getCanonicalType();
     contextBoxTy = cast<SILBoxType>(

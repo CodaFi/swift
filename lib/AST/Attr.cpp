@@ -1796,7 +1796,7 @@ void DifferentiableAttr::setParameterIndices(IndexSubset *paramIndices) {
 GenericEnvironment *DifferentiableAttr::getDerivativeGenericEnvironment(
     AbstractFunctionDecl *original) const {
   if (auto derivativeGenSig = getDerivativeGenericSignature())
-    return derivativeGenSig->getGenericEnvironment();
+    return derivativeGenSig.getGenericEnvironment();
   return original->getGenericEnvironment();
 }
 
