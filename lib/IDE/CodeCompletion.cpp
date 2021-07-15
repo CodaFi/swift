@@ -4774,7 +4774,7 @@ public:
     if (!genericSig)
       return;
 
-    for (auto GPT : genericSig->getGenericParams()) {
+    for (auto GPT : genericSig.getGenericParams()) {
       addGenericTypeParamRef(GPT->getDecl(),
                              DeclVisibilityKind::GenericParameter, {});
     }

@@ -24,7 +24,7 @@
 using namespace swift;
 
 size_t GenericEnvironment::numTrailingObjects(OverloadToken<Type>) const {
-  return Signature->getGenericParams().size();
+  return Signature.getGenericParams().size();
 }
 
 /// Retrieve the array containing the context types associated with the
@@ -32,7 +32,7 @@ size_t GenericEnvironment::numTrailingObjects(OverloadToken<Type>) const {
 /// generic signature.
 MutableArrayRef<Type> GenericEnvironment::getContextTypes() {
   return MutableArrayRef<Type>(getTrailingObjects<Type>(),
-                               Signature->getGenericParams().size());
+                               Signature.getGenericParams().size());
 }
 
 /// Retrieve the array containing the context types associated with the
@@ -40,12 +40,12 @@ MutableArrayRef<Type> GenericEnvironment::getContextTypes() {
 /// generic signature.
 ArrayRef<Type> GenericEnvironment::getContextTypes() const {
   return ArrayRef<Type>(getTrailingObjects<Type>(),
-                        Signature->getGenericParams().size());
+                        Signature.getGenericParams().size());
 }
 
 TypeArrayView<GenericTypeParamType>
 GenericEnvironment::getGenericParams() const {
-  return Signature->getGenericParams();
+  return Signature.getGenericParams();
 }
 
 GenericEnvironment::GenericEnvironment(GenericSignature signature)
@@ -70,7 +70,7 @@ void GenericEnvironment::addMapping(GenericParamKey key,
                                     Type contextType) {
   // Find the index into the parallel arrays of generic parameters and
   // context types.
-  auto genericParams = Signature->getGenericParams();
+  auto genericParams = Signature.getGenericParams();
   unsigned index = key.findIndexIn(genericParams);
   assert(genericParams[index] == key && "Bad generic parameter");
 
@@ -85,7 +85,7 @@ Optional<Type> GenericEnvironment::getMappingIfPresent(
                                                     GenericParamKey key) const {
   // Find the index into the parallel arrays of generic parameters and
   // context types.
-  auto genericParams = Signature->getGenericParams();
+  auto genericParams = Signature.getGenericParams();
   unsigned index = key.findIndexIn(genericParams);
   assert(genericParams[index] == key && "Bad generic parameter");
 
@@ -234,7 +234,7 @@ Type QueryInterfaceTypeSubstitutions::operator()(SubstitutableType *type) const{
   if (auto gp = type->getAs<GenericTypeParamType>()) {
     // Find the index into the parallel arrays of generic parameters and
     // context types.
-    auto genericParams = self->Signature->getGenericParams();
+    auto genericParams = self->Signature.getGenericParams();
     GenericParamKey key(gp);
 
     // Make sure that this generic parameter is from this environment.

@@ -3284,7 +3284,7 @@ static void dumpSubstitutionMapRec(
   }
 
   genericSig->print(out);
-  auto genericParams = genericSig->getGenericParams();
+  auto genericParams = genericSig.getGenericParams();
   auto replacementTypes =
       static_cast<const SubstitutionMap &>(map).getReplacementTypesBuffer();
   for (unsigned i : indices(genericParams)) {
@@ -3313,7 +3313,7 @@ static void dumpSubstitutionMapRec(
     return;
 
   auto conformances = map.getConformances();
-  for (const auto &req : genericSig->getRequirements()) {
+  for (const auto &req : genericSig.getRequirements()) {
     if (req.getKind() != RequirementKind::Conformance)
       continue;
 

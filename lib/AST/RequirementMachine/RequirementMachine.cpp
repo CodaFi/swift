@@ -87,7 +87,7 @@ RewriteSystemBuilder::getConcreteSubstitutionSchema(CanType concreteType,
 void RewriteSystemBuilder::addGenericSignature(CanGenericSignature sig) {
   // Collect all protocols transitively referenced from the generic signature's
   // requirements.
-  Protocols.visitRequirements(sig->getRequirements());
+  Protocols.visitRequirements(sig.getRequirements());
   Protocols.compute();
 
   // Add rewrite rules for each protocol.
@@ -113,7 +113,7 @@ void RewriteSystemBuilder::addGenericSignature(CanGenericSignature sig) {
   }
 
   // Add rewrite rules for all requirements in the top-level signature.
-  for (const auto &req : sig->getRequirements())
+  for (const auto &req : sig.getRequirements())
     addRequirement(req, /*proto=*/nullptr);
 }
 
@@ -858,7 +858,7 @@ RequirementMachine::getConformanceAccessPath(Type type,
   // visit all of the root conformance requirements in our generic signature and
   // add them to the buffer.
   if (Impl->ConformanceAccessPaths.empty()) {
-    for (const auto &req : Impl->Sig->getRequirements()) {
+    for (const auto &req : Impl->Sig.getRequirements()) {
       // We only care about conformance requirements.
       if (req.getKind() != RequirementKind::Conformance)
         continue;
