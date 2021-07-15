@@ -1419,8 +1419,8 @@ public:
       });
     }
 
-    if (subs.getGenericSignature()->getCanonicalSignature() !=
-          fnTy->getInvocationGenericSignature()->getCanonicalSignature()) {
+    if (subs.getGenericSignature().getCanonicalSignature() !=
+          fnTy->getInvocationGenericSignature().getCanonicalSignature()) {
       llvm::dbgs() << "substitution map's generic signature: ";
       subs.getGenericSignature()->print(llvm::dbgs());
       llvm::dbgs() << "\n";

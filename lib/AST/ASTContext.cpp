@@ -4894,7 +4894,7 @@ CanGenericSignature ASTContext::getOpenedArchetypeSignature(Type type) {
   // The opened archetype signature for a protocol type is identical
   // to the protocol's own canonical generic signature.
   if (const auto protoTy = dyn_cast<ProtocolType>(existential)) {
-    return protoTy->getDecl()->getGenericSignature()->getCanonicalSignature();
+    return protoTy->getDecl()->getGenericSignature().getCanonicalSignature();
   }
 
   auto found = getImpl().ExistentialSignatures.find(existential);
@@ -5255,9 +5255,7 @@ AutoDiffDerivativeFunctionIdentifier *AutoDiffDerivativeFunctionIdentifier::get(
   llvm::FoldingSetNodeID id;
   id.AddInteger((unsigned)kind);
   id.AddPointer(parameterIndices);
-  CanGenericSignature derivativeCanGenSig;
-  if (derivativeGenericSignature)
-    derivativeCanGenSig = derivativeGenericSignature->getCanonicalSignature();
+  auto derivativeCanGenSig = derivativeGenericSignature.getCanonicalSignature();
   id.AddPointer(derivativeCanGenSig.getPointer());
 
   void *insertPos;
