@@ -1770,7 +1770,7 @@ static AllocationArena getArena(GenericSignature genericSig) {
   if (!genericSig)
     return AllocationArena::Permanent;
 
-  if (genericSig->hasTypeVariable())
+  if (genericSig.hasTypeVariable())
     return AllocationArena::ConstraintSolver;
 
   return AllocationArena::Permanent;
