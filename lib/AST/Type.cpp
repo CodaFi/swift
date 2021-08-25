@@ -181,6 +181,7 @@ bool CanType::isReferenceTypeImpl(CanType type, const GenericSignatureImpl *sig,
   case TypeKind::OpenedArchetype:
   case TypeKind::NestedArchetype:
   case TypeKind::OpaqueTypeArchetype:
+  case TypeKind::SequenceArchetype:
     return cast<ArchetypeType>(type)->requiresClass();
   case TypeKind::Protocol:
     return cast<ProtocolType>(type)->requiresClass();
@@ -588,6 +589,7 @@ bool TypeBase::hasTypeRepr() const {
 
     case TypeKind::OpenedArchetype:
     case TypeKind::OpaqueTypeArchetype:
+    case TypeKind::SequenceArchetype:
     case TypeKind::GenericFunction:
     case TypeKind::LValue:
       return true;
@@ -4416,6 +4418,7 @@ case TypeKind::Id:
 #include "swift/AST/TypeNodes.def"
   case TypeKind::PrimaryArchetype:
   case TypeKind::OpenedArchetype:
+  case TypeKind::SequenceArchetype:
   case TypeKind::Error:
   case TypeKind::Unresolved:
   case TypeKind::TypeVariable:
@@ -5161,7 +5164,8 @@ ReferenceCounting TypeBase::getReferenceCounting() {
   case TypeKind::PrimaryArchetype:
   case TypeKind::OpenedArchetype:
   case TypeKind::NestedArchetype:
-  case TypeKind::OpaqueTypeArchetype: {
+  case TypeKind::OpaqueTypeArchetype:
+  case TypeKind::SequenceArchetype: {
     auto archetype = cast<ArchetypeType>(type);
     auto layout = archetype->getLayoutConstraint();
     (void)layout;

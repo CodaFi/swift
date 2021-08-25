@@ -5680,6 +5680,42 @@ CanArchetypeType getParent() const {
 }
 END_CAN_TYPE_WRAPPER(NestedArchetypeType, ArchetypeType)
 
+/// An archetype that represents the opened type of a type sequence T... and its
+/// element-wise requirements.
+class SequenceArchetypeType final
+    : public ArchetypeType,
+      private ArchetypeTrailingObjects<SequenceArchetypeType> {
+  friend TrailingObjects;
+  friend ArchetypeType;
+
+  mutable GenericEnvironment *Environment = nullptr;
+
+public:
+  static CanTypeWrapper<SequenceArchetypeType>
+  get(const ASTContext &Ctx, GenericEnvironment *GenericEnv,
+      GenericTypeParamType *InterfaceType,
+      SmallVectorImpl<ProtocolDecl *> &ConformsTo, Type Superclass,
+      LayoutConstraint Layout);
+
+  /// Retrieve the generic environment in which this archetype resides.
+  GenericEnvironment *getGenericEnvironment() const { return Environment; }
+
+  GenericTypeParamType *getInterfaceType() const {
+    return cast<GenericTypeParamType>(InterfaceType.getPointer());
+  }
+
+  static bool classof(const TypeBase *T) {
+    return T->getKind() == TypeKind::SequenceArchetype;
+  }
+
+private:
+  SequenceArchetypeType(const ASTContext &Ctx, GenericEnvironment *GenericEnv,
+                        Type InterfaceType, ArrayRef<ProtocolDecl *> ConformsTo,
+                        Type Superclass, LayoutConstraint Layout);
+};
+BEGIN_CAN_TYPE_WRAPPER(SequenceArchetypeType, ArchetypeType)
+END_CAN_TYPE_WRAPPER(SequenceArchetypeType, ArchetypeType)
+
 template<typename Type>
 const Type *ArchetypeType::getSubclassTrailingObjects() const {
   if (auto contextTy = dyn_cast<PrimaryArchetypeType>(this)) {
@@ -5692,6 +5728,9 @@ const Type *ArchetypeType::getSubclassTrailingObjects() const {
     return openedTy->getTrailingObjects<Type>();
   }
   if (auto childTy = dyn_cast<NestedArchetypeType>(this)) {
+    return childTy->getTrailingObjects<Type>();
+  }
+  if (auto childTy = dyn_cast<SequenceArchetypeType>(this)) {
     return childTy->getTrailingObjects<Type>();
   }
   llvm_unreachable("unhandled ArchetypeType subclass?");
@@ -6344,6 +6383,7 @@ inline bool TypeBase::hasSimpleTypeRepr() const {
       
   case TypeKind::OpaqueTypeArchetype:
   case TypeKind::OpenedArchetype:
+  case TypeKind::SequenceArchetype:
     return false;
 
   case TypeKind::ProtocolComposition: {

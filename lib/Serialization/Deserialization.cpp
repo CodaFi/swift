@@ -5490,6 +5490,28 @@ public:
     return rootTy->getGenericEnvironment()->mapTypeIntoContext(interfaceTy);
   }
 
+  Expected<Type> deserializeSequenceArchetypeType(ArrayRef<uint64_t> scratch,
+                                                  StringRef blobData) {
+    GenericSignatureID sigID;
+    unsigned depth, index;
+
+    decls_block::SequenceArchetypeTypeLayout::readRecord(scratch, sigID, depth,
+                                                         index);
+
+    auto sig = MF.getGenericSignature(sigID);
+    if (!sig)
+      MF.fatal();
+
+    Type interfaceType = GenericTypeParamType::get(depth, index, ctx);
+    Type contextType =
+        sig.getGenericEnvironment()->mapTypeIntoContext(interfaceType);
+
+    if (contextType->hasError())
+      MF.fatal();
+
+    return contextType;
+  }
+
   Expected<Type> deserializeGenericTypeParamType(ArrayRef<uint64_t> scratch,
                                                  StringRef blobData) {
     DeclID declIDOrDepth;
@@ -6026,6 +6048,7 @@ Expected<Type> TypeDeserializer::getTypeCheckedImpl() {
   CASE(OpaqueArchetype)
   CASE(OpenedArchetype)
   CASE(NestedArchetype)
+  CASE(SequenceArchetype)
   CASE(GenericTypeParam)
   CASE(ProtocolComposition)
   CASE(DependentMember)

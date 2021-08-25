@@ -5247,6 +5247,12 @@ public:
     }
   }
 
+  void visitSequenceArchetypeType(SequenceArchetypeType *SAT) {
+    Printer << "(";
+    printArchetypeCommon(SAT, SAT->getInterfaceType()->getDecl());
+    Printer << "...)";
+  }
+
   void visitGenericTypeParamType(GenericTypeParamType *T) {
     if (T->getDecl() == nullptr) {
       // If we have an alternate name for this type, use it.

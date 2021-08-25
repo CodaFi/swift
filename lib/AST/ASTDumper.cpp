@@ -3682,6 +3682,13 @@ namespace {
       PrintWithColorRAII(OS, ParenthesisColor) << ')';
     }
 
+    void visitSequenceArchetypeType(SequenceArchetypeType *SAT,
+                                    StringRef label) {
+      printArchetypeCommon(SAT, "sequence_archetype_type", label);
+      printArchetypeNestedTypes(SAT);
+      PrintWithColorRAII(OS, ParenthesisColor) << ')';
+    }
+
     void visitGenericTypeParamType(GenericTypeParamType *T, StringRef label) {
       printCommon(label, "generic_type_param_type");
       printField("depth", T->getDepth());

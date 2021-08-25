@@ -1324,7 +1324,10 @@ void ASTMangler::appendType(Type type, const ValueDecl *forDecl) {
       appendOperator("Qa");
       return;
     }
-      
+    case TypeKind::SequenceArchetype: {
+      llvm_unreachable("Unimplemented");
+    }
+
     case TypeKind::DynamicSelf: {
       auto dynamicSelf = cast<DynamicSelfType>(tybase);
       if (dynamicSelf->getSelfType()->getAnyNominal()) {

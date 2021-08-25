@@ -4417,6 +4417,20 @@ public:
         S.addDeclRef(dependent->getAssocType()));
   }
 
+  void visitSequenceArchetypeType(const SequenceArchetypeType *archetypeTy) {
+    using namespace decls_block;
+    auto sig = archetypeTy->getGenericEnvironment()->getGenericSignature();
+
+    GenericSignatureID sigID = S.addGenericSignatureRef(sig);
+    auto interfaceType =
+        archetypeTy->getInterfaceType()->castTo<GenericTypeParamType>();
+    // assert(interfaceType->isVariadic());
+    unsigned abbrCode = S.DeclTypeAbbrCodes[SequenceArchetypeTypeLayout::Code];
+    SequenceArchetypeTypeLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
+                                            sigID, interfaceType->getDepth(),
+                                            interfaceType->getIndex());
+  }
+
   void serializeFunctionTypeParams(const AnyFunctionType *fnTy) {
     using namespace decls_block;
     unsigned abbrCode = S.DeclTypeAbbrCodes[FunctionParamLayout::Code];
@@ -4771,6 +4785,7 @@ void Serializer::writeAllDeclsAndTypes() {
   registerDeclTypeAbbr<OpenedArchetypeTypeLayout>();
   registerDeclTypeAbbr<OpaqueArchetypeTypeLayout>();
   registerDeclTypeAbbr<NestedArchetypeTypeLayout>();
+  registerDeclTypeAbbr<SequenceArchetypeTypeLayout>();
   registerDeclTypeAbbr<ProtocolCompositionTypeLayout>();
   registerDeclTypeAbbr<BoundGenericTypeLayout>();
   registerDeclTypeAbbr<GenericFunctionTypeLayout>();
