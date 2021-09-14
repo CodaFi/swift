@@ -4657,7 +4657,7 @@ void SILGenFunction::emitProtocolWitness(AbstractionPattern reqtOrigTy,
                                          SILDeclRef witness,
                                          SubstitutionMap witnessSubs,
                                          IsFreeFunctionWitness_t isFree,
-                                         bool isSelfConformance) {
+                                         ProtocolConformanceKind confKind) {
   // FIXME: Disable checks that the protocol witness carries debug info.
   // Should we carry debug info for witnesses?
   F.setBare(IsBare);
@@ -4671,6 +4671,7 @@ void SILGenFunction::emitProtocolWitness(AbstractionPattern reqtOrigTy,
   FullExpr scope(Cleanups, cleanupLoc);
   FormalEvaluationScope formalEvalScope(*this);
 
+  const bool isSelfConformance = confKind == ProtocolConformanceKind::Self;
   auto witnessKind = getWitnessDispatchKind(witness, isSelfConformance);
   auto thunkTy = F.getLoweredFunctionType();
 

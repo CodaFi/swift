@@ -164,6 +164,7 @@ void CalleeCache::computeWitnessMethodCalleesForWitnessTable(
     // If we can't resolve the witness, conservatively assume it can call
     // anything.
     if (!Requirement.getDecl()->isProtocolRequirement() ||
+        WT.getConformance()->getKind() == ProtocolConformanceKind::Builtin ||
         !WT.getConformance()->hasWitness(Requirement.getDecl())) {
       TheCallees.setInt(true);
       continue;

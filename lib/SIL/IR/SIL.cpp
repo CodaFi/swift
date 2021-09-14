@@ -80,6 +80,10 @@ swift::getLinkageForProtocolConformance(const RootProtocolConformance *C,
   if (isa<ClangModuleUnit>(C->getDeclContext()->getModuleScopeContext()))
     return SILLinkage::Shared;
 
+  // Builin conformances always have shared linkage
+  if (C->getKind() == ProtocolConformanceKind::Builtin)
+    return definition ? SILLinkage::Public : SILLinkage::PublicExternal;
+
   auto typeDecl = C->getType()->getNominalOrBoundGenericNominal();
   AccessLevel access = std::min(C->getProtocol()->getEffectiveAccess(),
                                 typeDecl->getEffectiveAccess());

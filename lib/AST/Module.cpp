@@ -1122,8 +1122,13 @@ static ProtocolConformanceRef getBuiltinFunctionTypeConformance(
 /// appropriate.
 static ProtocolConformanceRef getBuiltinMetaTypeTypeConformance(
     Type type, const AnyMetatypeType *metatypeType, ProtocolDecl *protocol) {
-  // All metatypes are Sendable.
-  if (protocol->isSpecificProtocol(KnownProtocolKind::Sendable)) {
+  // All metatypes are
+  // Sendable - they're singletons
+  // Equatable - by pointer equality
+  // Hashable - by pointer value
+  if (protocol->isSpecificProtocol(KnownProtocolKind::Sendable) ||
+      protocol->isSpecificProtocol(KnownProtocolKind::Equatable) ||
+      protocol->isSpecificProtocol(KnownProtocolKind::Hashable)) {
     ASTContext &ctx = protocol->getASTContext();
     return ProtocolConformanceRef(
         ctx.getBuiltinConformance(type, protocol, GenericSignature(), { },

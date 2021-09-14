@@ -783,9 +783,14 @@ SILFunction *SILGenModule::emitProtocolWitness(
   // archetypes of the witness thunk generic environment.
   auto witnessSubs = witness.getSubstitutions();
 
+  auto conformanceKind =
+      conformance.isConcrete()
+        ? conformance.getConcrete()->getKind()
+        : ProtocolConformanceKind::Normal;
+
   SGF.emitProtocolWitness(AbstractionPattern(reqtOrigTy), reqtSubstTy,
                           requirement, reqtSubMap, witnessRef,
-                          witnessSubs, isFree, /*isSelfConformance*/ false);
+                          witnessSubs, isFree, conformanceKind);
 
   emitLazyConformancesForFunction(f);
   return f;
@@ -856,7 +861,7 @@ static SILFunction *emitSelfConformanceWitness(SILGenModule &SGM,
 
   SGF.emitProtocolWitness(AbstractionPattern(reqtOrigTy), reqtSubstTy,
                           requirement, reqtSubs, requirement,
-                          witnessSubs, isFree, /*isSelfConformance*/ true);
+                          witnessSubs, isFree, conformance->getKind());
 
   SGM.emitLazyConformancesForFunction(f);
 
@@ -923,6 +928,148 @@ public:
 void SILGenModule::emitSelfConformanceWitnessTable(ProtocolDecl *protocol) {
   auto conformance = getASTContext().getSelfConformance(protocol);
   SILGenSelfConformanceWitnessTable(*this, conformance).emit();
+}
+
+namespace {
+
+
+static SILFunction *emitBuiltinConformanceWitness(SILGenModule &SGM,
+                                                  BuiltinProtocolConformance *conformance,
+                                                  SILLinkage linkage,
+                                                  SILDeclRef requirement) {
+  auto requirementInfo =
+      SGM.Types.getConstantInfo(TypeExpansionContext::minimal(), requirement);
+
+  // Work out the lowered function type of the SIL witness thunk.
+  auto reqtOrigTy = cast<GenericFunctionType>(requirementInfo.LoweredType);
+
+  // The transformations we do here don't work for generic requirements.
+  GenericEnvironment *genericEnv = nullptr;
+
+  // A mapping from the requirement's generic signature to the type parameters
+  // of the witness thunk (which is non-generic).
+  auto protocol = conformance->getProtocol();
+  auto openedType = ExistentialMetatypeType::get(SGM.getASTContext().TheAnyType);
+  auto reqtSubs = SubstitutionMap::getProtocolSubstitutions(protocol,
+                                                            openedType,
+                                                            ProtocolConformanceRef(conformance));
+
+  // Form the substitutions for calling the witness.
+  auto witnessSubs = SubstitutionMap::getProtocolSubstitutions(protocol,
+                                          openedType,
+                                          ProtocolConformanceRef(protocol));
+
+  // Substitute to get the formal substituted type of the thunk.
+  auto reqtSubstTy =
+    cast<AnyFunctionType>(reqtOrigTy.subst(reqtSubs)->getCanonicalType());
+
+  // Substitute into the requirement type to get the type of the thunk.
+  auto witnessSILFnType = requirementInfo.SILFnType->substGenericArgs(
+      SGM.M, reqtSubs, TypeExpansionContext::minimal());
+
+  // Mangle the name of the witness thunk.
+  std::string name = [&] {
+    Mangle::ASTMangler mangler;
+    return mangler.mangleWitnessThunk(conformance, requirement.getDecl());
+  }();
+
+  SILGenFunctionBuilder builder(SGM);
+  auto *f = builder.createFunction(
+      linkage, name, witnessSILFnType, genericEnv,
+      SILLocation(requirement.getDecl()), IsNotBare, IsTransparent,
+      IsSerialized, IsNotDynamic, ProfileCounter(), IsThunk,
+      SubclassScope::NotApplicable, InlineDefault);
+
+  f->setDebugScope(new (SGM.M)
+                   SILDebugScope(RegularLocation(requirement.getDecl()), f));
+
+  PrettyStackTraceSILFunction trace("generating protocol witness thunk", f);
+
+  // Create the witness.
+  SILGenFunction SGF(SGM, *f, SGM.SwiftModule);
+  f->setBare(IsBare);
+
+  BuiltinWitnessEmitter::emitBuiltinConformanceBody(SGF, conformance);
+
+  SGM.emitLazyConformancesForFunction(f);
+
+  return f;
+}
+
+/// Emit a witness table for a builtin conformance.
+class SILGenBuiltinConformanceWitnessTable
+       : public SILWitnessVisitor<SILGenBuiltinConformanceWitnessTable> {
+  using super = SILWitnessVisitor<SILGenBuiltinConformanceWitnessTable>;
+
+  SILGenModule &SGM;
+  BuiltinProtocolConformance *conformance;
+  SILLinkage linkage;
+  IsSerialized_t serialized;
+
+  SmallVector<SILWitnessTable::Entry, 8> entries;
+public:
+  SILGenBuiltinConformanceWitnessTable(SILGenModule &SGM,
+                                       BuiltinProtocolConformance *conformance)
+    : SGM(SGM), conformance(conformance),
+      linkage(getLinkageForProtocolConformance(conformance, ForDefinition)),
+      serialized(isConformanceSerialized(conformance)) {
+  }
+
+  void emit() {
+    PrettyStackTraceConformance trace("generating builtin SIL witness table",
+                                      conformance);
+
+    // Add entries for all the requirements.
+    visitProtocolDecl(conformance->getProtocol());
+
+    // Create the witness table.
+    (void) SILWitnessTable::create(SGM.M, linkage, serialized, conformance,
+                                   entries, /*conditional*/ {});
+  }
+
+  void addProtocolConformanceDescriptor() {}
+
+  void addOutOfLineBaseProtocol(ProtocolDecl *protocol) {
+    llvm_unreachable("base protocols not supported in builtin conformance");
+  }
+
+  // These are real semantic restrictions.
+  void addAssociatedConformance(AssociatedConformance conformance) {
+    llvm_unreachable("associated conformances not supported in builtin conformance");
+  }
+  void addAssociatedType(AssociatedType type) {
+    llvm_unreachable("associated types not supported in builtin conformance");
+  }
+  void addPlaceholder(MissingMemberDecl *placeholder) {
+    llvm_unreachable("placeholders not supported in builtin conformance");
+  }
+
+  void addMethod(SILDeclRef requirement) {
+    auto witness = emitBuiltinConformanceWitness(SGM, conformance, linkage,
+                                                 requirement);
+    entries.push_back(SILWitnessTable::MethodWitness{requirement, witness});
+  }
+};
+}
+
+void SILGenModule::emitBuiltinConformanceWitnessTables() {
+  {
+    auto conformance = getASTContext().getBuiltinConformance(ExistentialMetatypeType::get(getASTContext().TheAnyType),
+                                                             getASTContext().getProtocol(KnownProtocolKind::Equatable),
+                                                             {},
+                                                             {},
+                                                             BuiltinConformanceKind::Synthesized);
+    SILGenBuiltinConformanceWitnessTable(*this, conformance).emit();
+  }
+
+  {
+    auto conformance = getASTContext().getBuiltinConformance(ExistentialMetatypeType::get(getASTContext().TheAnyType),
+                                                             getASTContext().getProtocol(KnownProtocolKind::Hashable),
+                                                             {},
+                                                             {},
+                                                             BuiltinConformanceKind::Synthesized);
+    SILGenBuiltinConformanceWitnessTable(*this, conformance).emit();
+  }
 }
 
 namespace {

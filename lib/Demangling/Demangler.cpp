@@ -2080,6 +2080,9 @@ NodePointer Demangler::demangleMetatype() {
                              popProtocol());
     case 't':
       return createWithPoppedType(Node::Kind::FullObjCResilientClassStub);
+    case 'T':
+      return createWithChild(Node::Kind::BuiltinProtocolConformanceDescriptor,
+                             popProtocol());
     case 'u':
       return createWithPoppedType(Node::Kind::MethodLookupFunction);
     case 'U':
@@ -2959,6 +2962,9 @@ NodePointer Demangler::demangleSpecAttributes(Node::Kind SpecKind) {
 
 NodePointer Demangler::demangleWitness() {
   switch (char c = nextChar()) {
+    case 'B':
+      return createWithChild(Node::Kind::BuiltinProtocolConformance,
+                             popProtocol());
     case 'C':
       return createWithChild(Node::Kind::EnumCase,
                              popNode(isEntity));

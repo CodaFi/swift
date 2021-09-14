@@ -1835,10 +1835,15 @@ namespace {
     void addConformingType() {
       // Add a relative reference to the type, with the type reference
       // kind stored in the flags.
-      auto ref = IGM.getTypeEntityReference(
-                   Conformance->getType()->getAnyNominal());
-      B.addRelativeAddress(ref.getValue());
-      Flags = Flags.withTypeReferenceKind(ref.getKind());
+      if (auto *builtin = dyn_cast<BuiltinProtocolConformance>(Conformance)) {
+        B.addInt(IGM.RelativeAddressTy, static_cast<unsigned>(MetadataKind::ExistentialMetatype));
+        Flags = Flags.withTypeReferenceKind(TypeReferenceKind::MetadataKind);
+      } else {
+        auto ref = IGM.getTypeEntityReference(
+                     Conformance->getType()->getAnyNominal());
+        B.addRelativeAddress(ref.getValue());
+        Flags = Flags.withTypeReferenceKind(ref.getKind());
+      }
     }
 
     void addWitnessTable() {

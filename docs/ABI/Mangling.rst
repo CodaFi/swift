@@ -154,6 +154,8 @@ Globals
 
   global ::= protocol 'MS'               // protocol self-conformance descriptor
   global ::= protocol 'WS'               // protocol self-conformance witness table
+  global ::= protocol 'MT'               // protocol builtin-conformance descriptor
+  global ::= protocol 'WB'               // protocol builtin-conformance witness table
   global ::= protocol-conformance 'Mc'   // protocol conformance descriptor
   global ::= protocol-conformance 'WP'   // protocol witness table
   global ::= protocol-conformance 'Wa'   // protocol witness table accessor (HISTORICAL)

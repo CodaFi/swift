@@ -14,6 +14,7 @@ add_swift_host_library(swiftSILGen STATIC
   SILGenBridging.cpp
   SILGenBuilder.cpp
   SILGenBuiltin.cpp
+  SILGenBuiltinConformance.cpp
   SILGenConstructor.cpp
   SILGenConvert.cpp
   SILGenDecl.cpp

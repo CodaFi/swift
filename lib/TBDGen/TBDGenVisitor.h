@@ -126,6 +126,7 @@ class TBDGenVisitor : public ASTVisitor<TBDGenVisitor> {
   void addSymbol(LinkEntity entity);
 
   void addConformances(const IterableDeclContext *IDC);
+  void addBuiltinConformances();
 
   void addDispatchThunk(SILDeclRef declRef);
 

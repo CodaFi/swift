@@ -365,6 +365,9 @@ public:
   /// Emit the self-conformance witness table for a protocol.
   void emitSelfConformanceWitnessTable(ProtocolDecl *protocol);
 
+  /// Emit all builtin witness tables.
+  void emitBuiltinConformanceWitnessTables();
+
   /// Emit the lazy initializer function for a global pattern binding
   /// declaration.
   SILFunction *emitLazyGlobalInitializer(StringRef funcName,

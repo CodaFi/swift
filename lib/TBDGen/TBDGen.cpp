@@ -543,6 +543,41 @@ void TBDGenVisitor::addConformances(const IterableDeclContext *IDC) {
   }
 }
 
+void TBDGenVisitor::addBuiltinConformances() {
+  if (!SwiftModule->isStdlibModule())
+    return;
+
+  auto &ctx = SwiftModule->getASTContext();
+  for (auto kind : { KnownProtocolKind::Equatable, KnownProtocolKind::Hashable }) {
+    auto conformance =
+      ctx.getBuiltinConformance(ExistentialMetatypeType::get(ctx.TheAnyType),
+                                ctx.getProtocol(kind),
+                                {},
+                                {},
+                                BuiltinConformanceKind::Synthesized);
+    if (!conformance) {
+      return;
+    }
+
+    addSymbol(LinkEntity::forProtocolWitnessTable(conformance));
+    addSymbol(LinkEntity::forProtocolConformanceDescriptor(conformance));
+
+
+    for (auto req : conformance->getProtocol()->getMembers()) {
+      auto valueReq = dyn_cast<ValueDecl>(req);
+      if (!valueReq || isa<AssociatedTypeDecl>(valueReq) || valueReq->isInvalid())
+        continue;
+
+      if (!valueReq->isProtocolRequirement())
+        continue;
+
+      Mangle::ASTMangler Mangler;
+      addSymbol(Mangler.mangleWitnessThunk(conformance, valueReq),
+                SymbolSource::forUnknown());
+    }
+  }
+}
+
 void TBDGenVisitor::addAutoDiffLinearMapFunction(AbstractFunctionDecl *original,
                                                  const AutoDiffConfig &config,
                                                  AutoDiffLinearMapKind kind) {
@@ -1142,6 +1177,8 @@ void TBDGenVisitor::addFirstFileSymbols() {
     addSymbol(irgen::encodeForceLoadSymbolName(buf, Opts.ModuleLinkName),
               SymbolSource::forUnknown());
   }
+
+  addBuiltinConformances();
 }
 
 void TBDGenVisitor::addMainIfNecessary(FileUnit *file) {

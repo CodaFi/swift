@@ -169,13 +169,26 @@ IRGenMangler::mangleTypeForReflection(IRGenModule &IGM,
 std::string IRGenMangler::mangleProtocolConformanceDescriptor(
                                  const RootProtocolConformance *conformance) {
   beginMangling();
-  if (isa<NormalProtocolConformance>(conformance)) {
+  switch (conformance->getKind()) {
+  case ProtocolConformanceKind::Normal:
     appendProtocolConformance(conformance);
     appendOperator("Mc");
-  } else {
+    break;
+  case ProtocolConformanceKind::Builtin: {
+    auto protocol = cast<BuiltinProtocolConformance>(conformance)->getProtocol();
+    appendProtocolName(protocol);
+    appendOperator("MT");
+  }
+    break;
+  case ProtocolConformanceKind::Self: {
     auto protocol = cast<SelfProtocolConformance>(conformance)->getProtocol();
     appendProtocolName(protocol);
     appendOperator("MS");
+  }
+    break;
+  case ProtocolConformanceKind::Specialized:
+  case ProtocolConformanceKind::Inherited:
+    llvm_unreachable("specialized and inherited conformances have no mangling");
   }
   return finalize();
 }
@@ -183,13 +196,26 @@ std::string IRGenMangler::mangleProtocolConformanceDescriptor(
 std::string IRGenMangler::mangleProtocolConformanceInstantiationCache(
                                  const RootProtocolConformance *conformance) {
   beginMangling();
-  if (isa<NormalProtocolConformance>(conformance)) {
+  switch (conformance->getKind()) {
+  case ProtocolConformanceKind::Normal:
     appendProtocolConformance(conformance);
     appendOperator("Mc");
-  } else {
+    break;
+  case ProtocolConformanceKind::Builtin: {
+    auto protocol = cast<BuiltinProtocolConformance>(conformance)->getProtocol();
+    appendProtocolName(protocol);
+    appendOperator("MT");
+  }
+    break;
+  case ProtocolConformanceKind::Self: {
     auto protocol = cast<SelfProtocolConformance>(conformance)->getProtocol();
     appendProtocolName(protocol);
     appendOperator("MS");
+  }
+    break;
+  case ProtocolConformanceKind::Specialized:
+  case ProtocolConformanceKind::Inherited:
+    llvm_unreachable("specialized and inherited conformances have no mangling");
   }
   appendOperator("MK");
   return finalize();

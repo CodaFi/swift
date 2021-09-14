@@ -206,14 +206,22 @@ std::string ASTMangler::mangleConstructorVTableThunk(
 
 std::string ASTMangler::mangleWitnessTable(const RootProtocolConformance *C) {
   beginMangling();
-  if (isa<NormalProtocolConformance>(C)) {
+  switch (C->getKind()) {
+  case ProtocolConformanceKind::Normal:
     appendProtocolConformance(C);
     appendOperator("WP");
-  } else if (isa<SelfProtocolConformance>(C)) {
+    break;
+  case ProtocolConformanceKind::Self:
     appendProtocolName(cast<SelfProtocolConformance>(C)->getProtocol());
     appendOperator("WS");
-  } else {
-    llvm_unreachable("mangling unknown conformance kind");
+    break;
+  case ProtocolConformanceKind::Builtin:
+    appendProtocolName(cast<BuiltinProtocolConformance>(C)->getProtocol());
+    appendOperator("WB");
+    break;
+  case ProtocolConformanceKind::Specialized:
+  case ProtocolConformanceKind::Inherited:
+    llvm_unreachable("specialized or inherited conformances have no mangling");
   }
   return finalize();
 }

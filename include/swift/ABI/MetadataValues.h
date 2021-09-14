@@ -395,6 +395,18 @@ enum : unsigned {
   NumGenericMetadataPrivateDataWords = 16,
 };
 
+/// Kinds of type metadata records.
+enum class TypeMetadataRecordKind : unsigned {
+  /// A direct reference to the nominal type descriptor.
+  DirectTypeDescriptor = 0x00,
+  
+  /// An indirect reference to a nominal type descriptor.
+  IndirectTypeDescriptor = 0x01,
+  
+  First_Kind = DirectTypeDescriptor,
+  Last_Kind = IndirectTypeDescriptor,
+};
+
 /// Kinds of type metadata/protocol conformance records.
 enum class TypeReferenceKind : unsigned {
   /// The conformance is for a nominal type referenced directly;
@@ -418,10 +430,14 @@ enum class TypeReferenceKind : unsigned {
   /// unused.
   IndirectObjCClass = 0x03,
 
+  /// The conformance is for a non-nominal type whose metadata kind we recorded;
+  /// getMetadataKind() returns the kind.
+  MetadataKind = 0x04,
+
   // We only reserve three bits for this in the various places we store it.
 
   First_Kind = DirectTypeDescriptor,
-  Last_Kind = IndirectObjCClass,
+  Last_Kind = MetadataKind,
 };
 
 /// Flag that indicates whether an existential type is class-constrained or not.

@@ -2501,8 +2501,19 @@ Remangler::mangleProtocolSelfConformanceWitnessTable(Node *node,
 
 ManglingError Remangler::mangleProtocolWitnessTable(Node *node,
                                                     unsigned depth) {
-  RETURN_IF_ERROR(mangleSingleChildNode(node, depth + 1));
-  Buffer << "WP";
+  return mangleSingleChildNode(node, depth + 1);
+}
+
+ManglingError Remangler::mangleBuiltinProtocolConformanceDescriptor(Node *node,
+                                                           unsigned depth) {
+  RETURN_IF_ERROR(manglePureProtocol(node->getChild(0), depth + 1));
+  Buffer << "MT";
+  return ManglingError::Success;
+}
+
+ManglingError Remangler::mangleBuiltinProtocolConformance(Node *node, unsigned depth) {
+  RETURN_IF_ERROR(manglePureProtocol(node->getChild(0), depth + 1));
+  Buffer << "WB";
   return ManglingError::Success;
 }
 

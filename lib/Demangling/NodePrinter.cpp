@@ -342,6 +342,8 @@ private:
     case Node::Kind::AutoClosureType:
     case Node::Kind::BaseConformanceDescriptor:
     case Node::Kind::BaseWitnessTableAccessor:
+    case Node::Kind::BuiltinProtocolConformance:
+    case Node::Kind::BuiltinProtocolConformanceDescriptor:
     case Node::Kind::ClangType:
     case Node::Kind::ClassMetadataBaseOffset:
     case Node::Kind::CFunctionPointer:
@@ -2876,6 +2878,14 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
       Printer << ")";
       Printer << " suspend resume partial function for ";
     }
+    return nullptr;
+  case Node::Kind::BuiltinProtocolConformance:
+    Printer << "builtin protocol conformance witness table for ";
+    print(Node->getFirstChild(), depth + 1);
+    return nullptr;
+  case Node::Kind::BuiltinProtocolConformanceDescriptor:
+    Printer << "builtin protocol conformance descriptor for ";
+    print(Node->getFirstChild(), depth + 1);
     return nullptr;
   }
 

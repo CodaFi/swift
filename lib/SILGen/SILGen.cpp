@@ -2027,6 +2027,9 @@ public:
       SGM.visit(TD);
     }
 
+    if (SGM.SwiftModule->isStdlibModule())
+      SGM.emitBuiltinConformanceWitnessTables();
+
     // If the source file contains an artificial main, emit the implicit
     // top-level code.
     if (auto *mainDecl = sf->getMainDecl())

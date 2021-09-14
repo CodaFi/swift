@@ -3255,6 +3255,11 @@ void ConformanceChecker::recordTypeWitness(AssociatedTypeDecl *assocType,
 
     auto overriddenRootConformance =
         overriddenConformance.getConcrete()->getRootNormalConformance();
+
+    // If we already have a type witness, do nothing.
+    if (overriddenRootConformance->hasTypeWitness(overridden))
+      continue;
+
     ConformanceChecker(getASTContext(), overriddenRootConformance,
                        GlobalMissingWitnesses)
         .recordTypeWitness(overridden, type, typeDecl);

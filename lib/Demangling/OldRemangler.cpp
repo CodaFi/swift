@@ -835,6 +835,17 @@ ManglingError Remangler::mangleResilientProtocolWitnessTable(Node *node,
   return MANGLING_ERROR(ManglingError::UnsupportedNodeKind, node);
 }
 
+ManglingError Remangler::mangleBuiltinProtocolConformanceDescriptor(Node *node,
+                                                                    unsigned depth) {
+  Buffer << "MT";
+  return mangleProtocol(node->begin()[0], depth + 1);
+}
+
+ManglingError Remangler::mangleBuiltinProtocolConformance(Node *node, unsigned depth) {
+  Buffer << "WB";
+  return mangleSingleChildNode(node, depth + 1); // protocol
+}
+
 ManglingError Remangler::mangleGenericProtocolWitnessTableInstantiationFunction(
     Node *node, unsigned depth) {
   Buffer << "WI";

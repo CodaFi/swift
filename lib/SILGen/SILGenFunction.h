@@ -28,6 +28,8 @@
 
 namespace swift {
 
+enum class ProtocolConformanceKind;
+
 class ParameterList;
 
 namespace Lowering {
@@ -728,7 +730,7 @@ public:
                            SILDeclRef witness,
                            SubstitutionMap witnessSubs,
                            IsFreeFunctionWitness_t isFree,
-                           bool isSelfConformance);
+                           ProtocolConformanceKind confKind);
 
   /// Generates subscript arguments for keypath. This function handles lowering
   /// of all index expressions including default arguments.
@@ -2264,6 +2266,12 @@ public:
     }
     SGF.CurFunctionSection = SavedSection;
   }
+};
+
+class BuiltinWitnessEmitter {
+public:
+  static void emitBuiltinConformanceBody(SILGenFunction &SGF,
+                                         BuiltinProtocolConformance *conformance);
 };
 
 } // end namespace Lowering
