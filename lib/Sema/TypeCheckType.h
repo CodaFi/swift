@@ -289,7 +289,7 @@ using OpenUnboundGenericTypeFn = llvm::function_ref<Type(UnboundGenericType *)>;
 /// function returns a null type, then the unmodified \c PlaceholderType will be
 /// used.
 using HandlePlaceholderTypeReprFn =
-    llvm::function_ref<Type(ASTContext &, PlaceholderTypeRepr *)>;
+    llvm::function_ref<Type(ASTContext &, PlaceholderType *)>;
 
 /// Handles the resolution of types within a given declaration context,
 /// which might involve resolving generic parameters to a particular

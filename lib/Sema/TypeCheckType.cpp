@@ -701,8 +701,9 @@ static Type applyGenericArguments(Type type, TypeResolution resolution,
   auto &diags = ctx.Diags;
 
   // We must either have an unbound generic type, or a generic type alias.
-  if (!type->is<UnboundGenericType>()) {
-     if (!options.contains(TypeResolutionFlags::SilenceErrors)) {
+  if (!type->is<UnboundGenericType>() &&
+      !(type->is<BoundGenericType>() && !type->isSpecialized())) {
+    if (!options.contains(TypeResolutionFlags::SilenceErrors)) {
       auto diag = diags.diagnose(loc, diag::not_a_generic_type, type);
 
       // Don't add fixit on module type; that isn't the right type regardless
@@ -720,8 +721,16 @@ static Type applyGenericArguments(Type type, TypeResolution resolution,
     return type;
   }
 
-  auto *unboundType = type->castTo<UnboundGenericType>();
-  auto *decl = unboundType->getDecl();
+  GenericTypeDecl *decl = nullptr;
+  Type parent;
+  if (auto *BGT = type->getAs<BoundGenericType>()) {
+    decl = BGT->getDecl();
+    parent = BGT->getParent();
+  } else {
+    auto *unboundType = type->castTo<UnboundGenericType>();
+    decl = unboundType->getDecl();
+    parent = unboundType->getParent();
+  }
 
   // Make sure we have the right number of generic arguments.
   // FIXME: If we have fewer arguments than we need, that might be okay, if
@@ -769,8 +778,8 @@ static Type applyGenericArguments(Type type, TypeResolution resolution,
     args.push_back(substTy);
   }
 
-  const auto result = resolution.applyUnboundGenericArguments(
-      decl, unboundType->getParent(), loc, args);
+  const auto result =
+      resolution.applyUnboundGenericArguments(decl, parent, loc, args);
 
   // Migration hack.
   bool isMutablePointer;
@@ -943,8 +952,10 @@ Type TypeResolution::applyUnboundGenericArguments(
 /// Diagnose a use of an unbound generic type.
 static void diagnoseUnboundGenericType(Type ty, SourceLoc loc) {
   auto &ctx = ty->getASTContext();
-  if (auto unbound = ty->getAs<UnboundGenericType>()) {
-    auto *decl = unbound->getDecl();
+  auto unbound = ty->getAs<UnboundGenericType>();
+  auto bound = ty->getAs<BoundGenericType>();
+  if (unbound || (bound && !bound->isSpecialized())) {
+    GenericTypeDecl *decl = unbound ? unbound->getDecl() : bound->getDecl();
     {
       // Compute the string before creating a new diagnostic, since
       // getDefaultGenericArgumentsString() might emit its own
@@ -965,7 +976,10 @@ static void diagnoseUnboundGenericType(Type ty, SourceLoc loc) {
                    decl->getName());
   } else {
     ty.findIf([&](Type t) -> bool {
-      if (auto unbound = t->getAs<UnboundGenericType>()) {
+      auto unbound = t->getAs<UnboundGenericType>();
+      auto bound = t->getAs<BoundGenericType>();
+
+      if (unbound || (bound && !bound->isSpecialized())) {
         ctx.Diags.diagnose(loc,
             diag::generic_type_requires_arguments, t);
         return true;
@@ -1644,7 +1658,8 @@ resolveIdentTypeComponent(TypeResolution resolution,
   auto lastComp = components.back();
   auto options = resolution.getOptions();
 
-  if (result->is<UnboundGenericType>() &&
+  if ((result->is<UnboundGenericType>() ||
+       (result->is<BoundGenericType>() && !result->isSpecialized())) &&
       !isa<GenericIdentTypeRepr>(lastComp) &&
       !resolution.getUnboundTypeOpener() &&
       !options.is(TypeResolverContext::TypeAliasDecl)) {
@@ -1952,10 +1967,8 @@ Type ResolveTypeRequest::evaluate(Evaluator &evaluator,
   if (const auto handlerFn = resolution->getPlaceholderHandler()) {
     result = result.get().transform([&](Type ty) {
       if (auto *oldTy = ty->getAs<PlaceholderType>()) {
-        auto originator = oldTy->getOriginator();
-        if (auto *repr = originator.dyn_cast<PlaceholderTypeRepr *>())
-          if (auto newTy = handlerFn(ctx, repr))
-            return newTy;
+        if (auto newTy = handlerFn(ctx, oldTy))
+          return newTy;
       }
 
       return ty;
@@ -3895,9 +3908,13 @@ Type TypeChecker::substMemberTypeWithBase(ModuleDecl *module,
 
     if (!isa<ProtocolDecl>(nominalDecl) &&
         nominalDecl->getGenericParams()) {
-      return UnboundGenericType::get(
-          nominalDecl, baseTy,
-          nominalDecl->getASTContext());
+      llvm::SmallVector<Type, 4> params;
+      llvm::transform(*nominalDecl->getGenericParams(),
+                      std::back_inserter(params), [](auto *param) -> Type {
+                        return PlaceholderType::get(param->getASTContext(),
+                                                    param);
+                      });
+      return BoundGenericType::get(nominalDecl, baseTy, params);
     }
 
     if (baseTy && baseTy->is<ErrorType>())

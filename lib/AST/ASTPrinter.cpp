@@ -4573,7 +4573,8 @@ public:
       }
     }
     printQualifiedType(T);
-    printGenericArgs(T->getGenericArgs());
+    if (T->isSpecialized())
+      printGenericArgs(T->getGenericArgs());
   }
 
   void visitParentType(Type T) {

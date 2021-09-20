@@ -5622,6 +5622,12 @@ bool MissingGenericArgumentsFailure::diagnoseParameter(
     emitDiagnosticAt(loc, diag::unbound_generic_parameter_cast, GP,
                      NTD ? NTD->getDeclaredType() : castTo);
   } else {
+    // FIXME: Now that we can see generic parameters here from the new
+    // unbound generic types as placeholders work, calls to
+    // TypeBase::getASTContext() can force the generic signature and emit
+    // diagnostics while emitting diagnostics. Canonicalize the parameter
+    // before hand to force this computation before we diagnose things...
+    (void)GP->getCanonicalType();
     emitDiagnosticAt(loc, diag::unbound_generic_parameter, GP);
   }
 

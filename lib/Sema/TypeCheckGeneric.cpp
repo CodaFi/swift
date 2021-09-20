@@ -609,8 +609,10 @@ static Type formExtensionInterfaceType(
       genericArgs.push_back(gpType);
 
       if (currentBoundType) {
-        sameTypeReqs.emplace_back(RequirementKind::SameType, gpType,
-                                  currentBoundType->getGenericArgs()[gpIndex]);
+        auto boundTy = currentBoundType->getGenericArgs()[gpIndex];
+        if (!boundTy->is<PlaceholderType>()) {
+          sameTypeReqs.emplace_back(RequirementKind::SameType, gpType, boundTy);
+        }
       }
     }
 

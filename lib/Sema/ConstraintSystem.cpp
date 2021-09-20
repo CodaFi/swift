@@ -823,6 +823,18 @@ Type ConstraintSystem::replaceInferableTypesWithTypeVars(
               TVO_CanBindToNoEscape | TVO_PrefersSubtypeBinding |
                   TVO_CanBindToHole);
         }
+
+        if (auto *placeholderGP = placeholderTy->getOriginator()
+                                      .dyn_cast<GenericTypeParamDecl *>()) {
+
+          auto gpt = placeholderGP->getDeclaredInterfaceType()
+                         ->castTo<GenericTypeParamType>();
+          return createTypeVariable(
+              getConstraintLocator(locator,
+                                   LocatorPathElt::GenericParameter(gpt)),
+              TVO_CanBindToNoEscape | TVO_PrefersSubtypeBinding |
+                  TVO_CanBindToHole);
+        }
       }
 
       return type;

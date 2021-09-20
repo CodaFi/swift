@@ -1511,8 +1511,10 @@ Pattern *TypeChecker::coercePatternToType(ContextualPattern pattern,
       }
       // Otherwise, if the type is an unbound generic of the context type, use
       // the context type to resolve the parameters.
-      else if (parentTy->hasUnboundGenericType()) {
-        if (parentTy->is<UnboundGenericType>() &&
+      else if (parentTy->hasUnboundGenericType() ||
+               (parentTy->is<BoundGenericType>() && !parentTy->isSpecialized())) {
+        if ((parentTy->is<UnboundGenericType>() ||
+             (parentTy->is<BoundGenericType>() && !parentTy->isSpecialized())) &&
             parentTy->getAnyNominal() == type->getAnyNominal()) {
           enumTy = type;
         } else {

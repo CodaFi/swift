@@ -5209,12 +5209,25 @@ public:
     this->locator = cs.getConstraintLocator(locator);
   }
 
-  Type operator()(ASTContext &ctx, PlaceholderTypeRepr *placeholderRepr) const {
-    return cs.createTypeVariable(
-        cs.getConstraintLocator(
-            locator, LocatorPathElt::PlaceholderType(placeholderRepr)),
-        TVO_CanBindToNoEscape | TVO_PrefersSubtypeBinding |
-            TVO_CanBindToHole);
+  Type operator()(ASTContext &ctx, PlaceholderType *placeholder) const {
+    auto originator = placeholder->getOriginator();
+    if (auto *placeholderRepr = originator.dyn_cast<PlaceholderTypeRepr *>()) {
+      return cs.createTypeVariable(
+          cs.getConstraintLocator(
+              locator, LocatorPathElt::PlaceholderType(placeholderRepr)),
+          TVO_CanBindToNoEscape | TVO_PrefersSubtypeBinding |
+              TVO_CanBindToHole);
+    } else if (auto *GTP = originator.dyn_cast<GenericTypeParamDecl *>()) {
+      auto gpt =
+          GTP->getDeclaredInterfaceType()->castTo<GenericTypeParamType>();
+      return cs.createTypeVariable(
+          cs.getConstraintLocator(locator,
+                                  LocatorPathElt::GenericParameter(gpt)),
+          TVO_CanBindToNoEscape | TVO_PrefersSubtypeBinding |
+              TVO_CanBindToHole);
+    } else {
+      return placeholder;
+    }
   }
 };
 

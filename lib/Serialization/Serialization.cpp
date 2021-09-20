@@ -4637,16 +4637,23 @@ public:
 
   void visitBoundGenericType(const BoundGenericType *generic) {
     using namespace decls_block;
-    SmallVector<TypeID, 8> genericArgIDs;
 
-    for (auto next : generic->getGenericArgs())
-      genericArgIDs.push_back(S.addTypeRef(next));
+    if (!generic->isSpecialized()) {
+      unsigned abbrCode = S.DeclTypeAbbrCodes[UnboundGenericTypeLayout::Code];
+      UnboundGenericTypeLayout::emitRecord(
+          S.Out, S.ScratchRecord, abbrCode,
+          S.addDeclRef(generic->getDecl(), /*allowTypeAliasXRef*/ true),
+          S.addTypeRef(generic->getParent()));
+    } else {
+      SmallVector<TypeID, 8> genericArgIDs;
+      for (auto next : generic->getGenericArgs())
+        genericArgIDs.push_back(S.addTypeRef(next));
 
-    unsigned abbrCode = S.DeclTypeAbbrCodes[BoundGenericTypeLayout::Code];
-    BoundGenericTypeLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
-                                       S.addDeclRef(generic->getDecl()),
-                                       S.addTypeRef(generic->getParent()),
-                                       genericArgIDs);
+      unsigned abbrCode = S.DeclTypeAbbrCodes[BoundGenericTypeLayout::Code];
+      BoundGenericTypeLayout::emitRecord(
+          S.Out, S.ScratchRecord, abbrCode, S.addDeclRef(generic->getDecl()),
+          S.addTypeRef(generic->getParent()), genericArgIDs);
+    }
   }
 };
 
