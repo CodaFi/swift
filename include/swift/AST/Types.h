@@ -5978,7 +5978,8 @@ DEFINE_EMPTY_CAN_TYPE_WRAPPER(TypeVariableType, Type)
 class PlaceholderType : public TypeBase {
   using Originator =
       llvm::PointerUnion<TypeVariableType *, DependentMemberType *, VarDecl *,
-                         ErrorExpr *, PlaceholderTypeRepr *>;
+                         ErrorExpr *, PlaceholderTypeRepr *,
+                         GenericTypeParamDecl *>;
 
   Originator O;
 

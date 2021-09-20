@@ -4451,6 +4451,8 @@ public:
         Printer << "error_expr";
       } else if (auto *DMT = originator.dyn_cast<DependentMemberType *>()) {
         visit(DMT);
+      } else if (originator.is<GenericTypeParamDecl *>()) {
+        Printer << "generic_type_param_decl";
       } else {
         Printer << "placeholder_type_repr";
       }
