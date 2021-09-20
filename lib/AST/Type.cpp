@@ -396,14 +396,15 @@ bool TypeBase::isActorType() {
   return false;
 }
 
-bool TypeBase::isSpecialized() {
+bool TypeBase::isSpecialized() const {
   Type t = getCanonicalType();
 
   for (;;) {
     if (!t || !t->getAnyNominal())
       return false;
-    if (t->is<BoundGenericType>())
-      return true;
+    if (auto *BGT = dyn_cast<BoundGenericType>(t.getPointer()))
+      return !llvm::all_of(BGT->getGenericArgs(),
+                           [](Type t) { return t->is<PlaceholderType>(); });
     t = t->getNominalParent();
   }
 

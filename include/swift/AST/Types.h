@@ -761,7 +761,7 @@ public:
   /// it involves generic types for which generic arguments have been provided.
   /// For example, the types Vector<Int> and Vector<Int>.Element are both
   /// specialized, but the type Vector is not.
-  bool isSpecialized();
+  bool isSpecialized() const;
 
   /// Determine whether this type is a legal, lowered SIL type.
   ///
