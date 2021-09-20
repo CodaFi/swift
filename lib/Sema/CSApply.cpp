@@ -5723,6 +5723,20 @@ ArgumentList *ExprRewriter::coerceCallArguments(
       if (!varargIndices.empty())
         labelLoc = args->getLabelLoc(varargIndices[0]);
 
+//      if (varargIndices.size() == 1 &&
+//          cs.getType(getArg(varargIndices.front()))->is<SequenceArchetypeType>()) {
+//        auto arg = getArg(varargIndices.front());
+//        auto argType = cs.getType(arg);
+//
+//        auto *varargExpansionExpr = new (ctx)
+//            VarargExpansionExpr(arg, /*implicit=*/true, argType);
+//        cs.cacheType(varargExpansionExpr);
+//
+//        newArgs.push_back(varargExpansionExpr);
+//        newParams.push_back(param);
+//        continue;
+//      }
+
       // Convert the arguments.
       for (auto argIdx : varargIndices) {
         auto *arg = args->getExpr(argIdx);
@@ -6688,6 +6702,9 @@ Expr *ExprRewriter::coerceToType(Expr *expr, Type toType,
       finishApply(implicitInit, toType, callLocator, callLocator);
       return implicitInit;
     }
+    case ConversionRestrictionKind::VariadicToTypeSequence: {
+      llvm_unreachable("For tomorrow");
+    }
     }
   }
 
@@ -6733,6 +6750,7 @@ Expr *ExprRewriter::coerceToType(Expr *expr, Type toType,
   case TypeKind::OpenedArchetype:
   case TypeKind::NestedArchetype:
   case TypeKind::OpaqueTypeArchetype:
+  case TypeKind::SequenceArchetype:
     if (!cast<ArchetypeType>(desugaredFromType)->requiresClass())
       break;
     LLVM_FALLTHROUGH;
@@ -7052,6 +7070,7 @@ Expr *ExprRewriter::coerceToType(Expr *expr, Type toType,
   case TypeKind::OpenedArchetype:
   case TypeKind::NestedArchetype:
   case TypeKind::OpaqueTypeArchetype:
+  case TypeKind::SequenceArchetype:
   case TypeKind::GenericTypeParam:
   case TypeKind::DependentMember:
   case TypeKind::Function:
@@ -7486,6 +7505,10 @@ Expr *ExprRewriter::finishApply(ApplyExpr *apply, Type openedType,
                               resultTy);
         cs.setType(replacement, resultTy);
         return replacement;
+      }
+
+      case DeclTypeCheckingSemantics::VariadicMap: {
+        llvm_unreachable("For Tomorrow");
       }
       
       case DeclTypeCheckingSemantics::Normal:

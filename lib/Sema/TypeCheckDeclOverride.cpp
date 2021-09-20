@@ -1525,6 +1525,7 @@ namespace  {
 
     UNINTERESTING_ATTR(WarnUnqualifiedAccess)
     UNINTERESTING_ATTR(DiscardableResult)
+    UNINTERESTING_ATTR(TypeSequence)
 
     UNINTERESTING_ATTR(ObjCMembers)
     UNINTERESTING_ATTR(ObjCRuntimeName)

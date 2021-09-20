@@ -77,6 +77,7 @@ Constraint::Constraint(ConstraintKind Kind, Type First, Type Second,
   case ConstraintKind::OneWayBindParam:
   case ConstraintKind::UnresolvedMemberChainBase:
   case ConstraintKind::PropertyWrapper:
+  case ConstraintKind::OpenedElementTypeOf:
     assert(!First.isNull());
     assert(!Second.isNull());
     break;
@@ -161,6 +162,7 @@ Constraint::Constraint(ConstraintKind Kind, Type First, Type Second, Type Third,
   case ConstraintKind::UnresolvedMemberChainBase:
   case ConstraintKind::PropertyWrapper:
   case ConstraintKind::ClosureBodyElement:
+  case ConstraintKind::OpenedElementTypeOf:
     llvm_unreachable("Wrong constructor");
 
   case ConstraintKind::KeyPath:
@@ -303,6 +305,7 @@ Constraint *Constraint::clone(ConstraintSystem &cs) const {
   case ConstraintKind::DefaultClosureType:
   case ConstraintKind::UnresolvedMemberChainBase:
   case ConstraintKind::PropertyWrapper:
+  case ConstraintKind::OpenedElementTypeOf:
     return create(cs, getKind(), getFirstType(), getSecondType(), getLocator());
 
   case ConstraintKind::ApplicableFunction:
@@ -424,6 +427,9 @@ void Constraint::print(llvm::raw_ostream &Out, SourceManager *sm) const {
     break;
   case ConstraintKind::PropertyWrapper:
     Out << " property wrapper with wrapped value of ";
+    break;
+  case ConstraintKind::OpenedElementTypeOf:
+    Out << " opened element type of ";
     break;
   case ConstraintKind::KeyPath:
       Out << " key path from ";
@@ -610,6 +616,8 @@ StringRef swift::constraints::getName(ConversionRestrictionKind kind) {
     return "[CGFloat-to-Double]";
   case ConversionRestrictionKind::DoubleToCGFloat:
     return "[Double-to-CGFloat]";
+  case ConversionRestrictionKind::VariadicToTypeSequence:
+    return "[Variadic-to-@_typeSequence]";
   }
   llvm_unreachable("bad conversion restriction kind");
 }
@@ -663,6 +671,7 @@ gatherReferencedTypeVars(Constraint *constraint,
   case ConstraintKind::DefaultClosureType:
   case ConstraintKind::UnresolvedMemberChainBase:
   case ConstraintKind::PropertyWrapper:
+  case ConstraintKind::OpenedElementTypeOf:
     constraint->getFirstType()->getTypeVariables(typeVars);
     constraint->getSecondType()->getTypeVariables(typeVars);
     break;

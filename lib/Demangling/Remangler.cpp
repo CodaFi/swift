@@ -416,16 +416,30 @@ bool Remangler::mangleStandardSubstitution(Node *node) {
 void Remangler::mangleDependentGenericParamIndex(Node *node,
                                                  const char *nonZeroPrefix,
                                                  char zeroOp) {
-  auto paramDepth = node->getChild(0)->getIndex();
-  auto index = node->getChild(1)->getIndex();
-
+  bool variadic = false;
+  unsigned paramDepth, index;
+  if (node->getNumChildren() > 2) {
+    variadic = node->getChild(0)->getKind() == Node::Kind::VariadicMarker;
+    paramDepth = node->getChild(1)->getIndex();
+    index = node->getChild(2)->getIndex();
+  } else {
+    paramDepth = node->getChild(0)->getIndex();
+    index = node->getChild(1)->getIndex();
+  }
   if (paramDepth != 0) {
-    Buffer << nonZeroPrefix << 'd';
+    Buffer << nonZeroPrefix;
+    if (variadic) {
+      Buffer << 'v';
+    }
+    Buffer << 'd';
     mangleIndex(paramDepth - 1);
     mangleIndex(index);
     return;
   }
   if (index != 0) {
+    if (variadic) {
+      Buffer << 'v';
+    }
     Buffer << nonZeroPrefix;
     mangleIndex(index - 1);
     return;
@@ -1024,8 +1038,15 @@ ManglingError Remangler::mangleDependentGenericParamCount(Node *node,
 
 ManglingError Remangler::mangleDependentGenericParamType(Node *node,
                                                          unsigned depth) {
-  if (node->getChild(0)->getIndex() == 0
-      && node->getChild(1)->getIndex() == 0) {
+  if (node->getNumChildren() == 3
+      && node->getChild(1)->getIndex() == 0
+      && node->getChild(2)->getIndex() == 0) {
+    Buffer << 'x';
+    Buffer << 'V';
+    return ManglingError::Success;
+  } else if (node->getNumChildren() == 2
+             && node->getChild(0)->getIndex() == 0
+             && node->getChild(1)->getIndex() == 0) {
     Buffer << 'x';
     return ManglingError::Success;
   }

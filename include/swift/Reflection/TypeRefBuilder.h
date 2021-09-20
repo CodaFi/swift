@@ -521,8 +521,8 @@ public:
   }
 
   const GenericTypeParameterTypeRef *
-  createGenericTypeParameterType(unsigned depth, unsigned index) {
-    return GenericTypeParameterTypeRef::create(*this, depth, index);
+  createGenericTypeParameterType(bool variadic, unsigned depth, unsigned index) {
+    return GenericTypeParameterTypeRef::create(*this, variadic, depth, index);
   }
 
   const DependentMemberTypeRef *

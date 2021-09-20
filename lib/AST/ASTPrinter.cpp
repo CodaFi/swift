@@ -1630,6 +1630,9 @@ void PrintAST::printSingleDepthOfGenericSignature(
           if (!subMap.empty()) {
             printType(substParam(param));
           } else if (auto *GP = param->getDecl()) {
+            if (GP->isVariadic()) {
+              Printer << "@_typeSequence";
+            }
             Printer.callPrintStructurePre(PrintStructureKind::GenericParameter,
                                           GP);
             Printer.printName(GP->getName(),
@@ -5372,8 +5375,17 @@ public:
     }
     }
   }
+  
+  void visitSequenceArchetypeType(SequenceArchetypeType *SAT) {
+    Printer << "@_typeSequence ";
+    printArchetypeCommon(SAT, SAT->getInterfaceType()->getDecl());
+  }
 
   void visitGenericTypeParamType(GenericTypeParamType *T) {
+    if (T->isVariadic()) {
+      Printer << "@_typeSequence ";
+    }
+
     if (T->getDecl() == nullptr) {
       // If we have an alternate name for this type, use it.
       if (Options.AlternativeTypeNames) {

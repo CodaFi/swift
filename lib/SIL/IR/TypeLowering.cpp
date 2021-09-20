@@ -1664,8 +1664,7 @@ namespace {
                                     RecursiveProperties properties) {
       if (!TC.Context.LangOpts.EnableSILOpaqueValues) {
         auto silType = SILType::getPrimitiveAddressType(type);
-        return new (TC) AddressOnlyTypeLowering(silType, properties,
-                                                           Expansion);
+        return new (TC) AddressOnlyTypeLowering(silType, properties, Expansion);
       }
       auto silType = SILType::getPrimitiveObjectType(type);
       return new (TC) OpaqueValueTypeLowering(silType, properties, Expansion);

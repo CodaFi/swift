@@ -221,6 +221,8 @@ enum TypeVariableOptions {
   /// Whether a more specific deduction for this type variable implies a
   /// better solution to the constraint system.
   TVO_PrefersSubtypeBinding = 0x10,
+
+  TVO_BindsVariadic = 0x20,
 };
 
 /// The implementation object for a type variable used within the
@@ -4764,6 +4766,12 @@ private:
 
   /// Attempt to simplify the given OpenedExistentialOf constraint.
   SolutionKind simplifyOpenedExistentialOfConstraint(
+                                         Type type1, Type type2,
+                                         TypeMatchOptions flags,
+                                         ConstraintLocatorBuilder locator);
+
+  /// Attempt to simplify the given OpenedElementTypeOf constraint.
+  SolutionKind simplifyOpenedElementTypeOfConstraint(
                                          Type type1, Type type2,
                                          TypeMatchOptions flags,
                                          ConstraintLocatorBuilder locator);

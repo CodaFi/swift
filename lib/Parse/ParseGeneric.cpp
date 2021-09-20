@@ -108,6 +108,7 @@ Parser::parseGenericParametersBeforeWhere(SourceLoc LAngleLoc,
     // Semantic analysis fills in the depth when it processes the generic
     // parameter list.
     auto Param = new (Context) GenericTypeParamDecl(CurDeclContext, Name, NameLoc,
+                                                    attributes.getAttribute<TypeSequenceAttr>() != nullptr,
                                             GenericTypeParamDecl::InvalidDepth,
                                                     GenericParams.size());
     if (!Inherited.empty())

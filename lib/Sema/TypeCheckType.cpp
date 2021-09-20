@@ -2686,6 +2686,17 @@ TypeResolver::resolveAttributedType(TypeAttributes &attrs, TypeRepr *repr,
     attrs.clearAttribute(TAK_unchecked);
   }
 
+  if (attrs.has(TAK__typeSequence)) {
+    if (!ty->is<GenericTypeParamType>()
+        && !ty->is<DependentMemberType>()
+        && !ty->is<ArchetypeType>()) {
+      diagnoseInvalid(repr, attrs.getLoc(TAK__typeSequence),
+                      diag::attribute_does_not_apply_to_type);
+    }
+
+    attrs.clearAttribute(TAK__typeSequence);
+  }
+
   for (unsigned i = 0; i != TypeAttrKind::TAK_Count; ++i)
     if (attrs.has((TypeAttrKind)i)) {
       diagnoseInvalid(repr, attrs.getLoc((TypeAttrKind)i),

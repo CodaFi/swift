@@ -1700,6 +1700,7 @@ ConstraintSystem::matchTupleTypes(TupleType *tuple1, TupleType *tuple2,
   case ConstraintKind::UnresolvedMemberChainBase:
   case ConstraintKind::PropertyWrapper:
   case ConstraintKind::ClosureBodyElement:
+  case ConstraintKind::OpenedElementTypeOf:
     llvm_unreachable("Not a conversion");
   }
 
@@ -1839,6 +1840,7 @@ static bool matchFunctionRepresentations(FunctionType::ExtInfo einfo1,
   case ConstraintKind::UnresolvedMemberChainBase:
   case ConstraintKind::PropertyWrapper:
   case ConstraintKind::ClosureBodyElement:
+  case ConstraintKind::OpenedElementTypeOf:
     return true;
   }
 
@@ -2250,6 +2252,7 @@ ConstraintSystem::matchFunctionTypes(FunctionType *func1, FunctionType *func2,
   case ConstraintKind::UnresolvedMemberChainBase:
   case ConstraintKind::PropertyWrapper:
   case ConstraintKind::ClosureBodyElement:
+  case ConstraintKind::OpenedElementTypeOf:
     llvm_unreachable("Not a relational constraint");
   }
 
@@ -5336,6 +5339,7 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
     case ConstraintKind::UnresolvedMemberChainBase:
     case ConstraintKind::PropertyWrapper:
     case ConstraintKind::ClosureBodyElement:
+    case ConstraintKind::OpenedElementTypeOf:
       llvm_unreachable("Not a relational constraint");
     }
   }
@@ -5389,6 +5393,7 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
     case TypeKind::TypeVariable:
       llvm_unreachable("type variables should have already been handled by now");
 
+
     case TypeKind::DependentMember: {
       // If types are identical, let's consider this constraint solved
       // even though they are dependent members, they would be resolved
@@ -5412,7 +5417,8 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
 
     case TypeKind::Module:
     case TypeKind::PrimaryArchetype:
-    case TypeKind::OpenedArchetype: {
+    case TypeKind::OpenedArchetype:
+    case TypeKind::SequenceArchetype: {
       // Give `repairFailures` a chance to fix the problem.
       if (shouldAttemptFixes())
         break;
@@ -5723,6 +5729,13 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
       if (result.isSuccess() || !shouldAttemptFixes())
         return result;
     }
+
+    /// T... can be converted to @_typeSequence T
+    if (isa<VariadicSequenceType>(type1.getPointer()) && type2->is<SequenceArchetypeType>()) {
+      conversionsOrFixes.push_back(ConversionRestrictionKind::VariadicToTypeSequence);
+    } else if (type1->is<SequenceArchetypeType>() && isa<VariadicSequenceType>(type2.getPointer())) {
+      conversionsOrFixes.push_back(ConversionRestrictionKind::VariadicToTypeSequence);
+    }
   }
 
   if (kind >= ConstraintKind::Subtype) {
@@ -6021,6 +6034,16 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
           break;
         }
       }
+
+      // Sequence archetypes can bind to variadic sequence types
+      if (auto seqTy = type1->getAs<SequenceArchetypeType>()) {
+        if (auto *VST = dyn_cast<VariadicSequenceType>(type2.getPointer())) {
+          return matchTypes(OpenedArchetypeType::get(seqTy->getExistentialType()),
+                            VST->getBaseType(),
+                            ConstraintKind::Bind, subflags,
+                            locator);
+        }
+      }
     }
   }
 
@@ -6247,6 +6270,7 @@ ConstraintSystem::simplifyConstructionConstraint(
   case TypeKind::OpenedArchetype:
   case TypeKind::NestedArchetype:
   case TypeKind::OpaqueTypeArchetype:
+  case TypeKind::SequenceArchetype:
   case TypeKind::DynamicSelf:
   case TypeKind::ProtocolComposition:
   case TypeKind::Protocol:
@@ -9075,8 +9099,10 @@ bool ConstraintSystem::resolveClosure(TypeVariableType *typeVar,
       auto *paramLoc =
           getConstraintLocator(closure, LocatorPathElt::TupleElement(i));
 
-      auto *typeVar = createTypeVariable(paramLoc, TVO_CanBindToLValue |
-                                                       TVO_CanBindToNoEscape);
+      auto options = param.isVariadic()
+                   ? TVO_CanBindToLValue | TVO_CanBindToNoEscape /*| TVO_BindsVariadic*/
+                   : TVO_CanBindToLValue | TVO_CanBindToNoEscape;
+      auto *typeVar = createTypeVariable(paramLoc, options);
 
       // If external parameter is variadic it translates into an array in
       // the body of the closure.
@@ -9534,6 +9560,42 @@ ConstraintSystem::simplifyOpenedExistentialOfConstraint(
                          type1, type2, getConstraintLocator(locator)));
     return SolutionKind::Solved;
   }
+  return SolutionKind::Unsolved;
+}
+
+ConstraintSystem::SolutionKind
+ConstraintSystem::simplifyOpenedElementTypeOfConstraint(
+                                       Type type1, Type type2,
+                                       TypeMatchOptions flags,
+                                       ConstraintLocatorBuilder locator) {
+  TypeMatchOptions subflags = getDefaultDecompositionOptions(flags);
+  // If type1 is bound to anything that isn't a sequence archetype, then
+  // we know the constraint has failed.
+  type2 = getFixedTypeRecursive(type2, flags, /*wantRValue=*/true);
+  if (auto seq2 = type2->getAs<NestedArchetypeType>()) {
+    return matchTypes(type1, seq2, ConstraintKind::Bind, subflags, locator);
+  }
+
+  if (auto seq2 = type2->getAs<ArchetypeType>()) {
+    // We have our representative archetype in hand. Let's grab the
+    // corresponding existential and bind it.
+    Type openedTy = OpenedArchetypeType::get(seq2->getExistentialType());
+    return matchTypes(type1, openedTy, ConstraintKind::Bind, subflags, locator);
+  }
+  if (!type2->isTypeVariableOrMember())
+    return SolutionKind::Error;
+
+  type1 = getFixedTypeRecursive(type1, flags, /*wantRValue=*/true);
+  if (!type1->isTypeVariableOrMember())
+    return SolutionKind::Error;
+
+  if (flags.contains(TMF_GenerateConstraints)) {
+    addUnsolvedConstraint(
+      Constraint::create(*this, ConstraintKind::OpenedElementTypeOf,
+                         type1, type2, getConstraintLocator(locator)));
+    return SolutionKind::Solved;
+  }
+
   return SolutionKind::Unsolved;
 }
 
@@ -11323,6 +11385,19 @@ ConstraintSystem::simplifyRestrictedConstraintImpl(
         {getConstraintLocator(locator), restriction});
     return SolutionKind::Solved;
   }
+  case ConversionRestrictionKind::VariadicToTypeSequence: {
+    increaseScore(SK_UserConversion); // FIXME: Use separate score kind?
+    if (worseThanBestSolution()) {
+      return SolutionKind::Error;
+    }
+
+    auto t1 = type1->getDesugaredType();
+    auto t2 = type2->getDesugaredType()->castTo<SequenceArchetypeType>();
+
+    return matchTypes(t1,
+                      t2->getExistentialType(),
+                      ConstraintKind::Bind, subflags, locator);
+  }
   }
   
   llvm_unreachable("bad conversion restriction");
@@ -12002,6 +12077,9 @@ ConstraintSystem::addConstraintImpl(ConstraintKind kind, Type first,
     return simplifyOpenedExistentialOfConstraint(first, second,
                                                  subflags, locator);
 
+  case ConstraintKind::OpenedElementTypeOf:
+    return simplifyOpenedElementTypeOfConstraint(first, second,
+                                                 subflags, locator);
   case ConstraintKind::ConformsTo:
   case ConstraintKind::LiteralConformsTo:
   case ConstraintKind::SelfObjectOfProtocol:
@@ -12443,7 +12521,11 @@ ConstraintSystem::simplifyConstraint(const Constraint &constraint) {
                                                  constraint.getSecondType(),
                                                  None,
                                                  constraint.getLocator());
-
+  case ConstraintKind::OpenedElementTypeOf:
+    return simplifyOpenedElementTypeOfConstraint(constraint.getFirstType(),
+                                                 constraint.getSecondType(),
+                                                 None,
+                                                 constraint.getLocator());
   case ConstraintKind::KeyPath:
     return simplifyKeyPathConstraint(
       constraint.getFirstType(), constraint.getSecondType(),

@@ -117,7 +117,8 @@ public:
   Type createMetatypeType(Type instance,
                      Optional<Demangle::ImplMetatypeRepresentation> repr=None);
 
-  Type createGenericTypeParameterType(unsigned depth, unsigned index);
+  Type createGenericTypeParameterType(bool variadic,
+                                      unsigned depth, unsigned index);
 
   Type createDependentMemberType(StringRef member, Type base);
 

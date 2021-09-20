@@ -632,9 +632,10 @@ Types
   type ::= protocol-list superclass 'Xc'     // existential type with superclass
   type ::= protocol-list 'Xl'                // existential type with AnyObject
   type ::= type-list 't'                     // tuple
+  type ::= type 'tT'                         // type sequence type
   type ::= type generic-signature 'u'        // generic type
   type ::= 'x'                               // generic param, depth=0, idx=0
-  type ::= 'q' GENERIC-PARAM-INDEX           // dependent generic parameter
+  type ::= 'q' 'v'? GENERIC-PARAM-INDEX      // dependent generic parameter
   type ::= type assoc-type-name 'qa'         // associated type of non-generic param
   type ::= assoc-type-name 'Qy' GENERIC-PARAM-INDEX  // associated type
   type ::= assoc-type-name 'Qz'                      // shortcut for 'Qyz'
@@ -866,6 +867,7 @@ now codified into the ABI; the index 0 is therefore reserved.
   requirement ::= type assoc-type-list 'RM' GENERIC-PARAM-INDEX LAYOUT-CONSTRAINT    // layout requirement on associated type at depth
   requirement ::= type substitution 'RM' LAYOUT-CONSTRAINT                           // layout requirement with substitution
 
+  GENERIC-PARAM-VARIADIC ::= 'v'             // variadic = true
   GENERIC-PARAM-INDEX ::= 'z'                // depth = 0,   idx = 0
   GENERIC-PARAM-INDEX ::= INDEX              // depth = 0,   idx = N+1
   GENERIC-PARAM-INDEX ::= 'd' INDEX INDEX    // depth = M+1, idx = N

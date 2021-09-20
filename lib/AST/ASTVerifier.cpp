@@ -618,8 +618,13 @@ public:
           }
 
           // Get the archetype's generic signature.
-          auto rootPrimary = cast<PrimaryArchetypeType>(root);
-          auto *archetypeEnv = rootPrimary->getGenericEnvironment();
+          GenericEnvironment *archetypeEnv = nullptr;
+          if (auto rootPrimary = root->getAs<PrimaryArchetypeType>()) {
+            archetypeEnv = rootPrimary->getGenericEnvironment();
+          } else {
+            auto seq = cast<SequenceArchetypeType>(root);
+            archetypeEnv = seq->getGenericEnvironment();
+          }
           auto archetypeSig = archetypeEnv->getGenericSignature();
 
           auto genericCtx = Generics.back();

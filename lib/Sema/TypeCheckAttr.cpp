@@ -244,6 +244,7 @@ public:
   void visitDynamicReplacementAttr(DynamicReplacementAttr *attr);
   void visitTypeEraserAttr(TypeEraserAttr *attr);
   void visitImplementsAttr(ImplementsAttr *attr);
+  void visitTypeSequenceAttr(TypeSequenceAttr *attr);
 
   void visitFrozenAttr(FrozenAttr *attr);
 
@@ -1284,6 +1285,7 @@ void TypeChecker::checkDeclAttributes(Decl *D) {
     case DeclAttribute::OnSubscript:   OnlyKind = "subscript"; break;
     case DeclAttribute::OnTypeAlias:   OnlyKind = "typealias"; break;
     case DeclAttribute::OnVar:         OnlyKind = "var"; break;
+    case DeclAttribute::OnGenericTypeParam: OnlyKind = "generic parameter"; break;
     default: break;
     }
 
@@ -2977,6 +2979,13 @@ void AttributeChecker::visitImplementsAttr(ImplementsAttr *attr) {
   } else {
     diagnose(attr->getLocation(), diag::implements_attr_non_protocol_type)
       .highlight(attr->getProtocolTypeRepr()->getSourceRange());
+  }
+}
+
+void AttributeChecker::visitTypeSequenceAttr(TypeSequenceAttr *attr) {
+  if (!isa<GenericTypeParamDecl>(D)) {
+    attr->setInvalid();
+    diagnoseAndRemoveAttr(attr, diag::type_sequence_on_non_generic_param);
   }
 }
 

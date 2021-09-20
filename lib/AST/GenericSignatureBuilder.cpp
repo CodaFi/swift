@@ -2816,7 +2816,8 @@ static Type formDependentType(GenericTypeParamType *base,
 /// parameter key, then following the path of associated types.
 static Type formDependentType(ASTContext &ctx, GenericParamKey genericParam,
                               RelativeRewritePath path) {
-  return formDependentType(GenericTypeParamType::get(genericParam.Depth,
+  return formDependentType(GenericTypeParamType::get(genericParam.Variadic,
+                                                     genericParam.Depth,
                                                      genericParam.Index,
                                                      ctx),
                            path);
@@ -3307,7 +3308,8 @@ bool GenericSignatureBuilder::addSameTypeRewriteRule(CanType type1,
 
   // Add the rewrite rule.
   Type firstBase =
-    GenericTypeParamType::get(path1.getBase()->Depth, path1.getBase()->Index,
+    GenericTypeParamType::get(path1.getBase()->Variadic,
+                              path1.getBase()->Depth, path1.getBase()->Index,
                               getASTContext());
   CanType baseAnchor =
     getCanonicalTypeParameter(firstBase)->getCanonicalType();
@@ -3318,7 +3320,8 @@ bool GenericSignatureBuilder::addSameTypeRewriteRule(CanType type1,
 Type GenericSignatureBuilder::getCanonicalTypeParameter(Type type) {
   auto initialPath = RewritePath::createPath(type);
   auto genericParamType =
-    GenericTypeParamType::get(initialPath.getBase()->Depth,
+    GenericTypeParamType::get(initialPath.getBase()->Variadic,
+                              initialPath.getBase()->Depth,
                               initialPath.getBase()->Index,
                               getASTContext());
 
@@ -3357,7 +3360,8 @@ Type GenericSignatureBuilder::getCanonicalTypeParameter(Type type) {
         // If this is an absolute path, use the new base.
         if (auto newBase = match->second.getBase()) {
           genericParamType =
-            GenericTypeParamType::get(newBase->Depth, newBase->Index,
+            GenericTypeParamType::get(newBase->Variadic,
+                                      newBase->Depth, newBase->Index,
                                       getASTContext());
         }
 

@@ -1422,7 +1422,8 @@ RValueEmitter::visitConditionalBridgeFromObjCExpr(
   auto subs = conversionRef.getSubstitutions();
 
   auto nativeType =
-    Type(GenericTypeParamType::get(0, 0, SGF.getASTContext())).subst(subs);
+    Type(GenericTypeParamType::get(/*variadic*/false,
+                                   0, 0, SGF.getASTContext())).subst(subs);
 
   auto metatypeType = SGF.getLoweredType(MetatypeType::get(nativeType));
   auto metatype =
@@ -3145,7 +3146,7 @@ getOrCreateKeyPathEqualsAndHash(SILGenModule &SGM,
       
       // Get the Equatable conformance from the Hashable conformance.
       auto equatable = hashable.getAssociatedConformance(formalTy,
-        GenericTypeParamType::get(0, 0, C),
+        GenericTypeParamType::get(/*variadic*/false, 0, 0, C),
         equatableProtocol);
       
       assert(equatable.isAbstract() == hashable.isAbstract());

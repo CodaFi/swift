@@ -95,7 +95,7 @@ RewriteSystemBuilder::getConcreteSubstitutionSchema(CanType concreteType,
       unsigned index = result.size();
       result.push_back(Context.getTermForType(CanType(t), proto));
 
-      return CanGenericTypeParamType::get(/*depth=*/0, index, Context.getASTContext());
+      return CanGenericTypeParamType::get(/*variadic=*/false, /*depth=*/0, index, Context.getASTContext());
     }));
 }
 

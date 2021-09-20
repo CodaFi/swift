@@ -855,7 +855,7 @@ recur:
     case 'u': return demangleGenericType();
     case 'v': return demangleVariable();
     case 'w': return demangleValueWitness();
-    case 'x': return createType(getDependentGenericParamType(0, 0));
+    case 'x': return createType(getDependentGenericParamType(nextIf("V"), 0, 0));
     case 'y': return createNode(Node::Kind::EmptyList);
     case 'z': return createType(createWithChild(Node::Kind::InOut,
                                                 popTypeAndGetChild()));
@@ -2227,14 +2227,16 @@ NodePointer Demangler::demangleArchetype() {
   }
 
   case 'z': {
+    // N.B. Variadic associated types are banned.
     NodePointer T = demangleAssociatedTypeSimple(
-                                          getDependentGenericParamType(0, 0));
+                                          getDependentGenericParamType(/*variadic*/ false, 0, 0));
     addSubstitution(T);
     return T;
   }
   case 'Z': {
+    // N.B. Variadic associated types are banned.
     NodePointer T = demangleAssociatedTypeCompound(
-                                          getDependentGenericParamType(0, 0));
+                                          getDependentGenericParamType(/*variadic*/ false, 0, 0));
     addSubstitution(T);
     return T;
   }
@@ -2309,26 +2311,31 @@ NodePointer Demangler::popAssocTypePath() {
   return AssocTypePath;
 }
 
-NodePointer Demangler::getDependentGenericParamType(int depth, int index) {
+NodePointer Demangler::getDependentGenericParamType(bool variadic,
+                                                    int depth, int index) {
   if (depth < 0 || index < 0)
     return nullptr;
 
   auto paramTy = createNode(Node::Kind::DependentGenericParamType);
+  if (variadic) {
+    paramTy->addChild(createNode(Node::Kind::VariadicMarker), *this);
+  }
   paramTy->addChild(createNode(Node::Kind::Index, depth), *this);
   paramTy->addChild(createNode(Node::Kind::Index, index), *this);
   return paramTy;
 }
 
 NodePointer Demangler::demangleGenericParamIndex() {
+  bool variadic = nextIf('v');
   if (nextIf('d')) {
     int depth = demangleIndex() + 1;
     int index = demangleIndex();
-    return getDependentGenericParamType(depth, index);
+    return getDependentGenericParamType(variadic, depth, index);
   }
   if (nextIf('z')) {
-    return getDependentGenericParamType(0, 0);
+    return getDependentGenericParamType(variadic, 0, 0);
   }
-  return getDependentGenericParamType(0, demangleIndex() + 1);
+  return getDependentGenericParamType(variadic, 0, demangleIndex() + 1);
 }
 
 NodePointer Demangler::popProtocolConformance() {

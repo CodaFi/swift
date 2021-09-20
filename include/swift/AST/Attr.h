@@ -1946,6 +1946,20 @@ public:
   }
 };
 
+/// The @_typeSequence attribute, which treats a generic param decl as a variadic
+/// sequence of value/type pairs.
+class TypeSequenceAttr : public DeclAttribute {
+  TypeSequenceAttr(SourceLoc atLoc, SourceRange Range);
+
+public:
+  static TypeSequenceAttr *create(ASTContext &Ctx, SourceLoc atLoc,
+                                  SourceRange Range);
+
+  static bool classof(const DeclAttribute *DA) {
+    return DA->getKind() == DAK_TypeSequence;
+  }
+};
+
 /// The `@transpose(of:)` attribute registers a function as a transpose of
 /// another function-like declaration: a 'func', 'init', 'subscript', or 'var'
 /// computed property declaration.

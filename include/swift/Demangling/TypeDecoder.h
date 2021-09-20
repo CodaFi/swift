@@ -722,9 +722,16 @@ protected:
       return Builder.createDynamicSelfType(selfType.getType());
     }
     case NodeKind::DependentGenericParamType: {
-      auto depth = Node->getChild(0)->getIndex();
-      auto index = Node->getChild(1)->getIndex();
-      return Builder.createGenericTypeParameterType(depth, index);
+      if (Node->getNumChildren() > 2) {
+        bool variadic = Node->getChild(0)->getKind() == NodeKind::VariadicMarker;
+        auto depth = Node->getChild(1)->getIndex();
+        auto index = Node->getChild(2)->getIndex();
+        return Builder.createGenericTypeParameterType(variadic, depth, index);
+      } else {
+        auto depth = Node->getChild(0)->getIndex();
+        auto index = Node->getChild(1)->getIndex();
+        return Builder.createGenericTypeParameterType(/*variadic*/ false, depth, index);
+      }
     }
     case NodeKind::EscapingObjCBlock:
     case NodeKind::ObjCBlock:
@@ -1165,7 +1172,7 @@ return {}; // Not Implemented!
           if (substTy.isError())
             return substTy;
           substitutions.emplace_back(
-              Builder.createGenericTypeParameterType(paramDepth, index),
+              Builder.createGenericTypeParameterType(/*variadic*/ false, paramDepth, index),
               substTy.getType());
           ++index;
         }

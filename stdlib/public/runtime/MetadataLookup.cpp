@@ -1500,7 +1500,8 @@ public:
   }
 
   BuiltType
-  createGenericTypeParameterType(unsigned depth, unsigned index) const {
+  createGenericTypeParameterType(bool variadic,
+                                 unsigned depth, unsigned index) const {
     // Use the callback, when provided.
     if (substGenericParameter)
       return substGenericParameter(depth, index);

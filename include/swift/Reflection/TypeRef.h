@@ -639,7 +639,7 @@ class GenericTypeParameterTypeRef final : public TypeRef {
   const uint32_t Depth;
   const uint32_t Index;
 
-  static TypeRefID Profile(uint32_t Depth, uint32_t Index) {
+  static TypeRefID Profile(bool variadic, uint32_t Depth, uint32_t Index) {
     TypeRefID ID;
     ID.addInteger(Depth);
     ID.addInteger(Index);
@@ -647,13 +647,13 @@ class GenericTypeParameterTypeRef final : public TypeRef {
   }
 
 public:
-  GenericTypeParameterTypeRef(uint32_t Depth, uint32_t Index)
+  GenericTypeParameterTypeRef(bool variadic, uint32_t Depth, uint32_t Index)
     : TypeRef(TypeRefKind::GenericTypeParameter), Depth(Depth), Index(Index) {}
 
   template <typename Allocator>
   static const GenericTypeParameterTypeRef *
-  create(Allocator &A, uint32_t Depth, uint32_t Index) {
-    FIND_OR_CREATE_TYPEREF(A, GenericTypeParameterTypeRef, Depth, Index);
+  create(Allocator &A, bool variadic, uint32_t Depth, uint32_t Index) {
+    FIND_OR_CREATE_TYPEREF(A, GenericTypeParameterTypeRef, variadic, Depth, Index);
   }
 
   uint32_t getDepth() const {

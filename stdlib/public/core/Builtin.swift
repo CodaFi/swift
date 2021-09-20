@@ -1020,3 +1020,15 @@ public // @SPI(OSLog)
 func _getGlobalStringTablePointer(_ constant: String) -> UnsafePointer<CChar> {
   return UnsafePointer<CChar>(Builtin.globalStringTablePointer(constant));
 }
+
+@_transparent
+@_semantics("typechecker._variadicMap(_:)")
+public func _variadicMap<@_typeSequence T, ElementOfT, ElementOfU, @_typeSequence U>(_ sequence: T, transform: (ElementOfT) throws -> ElementOfU) rethrows -> U {
+  // This implementation is never used, since calls to
+  // `Swift._variadicMap(_:transform:)` are resolved as a special case by the
+  // type checker.
+  Builtin.staticReport(_trueAfterDiagnostics(), true._value,
+    ("internal consistency error: '_variadicMap(_:transform:)' operation failed to resolve"
+     as StaticString).utf8Start._rawValue)
+  Builtin.unreachable()
+}

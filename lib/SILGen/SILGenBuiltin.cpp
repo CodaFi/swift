@@ -1412,7 +1412,8 @@ ManagedValue emitBuiltinCreateAsyncTask(SILGenFunction &SGF, SILLocation loc,
   // Form the metatype of the result type.
   CanType futureResultType =
       Type(MetatypeType::get(
-               GenericTypeParamType::get(0, 0, SGF.getASTContext()),
+               GenericTypeParamType::get(/*variadic*/false,
+                                         0, 0, SGF.getASTContext()),
                MetatypeRepresentation::Thick))
           .subst(subs)
           ->getCanonicalType();
@@ -1435,7 +1436,8 @@ ManagedValue emitBuiltinCreateAsyncTask(SILGenFunction &SGF, SILLocation loc,
           .withRepresentation(GenericFunctionType::Representation::Swift)
           .build();
   auto genericSig = subs.getGenericSignature().getCanonicalSignature();
-  auto genericResult = GenericTypeParamType::get(0, 0, ctx);
+  auto genericResult = GenericTypeParamType::get(/*variadic*/false,
+                                                 0, 0, ctx);
   // <T> () async throws -> T
   CanType functionTy =
       GenericFunctionType::get(genericSig, {}, genericResult, extInfo)
@@ -1467,7 +1469,9 @@ static ManagedValue emitBuiltinCreateAsyncTaskInGroup(
   // Form the metatype of the result type.
   CanType futureResultType =
       Type(
-        MetatypeType::get(GenericTypeParamType::get(0, 0, SGF.getASTContext()), MetatypeRepresentation::Thick))
+        MetatypeType::get(GenericTypeParamType::get(/*variadic*/false,
+                                                    0, 0, SGF.getASTContext()),
+                          MetatypeRepresentation::Thick))
           .subst(subs)->getCanonicalType();
   CanType anyTypeType = ExistentialMetatypeType::get(
       ProtocolCompositionType::get(ctx, { }, false))->getCanonicalType();

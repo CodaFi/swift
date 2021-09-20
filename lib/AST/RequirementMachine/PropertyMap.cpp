@@ -178,6 +178,391 @@ Type PropertyBag::getConcreteType(
                                            genericParams, prefix);
 }
 
+/// Computes the term corresponding to a member type access on a substitution.
+///
+/// The type witness is a type parameter of the form τ_0_n.X.Y.Z,
+/// where 'n' is an index into the substitution array.
+///
+/// If the nth entry in the array is S, this will produce S.X.Y.Z.
+///
+/// There is a special behavior if the substitution is a term consisting of a
+/// single protocol symbol [P]. If the innermost associated type in
+/// \p typeWitness is [Q:Foo], the result will be [P:Foo], not [P].[Q:Foo] or
+/// [Q:Foo].
+static MutableTerm getRelativeTermForType(CanType typeWitness,
+                                          ArrayRef<Term> substitutions,
+                                          RewriteContext &ctx) {
+  MutableTerm result;
+
+  // Get the substitution S corresponding to τ_0_n.
+  unsigned index = getGenericParamIndex(typeWitness->getRootGenericParam());
+  result = MutableTerm(substitutions[index]);
+
+  // If the substitution is a term consisting of a single protocol symbol
+  // [P], save P for later.
+  const ProtocolDecl *proto = nullptr;
+  if (result.size() == 1 &&
+      result[0].getKind() == Symbol::Kind::Protocol) {
+    proto = result[0].getProtocol();
+  }
+
+  // Collect zero or more member type names in reverse order.
+  SmallVector<Symbol, 3> symbols;
+  while (auto memberType = dyn_cast<DependentMemberType>(typeWitness)) {
+    typeWitness = memberType.getBase();
+
+    auto *assocType = memberType->getAssocType();
+    assert(assocType != nullptr &&
+           "Conformance checking should not produce unresolved member types");
+
+    // If the substitution is a term consisting of a single protocol symbol [P],
+    // produce [P:Foo] instead of [P].[Q:Foo] or [Q:Foo].
+    const auto *thisProto = assocType->getProtocol();
+    if (proto && isa<GenericTypeParamType>(typeWitness)) {
+      thisProto = proto;
+
+      assert(result.size() == 1);
+      assert(result[0].getKind() == Symbol::Kind::Protocol);
+      assert(result[0].getProtocol() == proto);
+      result = MutableTerm();
+    }
+
+    symbols.push_back(Symbol::forAssociatedType(thisProto,
+                                                assocType->getName(), ctx));
+  }
+
+  // Add the member type names.
+  for (auto iter = symbols.rbegin(), end = symbols.rend(); iter != end; ++iter)
+    result.add(*iter);
+
+  return result;
+}
+
+/// This method takes a concrete type that was derived from a concrete type
+/// produced by RewriteSystemBuilder::getConcreteSubstitutionSchema(),
+/// either by extracting a structural sub-component or performing a (Swift AST)
+/// substitution using subst(). It returns a new concrete substitution schema
+/// and a new list of substitution terms.
+///
+/// For example, suppose we start with the concrete type
+///
+///   Dictionary<τ_0_0, Array<τ_0_1>> with substitutions {X.Y, Z}
+///
+/// We can extract out the structural sub-component Array<τ_0_1>. If we wish
+/// to build a new concrete substitution schema, we call this method with
+/// Array<τ_0_1> and the original substitutions {X.Y, Z}. This will produce
+/// the new schema Array<τ_0_0> with substitutions {Z}.
+///
+/// As another example, consider we start with the schema Bar<τ_0_0> with
+/// original substitutions {X.Y}, and perform a Swift AST subst() to get
+/// Foo<τ_0_0.A.B>. We can then call this method with Foo<τ_0_0.A.B> and
+/// the original substitutions {X.Y} to produce the new schema Foo<τ_0_0>
+/// with substitutions {X.Y.A.B}.
+static CanType
+remapConcreteSubstitutionSchema(CanType concreteType,
+                                ArrayRef<Term> substitutions,
+                                RewriteContext &ctx,
+                                SmallVectorImpl<Term> &result) {
+  assert(!concreteType->isTypeParameter() && "Must have a concrete type here");
+
+  if (!concreteType->hasTypeParameter())
+    return concreteType;
+
+  return CanType(concreteType.transformRec(
+    [&](Type t) -> Optional<Type> {
+      if (!t->isTypeParameter())
+        return None;
+
+      auto term = getRelativeTermForType(CanType(t), substitutions, ctx);
+
+      unsigned newIndex = result.size();
+      result.push_back(Term::get(term, ctx));
+
+      return CanGenericTypeParamType::get(t->castTo<GenericTypeParamType>()->isVariadic(),
+                                          /*depth=*/0, newIndex,
+                                          ctx.getASTContext());
+    }));
+}
+
+namespace {
+  /// Utility class used by unifyConcreteTypes() and unifySuperclasses()
+  /// to walk two concrete types in parallel. Any time there is a mismatch,
+  /// records a new induced rule.
+  class ConcreteTypeMatcher : public TypeMatcher<ConcreteTypeMatcher> {
+    ArrayRef<Term> lhsSubstitutions;
+    ArrayRef<Term> rhsSubstitutions;
+    RewriteContext &ctx;
+    SmallVectorImpl<std::pair<MutableTerm, MutableTerm>> &inducedRules;
+    bool debug;
+
+  public:
+    ConcreteTypeMatcher(ArrayRef<Term> lhsSubstitutions,
+                        ArrayRef<Term> rhsSubstitutions,
+                        RewriteContext &ctx,
+                        SmallVectorImpl<std::pair<MutableTerm,
+                                                  MutableTerm>> &inducedRules,
+                        bool debug)
+        : lhsSubstitutions(lhsSubstitutions),
+          rhsSubstitutions(rhsSubstitutions),
+          ctx(ctx), inducedRules(inducedRules), debug(debug) {}
+
+    bool alwaysMismatchTypeParameters() const { return true; }
+
+    bool mismatch(TypeBase *firstType, TypeBase *secondType,
+                  Type sugaredFirstType) {
+      bool firstAbstract = firstType->isTypeParameter();
+      bool secondAbstract = secondType->isTypeParameter();
+
+      if (firstAbstract && secondAbstract) {
+        // Both sides are type parameters; add a same-type requirement.
+        auto lhsTerm = getRelativeTermForType(CanType(firstType),
+                                              lhsSubstitutions, ctx);
+        auto rhsTerm = getRelativeTermForType(CanType(secondType),
+                                              rhsSubstitutions, ctx);
+        if (lhsTerm != rhsTerm) {
+          if (debug) {
+            llvm::dbgs() << "%% Induced rule " << lhsTerm
+                         << " == " << rhsTerm << "\n";
+          }
+          inducedRules.emplace_back(lhsTerm, rhsTerm);
+        }
+        return true;
+      }
+
+      if (firstAbstract && !secondAbstract) {
+        // A type parameter is equated with a concrete type; add a concrete
+        // type requirement.
+        auto subjectTerm = getRelativeTermForType(CanType(firstType),
+                                                  lhsSubstitutions, ctx);
+
+        SmallVector<Term, 3> result;
+        auto concreteType = remapConcreteSubstitutionSchema(CanType(secondType),
+                                                            rhsSubstitutions,
+                                                            ctx, result);
+
+        MutableTerm constraintTerm(subjectTerm);
+        constraintTerm.add(Symbol::forConcreteType(concreteType, result, ctx));
+
+        if (debug) {
+          llvm::dbgs() << "%% Induced rule " << subjectTerm
+                       << " == " << constraintTerm << "\n";
+        }
+        inducedRules.emplace_back(subjectTerm, constraintTerm);
+        return true;
+      }
+
+      if (!firstAbstract && secondAbstract) {
+        // A concrete type is equated with a type parameter; add a concrete
+        // type requirement.
+        auto subjectTerm = getRelativeTermForType(CanType(secondType),
+                                                  rhsSubstitutions, ctx);
+
+        SmallVector<Term, 3> result;
+        auto concreteType = remapConcreteSubstitutionSchema(CanType(firstType),
+                                                            lhsSubstitutions,
+                                                            ctx, result);
+
+        MutableTerm constraintTerm(subjectTerm);
+        constraintTerm.add(Symbol::forConcreteType(concreteType, result, ctx));
+
+        if (debug) {
+          llvm::dbgs() << "%% Induced rule " << subjectTerm
+                       << " == " << constraintTerm << "\n";
+        }
+        inducedRules.emplace_back(subjectTerm, constraintTerm);
+        return true;
+      }
+
+      // Any other kind of type mismatch involves conflicting concrete types on
+      // both sides, which can only happen on invalid input.
+      return false;
+    }
+  };
+}
+
+/// When a type parameter has two concrete types, we have to unify the
+/// type constructor arguments.
+///
+/// For example, suppose that we have two concrete same-type requirements:
+///
+///   T == Foo<X.Y, Z, String>
+///   T == Foo<Int, A.B, W>
+///
+/// These lower to the following two rules:
+///
+///   T.[concrete: Foo<τ_0_0, τ_0_1, String> with {X.Y, Z}] => T
+///   T.[concrete: Foo<Int, τ_0_0, τ_0_1> with {A.B, W}] => T
+///
+/// The two concrete type symbols will be added to the property bag of 'T',
+/// and we will eventually end up in this method, where we will generate three
+/// induced rules:
+///
+///   X.Y.[concrete: Int] => X.Y
+///   A.B => Z
+///   W.[concrete: String] => W
+///
+/// Returns the left hand side on success (it could also return the right hand
+/// side; since we unified the type constructor arguments, it doesn't matter).
+///
+/// Returns true if a conflict was detected.
+static bool unifyConcreteTypes(
+    Symbol lhs, Symbol rhs, RewriteContext &ctx,
+    SmallVectorImpl<std::pair<MutableTerm, MutableTerm>> &inducedRules,
+    bool debug) {
+  auto lhsType = lhs.getConcreteType();
+  auto rhsType = rhs.getConcreteType();
+
+  if (debug) {
+    llvm::dbgs() << "% Unifying " << lhs << " with " << rhs << "\n";
+  }
+
+  ConcreteTypeMatcher matcher(lhs.getSubstitutions(),
+                              rhs.getSubstitutions(),
+                              ctx, inducedRules, debug);
+  if (!matcher.match(lhsType, rhsType)) {
+    // FIXME: Diagnose the conflict
+    if (debug) {
+      llvm::dbgs() << "%% Concrete type conflict\n";
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/// When a type parameter has two superclasses, we have to both unify the
+/// type constructor arguments, and record the most derived superclass.
+///
+///
+/// For example, if we have this setup:
+///
+///   class Base<T, T> {}
+///   class Middle<U> : Base<T, T> {}
+///   class Derived : Middle<Int> {}
+///
+///   T : Base<U, V>
+///   T : Derived
+///
+/// The most derived superclass requirement is 'T : Derived'.
+///
+/// The corresponding superclass of 'Derived' is 'Base<Int, Int>', so we
+/// unify the type constructor arguments of 'Base<U, V>' and 'Base<Int, Int>',
+/// which generates two induced rules:
+///
+///   U.[concrete: Int] => U
+///   V.[concrete: Int] => V
+///
+/// Returns the most derived superclass, which becomes the new superclass
+/// that gets recorded in the property map.
+static Symbol unifySuperclasses(
+    Symbol lhs, Symbol rhs, RewriteContext &ctx,
+    SmallVectorImpl<std::pair<MutableTerm, MutableTerm>> &inducedRules,
+    bool debug) {
+  if (debug) {
+    llvm::dbgs() << "% Unifying " << lhs << " with " << rhs << "\n";
+  }
+
+  auto lhsType = lhs.getSuperclass();
+  auto rhsType = rhs.getSuperclass();
+
+  auto *lhsClass = lhsType.getClassOrBoundGenericClass();
+  assert(lhsClass != nullptr);
+
+  auto *rhsClass = rhsType.getClassOrBoundGenericClass();
+  assert(rhsClass != nullptr);
+
+  // First, establish the invariant that lhsClass is either equal to, or
+  // is a superclass of rhsClass.
+  if (lhsClass == rhsClass ||
+      lhsClass->isSuperclassOf(rhsClass)) {
+    // Keep going.
+  } else if (rhsClass->isSuperclassOf(lhsClass)) {
+    std::swap(rhs, lhs);
+    std::swap(rhsType, lhsType);
+    std::swap(rhsClass, lhsClass);
+  } else {
+    // FIXME: Diagnose the conflict.
+    if (debug) {
+      llvm::dbgs() << "%% Unrelated superclass types\n";
+    }
+
+    return lhs;
+  }
+
+  if (lhsClass != rhsClass) {
+    // Get the corresponding substitutions for the right hand side.
+    assert(lhsClass->isSuperclassOf(rhsClass));
+    rhsType = rhsType->getSuperclassForDecl(lhsClass)
+                     ->getCanonicalType();
+  }
+
+  // Unify type contructor arguments.
+  ConcreteTypeMatcher matcher(lhs.getSubstitutions(),
+                              rhs.getSubstitutions(),
+                              ctx, inducedRules, debug);
+  if (!matcher.match(lhsType, rhsType)) {
+    if (debug) {
+      llvm::dbgs() << "%% Superclass conflict\n";
+    }
+    return rhs;
+  }
+
+  // Record the more specific class.
+  return rhs;
+}
+
+void PropertyBag::addProperty(
+    Symbol property, RewriteContext &ctx,
+    SmallVectorImpl<std::pair<MutableTerm, MutableTerm>> &inducedRules,
+    bool debug) {
+
+  switch (property.getKind()) {
+  case Symbol::Kind::Protocol:
+    ConformsTo.push_back(property.getProtocol());
+    return;
+
+  case Symbol::Kind::Layout:
+    if (!Layout)
+      Layout = property.getLayoutConstraint();
+    else
+      Layout = Layout.merge(property.getLayoutConstraint());
+
+    return;
+
+  case Symbol::Kind::Superclass: {
+    // FIXME: Also handle superclass vs concrete
+
+    if (Superclass) {
+      Superclass = unifySuperclasses(*Superclass, property,
+                                     ctx, inducedRules, debug);
+    } else {
+      Superclass = property;
+    }
+
+    return;
+  }
+
+  case Symbol::Kind::ConcreteType: {
+    if (ConcreteType) {
+      (void) unifyConcreteTypes(*ConcreteType, property,
+                                ctx, inducedRules, debug);
+    } else {
+      ConcreteType = property;
+    }
+
+    return;
+  }
+
+  case Symbol::Kind::Name:
+  case Symbol::Kind::GenericParam:
+  case Symbol::Kind::AssociatedType:
+    break;
+  }
+
+  llvm_unreachable("Bad symbol kind");
+>>>>>>> a94aea63ec1... XXX
+}
+
 void PropertyBag::copyPropertiesFrom(const PropertyBag *next,
                                      RewriteContext &ctx) {
   // If this is the property bag of T and 'next' is the
@@ -376,6 +761,7 @@ PropertyMap::buildPropertyMap(unsigned maxIterations,
 
   return std::make_pair(CompletionResult::Success, addedNewRules);
 }
+<<<<<<< HEAD
 
 void PropertyMap::dump(llvm::raw_ostream &out) const {
   out << "Property map: {\n";
@@ -386,3 +772,5 @@ void PropertyMap::dump(llvm::raw_ostream &out) const {
   }
   out << "}\n";
 }
+=======
+>>>>>>> a94aea63ec1... XXX

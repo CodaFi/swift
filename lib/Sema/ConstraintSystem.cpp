@@ -2295,6 +2295,47 @@ static std::pair<Type, Type> getTypeOfReferenceWithSpecialTypeCheckingSemantics(
                                          .build());
     return {refType, refType};
   }
+  case DeclTypeCheckingSemantics::VariadicMap: {
+    // The body closure receives a freshly-opened archetype constrained by the
+    // existential type as its input.
+    auto inputSeqTy = CS.createTypeVariable(
+        CS.getConstraintLocator(locator, ConstraintLocator::FunctionArgument),
+        TVO_CanBindToNoEscape);
+    auto inputSeqElementTy = CS.createTypeVariable(
+        CS.getConstraintLocator(locator, ConstraintLocator::FunctionArgument),
+        TVO_CanBindToNoEscape);
+    CS.addConstraint(ConstraintKind::OpenedElementTypeOf, inputSeqElementTy,
+                     inputSeqTy, CS.getConstraintLocator(locator));
+
+    auto outputSeqElementTy = CS.createTypeVariable(
+        CS.getConstraintLocator(locator, ConstraintLocator::FunctionResult),
+        TVO_CanBindToNoEscape);
+    auto result = CS.createTypeVariable(
+        CS.getConstraintLocator(locator, ConstraintLocator::FunctionResult),
+        TVO_CanBindToNoEscape | TVO_BindsVariadic);
+    CS.addConstraint(ConstraintKind::OpenedElementTypeOf,
+                     outputSeqElementTy, result,
+                     CS.getConstraintLocator(locator));
+    FunctionType::Param bodyArgs[] = {
+      FunctionType::Param(inputSeqElementTy),
+    };
+    auto transformClosure = FunctionType::get(bodyArgs, outputSeqElementTy,
+                                              FunctionType::ExtInfoBuilder()
+                                                .withNoEscape(true)
+                                                .withThrows(true)
+                                                .build());
+    FunctionType::Param args[] = {
+      FunctionType::Param(inputSeqTy),
+      FunctionType::Param(transformClosure,
+                          CS.getASTContext().getIdentifier("transform")),
+    };
+    auto refType = FunctionType::get(args, result,
+                                     FunctionType::ExtInfoBuilder()
+                                         .withNoEscape(false)
+                                         .withThrows(true)
+                                         .build());
+    return {refType, refType};
+  }
   }
 
   llvm_unreachable("Unhandled DeclTypeCheckingSemantics in switch.");
@@ -5274,6 +5315,7 @@ ConstraintSystem::isConversionEphemeral(ConversionRestrictionKind conversion,
   case ConversionRestrictionKind::ObjCTollFreeBridgeToCF:
   case ConversionRestrictionKind::CGFloatToDouble:
   case ConversionRestrictionKind::DoubleToCGFloat:
+  case ConversionRestrictionKind::VariadicToTypeSequence:
     // @_nonEphemeral has no effect on these conversions, so treat them as all
     // being non-ephemeral in order to allow their passing to an @_nonEphemeral
     // parameter.

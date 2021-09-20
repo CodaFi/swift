@@ -3726,11 +3726,17 @@ namespace {
       printArchetypeNestedTypes(T);
       PrintWithColorRAII(OS, ParenthesisColor) << ')';
     }
+    void visitSequenceArchetypeType(SequenceArchetypeType *SAT,
+                                    StringRef label) {
+      printArchetypeCommon(SAT, "sequence_archetype_type", label);
+      
+    }
 
     void visitGenericTypeParamType(GenericTypeParamType *T, StringRef label) {
       printCommon(label, "generic_type_param_type");
       printField("depth", T->getDepth());
       printField("index", T->getIndex());
+      printField("variadic", T->isVariadic());
       if (auto decl = T->getDecl())
         printField("decl", decl->printRef());
       PrintWithColorRAII(OS, ParenthesisColor) << ')';

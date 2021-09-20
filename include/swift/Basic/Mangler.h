@@ -180,6 +180,15 @@ protected:
     Buffer << op << arg;
     recordOpStat(op, OldPos);
   }
+  void appendOperator(StringRef op, bool variadic, Index index) {
+    size_t OldPos = Storage.size();
+    Buffer << op;
+    if (variadic) {
+      Buffer << 'v';
+    }
+    Buffer << index;
+    recordOpStat(op, OldPos);
+  }
   void appendListSeparator() {
     appendOperator("_");
   }

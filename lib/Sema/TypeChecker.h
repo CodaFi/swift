@@ -76,6 +76,11 @@ enum class DeclTypeCheckingSemantics {
   /// The _openExistential(_:do:) declaration, which extracts the value inside
   /// an existential and passes it as a value of its own dynamic type.
   OpenExistential,
+
+  /// The _variadicMap(_:transform:) declaration, which feeds the elements of a
+  /// type sequence to a function and reconstitutes a new type sequence with the
+  /// result.
+  VariadicMap,
 };
 
 /// An individual result of a name lookup for a type.

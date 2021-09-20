@@ -5396,6 +5396,8 @@ public:
   /// type we can represent.
   Type getExistentialType() const;
 
+  bool isVariadic() const;
+
   // Implement isa/cast/dyncast/etc.
   static bool classof(const TypeBase *T) {
     return T->getKind() >= TypeKind::First_ArchetypeType
@@ -5683,6 +5685,50 @@ CanArchetypeType getParent() const {
 }
 END_CAN_TYPE_WRAPPER(NestedArchetypeType, ArchetypeType)
 
+/// An archetype that represents the dynamic type of an opened existential.
+class SequenceArchetypeType final : public ArchetypeType,
+    private ArchetypeTrailingObjects<SequenceArchetypeType>
+{
+  friend TrailingObjects;
+  friend ArchetypeType;
+
+  mutable GenericEnvironment *Environment = nullptr;
+
+public:
+  static CanTypeWrapper<SequenceArchetypeType>
+  get(ArchetypeType *otherArchetype);
+
+  static CanTypeWrapper<SequenceArchetypeType> get(const ASTContext &Ctx,
+                                                   GenericEnvironment *GenericEnv,
+                                                   GenericTypeParamType *InterfaceType,
+                                                   SmallVectorImpl<ProtocolDecl *> &ConformsTo,
+                                                   Type Superclass,
+                                                   LayoutConstraint Layout);
+
+  /// Retrieve the generic environment in which this archetype resides.
+  GenericEnvironment *getGenericEnvironment() const {
+    return Environment;
+  }
+
+  GenericTypeParamType *getInterfaceType() const {
+    return cast<GenericTypeParamType>(InterfaceType.getPointer());
+  }
+
+  static bool classof(const TypeBase *T) {
+    return T->getKind() == TypeKind::SequenceArchetype;
+  }
+
+private:
+  SequenceArchetypeType(const ASTContext &Ctx,
+                        GenericEnvironment *GenericEnv,
+                        Type InterfaceType,
+                        ArrayRef<ProtocolDecl *> ConformsTo,
+                        Type Superclass,
+                        LayoutConstraint Layout);
+};
+BEGIN_CAN_TYPE_WRAPPER(SequenceArchetypeType, ArchetypeType)
+END_CAN_TYPE_WRAPPER(SequenceArchetypeType, ArchetypeType)
+
 template<typename Type>
 const Type *ArchetypeType::getSubclassTrailingObjects() const {
   if (auto contextTy = dyn_cast<PrimaryArchetypeType>(this)) {
@@ -5695,6 +5741,9 @@ const Type *ArchetypeType::getSubclassTrailingObjects() const {
     return openedTy->getTrailingObjects<Type>();
   }
   if (auto childTy = dyn_cast<NestedArchetypeType>(this)) {
+    return childTy->getTrailingObjects<Type>();
+  }
+  if (auto childTy = dyn_cast<SequenceArchetypeType>(this)) {
     return childTy->getTrailingObjects<Type>();
   }
   llvm_unreachable("unhandled ArchetypeType subclass?");
@@ -5711,7 +5760,8 @@ class GenericTypeParamType : public SubstitutableType {
 
 public:
   /// Retrieve a generic type parameter at the given depth and index.
-  static GenericTypeParamType *get(unsigned depth, unsigned index,
+  static GenericTypeParamType *get(bool isVariadic,
+                                   unsigned depth, unsigned index,
                                    const ASTContext &ctx);
 
   /// Retrieve the declaration of the generic type parameter, or null if
@@ -5747,6 +5797,8 @@ public:
   /// Here 'T' and 'U' have indexes 0 and 1, respectively. 'V' has index 0.
   unsigned getIndex() const;
 
+  bool isVariadic() const;
+
   // Implement isa/cast/dyncast/etc.
   static bool classof(const TypeBase *T) {
     return T->getKind() == TypeKind::GenericTypeParam;
@@ -5760,17 +5812,20 @@ private:
                         RecursiveTypeProperties::HasTypeParameter),
       ParamOrDepthIndex(param) { }
 
-  explicit GenericTypeParamType(unsigned depth,
+  explicit GenericTypeParamType(bool isVariadic,
+                                unsigned depth,
                                 unsigned index,
                                 const ASTContext &ctx)
     : SubstitutableType(TypeKind::GenericTypeParam, &ctx,
                         RecursiveTypeProperties::HasTypeParameter),
-      ParamOrDepthIndex(depth << 16 | index) { }
+      ParamOrDepthIndex(depth << 16 | index | isVariadic << 30) { }
 };
 BEGIN_CAN_TYPE_WRAPPER(GenericTypeParamType, SubstitutableType)
-  static CanGenericTypeParamType get(unsigned depth, unsigned index,
+  static CanGenericTypeParamType get(bool isVariadic,
+                                     unsigned depth, unsigned index,
                                      const ASTContext &C) {
-    return CanGenericTypeParamType(GenericTypeParamType::get(depth, index, C));
+    return CanGenericTypeParamType(GenericTypeParamType::get(isVariadic,
+                                                             depth, index, C));
   }
 END_CAN_TYPE_WRAPPER(GenericTypeParamType, SubstitutableType)
 
@@ -6323,7 +6378,7 @@ constexpr bool TypeBase::isSugaredType<id##Type>() { \
 #include "swift/AST/TypeNodes.def"
 
 inline GenericParamKey::GenericParamKey(const GenericTypeParamType *p)
-  : Depth(p->getDepth()), Index(p->getIndex()) { }
+  : Variadic(p->isVariadic()), Depth(p->getDepth()), Index(p->getIndex()) { }
 
 inline TypeBase *TypeBase::getDesugaredType() {
   if (!isa<SugarType>(this))

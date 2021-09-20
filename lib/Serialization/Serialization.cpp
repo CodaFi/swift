@@ -2740,6 +2740,11 @@ class Serializer::DeclSerializer : public DeclVisitor<DeclSerializer> {
           origDeclID, paramIndicesVector);
       return;
     }
+    case DAK_TypeSequence: {
+      auto abbrCode = S.DeclTypeAbbrCodes[TypeSequenceDeclAttrLayout::Code];
+      TypeSequenceDeclAttrLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode);
+      return;
+    }
     }
   }
 
@@ -3382,6 +3387,7 @@ public:
     GenericTypeParamDeclLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
                                 S.addDeclBaseNameRef(genericParam->getName()),
                                 genericParam->isImplicit(),
+                                genericParam->isVariadic(),
                                 genericParam->getDepth(),
                                 genericParam->getIndex());
   }
@@ -4416,7 +4422,7 @@ public:
     GenericSignatureID sigID = S.addGenericSignatureRef(sig);
     auto interfaceType = archetypeTy->getInterfaceType()
       ->castTo<GenericTypeParamType>();
-
+    assert(!interfaceType->isVariadic());
     unsigned abbrCode = S.DeclTypeAbbrCodes[PrimaryArchetypeTypeLayout::Code];
     PrimaryArchetypeTypeLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
                                            sigID,
@@ -4476,6 +4482,21 @@ public:
         S.Out, S.ScratchRecord, abbrCode,
         S.addTypeRef(dependent->getBase()),
         S.addDeclRef(dependent->getAssocType()));
+  }
+
+  void visitSequenceArchetypeType(const SequenceArchetypeType *archetypeTy) {
+    using namespace decls_block;
+    auto sig = archetypeTy->getGenericEnvironment()->getGenericSignature();
+
+    GenericSignatureID sigID = S.addGenericSignatureRef(sig);
+    auto interfaceType = archetypeTy->getInterfaceType()
+      ->castTo<GenericTypeParamType>();
+    assert(interfaceType->isVariadic());
+    unsigned abbrCode = S.DeclTypeAbbrCodes[SequenceArchetypeTypeLayout::Code];
+    SequenceArchetypeTypeLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
+                                            sigID,
+                                            interfaceType->getDepth(),
+                                            interfaceType->getIndex());
   }
 
   void serializeFunctionTypeParams(const AnyFunctionType *fnTy) {
@@ -4832,6 +4853,7 @@ void Serializer::writeAllDeclsAndTypes() {
   registerDeclTypeAbbr<OpenedArchetypeTypeLayout>();
   registerDeclTypeAbbr<OpaqueArchetypeTypeLayout>();
   registerDeclTypeAbbr<NestedArchetypeTypeLayout>();
+  registerDeclTypeAbbr<SequenceArchetypeTypeLayout>();
   registerDeclTypeAbbr<ProtocolCompositionTypeLayout>();
   registerDeclTypeAbbr<BoundGenericTypeLayout>();
   registerDeclTypeAbbr<GenericFunctionTypeLayout>();

@@ -236,7 +236,7 @@ createGenericParam(ASTContext &ctx, const char *name, unsigned index) {
   Identifier ident = ctx.getIdentifier(name);
   auto genericParam =
     new (ctx) GenericTypeParamDecl(&M->getMainFile(FileUnitKind::Builtin),
-                                   ident, SourceLoc(), 0, index);
+                                   ident, SourceLoc(), false, 0, index);
   return genericParam;
 }
 

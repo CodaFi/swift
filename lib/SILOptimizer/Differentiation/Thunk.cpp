@@ -64,7 +64,14 @@ CanGenericSignature buildThunkSignature(SILFunction *fn, bool inheritGenericSig,
   }
 
   // Add a new generic parameter to replace the opened existential.
+<<<<<<< HEAD
   auto *newGenericParam = GenericTypeParamType::get(depth, 0, ctx);
+=======
+  auto *newGenericParam = GenericTypeParamType::get(/*variadic=*/false,
+                                                    depth, 0, ctx);
+
+  builder.addGenericParameter(newGenericParam);
+>>>>>>> a94aea63ec1... XXX
   Requirement newRequirement(RequirementKind::Conformance, newGenericParam,
                              openedExistential->getOpenedExistentialType());
 

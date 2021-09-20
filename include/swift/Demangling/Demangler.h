@@ -532,7 +532,7 @@ protected:
 
   NodePointer popAssocTypeName();
   NodePointer popAssocTypePath();
-  NodePointer getDependentGenericParamType(int depth, int index);
+  NodePointer getDependentGenericParamType(bool variadic, int depth, int index);
   NodePointer demangleGenericParamIndex();
   NodePointer popProtocolConformance();
   NodePointer demangleRetroactiveProtocolConformanceRef();

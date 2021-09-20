@@ -4765,6 +4765,13 @@ WARNING(implicitly_unwrapped_optional_deprecated_in_this_position,Deprecation,
 ERROR(implicitly_unwrapped_optional_in_illegal_position,none,
         "using '!' is not allowed here; perhaps '?' was intended?", ())
 
+// Type Sequences
+
+ERROR(type_sequence_underlying_not_generic_param,none,
+      "underlying type sequence type %0 is not a generic parameter", (Type))
+ERROR(type_sequence_underlying_not_variadic,none,
+      "underlying type sequence type %0 is not variadic", (Type))
+
 // Ownership
 ERROR(invalid_ownership_type,none,
       "%0 may only be applied to class and class-bound protocol types, not %1",
@@ -6038,6 +6045,14 @@ ERROR(wrap_invalid_attr_added_by_access_note, none,
       "ignored access note: %0; did not implicitly add '%2' to this %3, even "
       "though it was " WHICH_ACCESS_NOTE(1),
       (DiagnosticInfo *, StringRef, StringRef, DescriptiveDeclKind))
+
+//------------------------------------------------------------------------------
+// MARK: variadics
+//------------------------------------------------------------------------------
+
+ERROR(type_sequence_on_non_generic_param, none,
+      "'@_typeSequence' must appear on a generic parameter",
+      ())
 
 #undef WHICH_ACCESS_NOTE
 

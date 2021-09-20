@@ -624,9 +624,10 @@ Type ASTBuilder::createMetatypeType(Type instance,
   return MetatypeType::get(instance, getMetatypeRepresentation(*repr));
 }
 
-Type ASTBuilder::createGenericTypeParameterType(unsigned depth,
+Type ASTBuilder::createGenericTypeParameterType(bool variadic,
+                                                unsigned depth,
                                                 unsigned index) {
-  return GenericTypeParamType::get(depth, index, Ctx);
+  return GenericTypeParamType::get(variadic, depth, index, Ctx);
 }
 
 Type ASTBuilder::createDependentMemberType(StringRef member,

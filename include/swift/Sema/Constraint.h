@@ -161,6 +161,9 @@ enum class ConstraintKind : char {
   /// The first type is an opened type from the second type (which is
   /// an existential).
   OpenedExistentialOf,
+  /// The first type is an opened type from the second type (which is
+  /// a type sequence).
+  OpenedElementTypeOf,
   /// A relation between three types. The first is the key path type,
   /// the second is the root type, and the third is the projected value type.
   /// The second and third types can be lvalues depending on the kind of key
@@ -296,10 +299,14 @@ enum class ConversionRestrictionKind {
   /// Implicit conversion from a value of CGFloat type to a value of Double type
   /// via an implicit Double initializer call passing a CGFloat value.
   CGFloatToDouble,
+
   /// Implicit conversion between Swift and C pointers:
   //    - Unsafe[Mutable]RawPointer -> Unsafe[Mutable]Pointer<[U]Int>
   //    - Unsafe[Mutable]Pointer<Int{8, 16, ...}> <-> Unsafe[Mutable]Pointer<UInt{8, 16, ...}>
   PointerToCPointer,
+
+  /// T... -> @_typeSequence T
+  VariadicToTypeSequence,
 };
 
 /// Specifies whether a given conversion requires the creation of a temporary
@@ -685,6 +692,9 @@ public:
     case ConstraintKind::KeyPath:
     case ConstraintKind::KeyPathApplication:
     case ConstraintKind::Defaultable:
+    case ConstraintKind::FunctionInput:
+    case ConstraintKind::FunctionResult:
+    case ConstraintKind::OpenedElementTypeOf:
       return ConstraintClassification::TypeProperty;
 
     case ConstraintKind::Disjunction:

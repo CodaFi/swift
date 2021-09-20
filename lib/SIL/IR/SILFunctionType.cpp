@@ -428,7 +428,7 @@ static CanType getAutoDiffTangentTypeForLinearMap(
   // Otherwise, the tangent type is a new generic parameter substituted for the
   // tangent type.
   auto gpIndex = substGenericParams.size();
-  auto gpType = CanGenericTypeParamType::get(0, gpIndex, context);
+  auto gpType = CanGenericTypeParamType::get(/*variadic*/ false, 0, gpIndex, context);
   substGenericParams.push_back(gpType);
   substReplacements.push_back(tanType);
   return gpType;
@@ -1183,7 +1183,7 @@ public:
                           ArchetypeType *upperBound,
                       ArrayRef<ProtocolConformanceRef> substTypeConformances) {
     auto paramIndex = substGenericParams.size();
-    auto param = CanGenericTypeParamType::get(0, paramIndex, TC.Context);
+    auto param = CanGenericTypeParamType::get(/*variadic*/ false, 0, paramIndex, TC.Context);
     
     // Expand the bound type according to the expansion context.
     if (Expansion.shouldLookThroughOpaqueTypeArchetypes()

@@ -460,7 +460,7 @@ struct ASTContext::Implementation {
   };
 
   llvm::DenseMap<ModuleDecl*, ModuleType*> ModuleTypes;
-  llvm::DenseMap<std::pair<unsigned, unsigned>, GenericTypeParamType *>
+  llvm::DenseMap<std::tuple<unsigned, unsigned, unsigned>, GenericTypeParamType *>
     GenericParamTypes;
   llvm::FoldingSet<GenericFunctionType> GenericFunctionTypes;
   llvm::FoldingSet<SILFunctionType> SILFunctionTypes;
@@ -3705,16 +3705,26 @@ GenericFunctionType::GenericFunctionType(
   }
 }
 
-GenericTypeParamType *GenericTypeParamType::get(unsigned depth, unsigned index,
+GenericTypeParamType *GenericTypeParamType::get(bool isVariadic,
+                                                unsigned depth, unsigned index,
                                                 const ASTContext &ctx) {
-  auto known = ctx.getImpl().GenericParamTypes.find({ depth, index });
+  auto known = ctx.getImpl().GenericParamTypes.find({ (unsigned)isVariadic, depth, index });
   if (known != ctx.getImpl().GenericParamTypes.end())
     return known->second;
 
   auto result = new (ctx, AllocationArena::Permanent)
-                  GenericTypeParamType(depth, index, ctx);
-  ctx.getImpl().GenericParamTypes[{depth, index}] = result;
+                  GenericTypeParamType(isVariadic, depth, index, ctx);
+  ctx.getImpl().GenericParamTypes[{(unsigned)isVariadic, depth, index}] = result;
   return result;
+}
+
+bool GenericTypeParamType::isVariadic() const {
+  if (auto param = getDecl()) {
+    return param->isVariadic();
+  }
+
+  auto fixedNum = ParamOrDepthIndex.get<DepthIndexTy>();
+  return (fixedNum & (0x1 << 30)) == (0x1 << 30);
 }
 
 TypeArrayView<GenericTypeParamType>
@@ -4367,7 +4377,8 @@ CanOpenedArchetypeType OpenedArchetypeType::get(Type existential,
       ::new (mem) OpenedArchetypeType(ctx, existential,
                                 protos, layoutSuperclass,
                                 layoutConstraint, *knownID);
-  result->InterfaceType = GenericTypeParamType::get(0, 0, ctx);
+  result->InterfaceType = GenericTypeParamType::get(/*variadic*/false,
+                                                    0, 0, ctx);
   
   openedExistentialArchetypes[*knownID] = result;
   return CanOpenedArchetypeType(result);
@@ -5012,7 +5023,8 @@ CanGenericSignature ASTContext::getSingleGenericParameterSignature() const {
   if (auto theSig = getImpl().SingleGenericParameterSignature)
     return theSig;
   
-  auto param = GenericTypeParamType::get(0, 0, *this);
+  auto param = GenericTypeParamType::get(/*variadic*/false,
+                                         0, 0, *this);
   auto sig = GenericSignature::get(param, { });
   auto canonicalSig = CanGenericSignature(sig);
   getImpl().SingleGenericParameterSignature = canonicalSig;
@@ -5041,7 +5053,8 @@ CanGenericSignature ASTContext::getOpenedArchetypeSignature(Type type) {
   if (found != getImpl().ExistentialSignatures.end())
     return found->second;
 
-  auto genericParam = GenericTypeParamType::get(0, 0, *this);
+  auto genericParam = GenericTypeParamType::get(/*variadic*/false,
+                                                0, 0, *this);
   Requirement requirement(RequirementKind::Conformance, genericParam,
                           existential);
   auto genericSig = buildGenericSignature(*this,
@@ -5126,6 +5139,7 @@ ASTContext::getOverrideGenericSignature(const ValueDecl *base,
     }
 
     return CanGenericTypeParamType::get(
+        /*variadic*/false,
         gp->getDepth() - baseDepth + derivedDepth, gp->getIndex(), *this);
   };
 

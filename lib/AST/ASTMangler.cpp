@@ -1350,6 +1350,10 @@ void ASTMangler::appendType(Type type, GenericSignature sig,
       appendOperator("Qa");
       return;
     }
+
+    case TypeKind::SequenceArchetype: {
+      llvm_unreachable("");
+    }
       
     case TypeKind::DynamicSelf: {
       auto dynamicSelf = cast<DynamicSelfType>(tybase);
@@ -1378,8 +1382,13 @@ void ASTMangler::appendType(Type type, GenericSignature sig,
       // A special mangling for the very first generic parameter. This shows up
       // frequently because it corresponds to 'Self' in protocol requirement
       // generic signatures.
-      if (paramTy->getDepth() == 0 && paramTy->getIndex() == 0)
-        return appendOperator("x");
+      if (paramTy->getDepth() == 0 && paramTy->getIndex() == 0) {
+        appendOperator("x");
+        if (paramTy->isVariadic()) {
+          appendOperator("V");
+        }
+        return;
+      }
 
       return appendOpWithGenericParamIndex("q", paramTy);
     }
@@ -1487,6 +1496,9 @@ GenericTypeParamType *ASTMangler::appendAssocType(DependentMemberType *DepTy,
 void ASTMangler::appendOpWithGenericParamIndex(StringRef Op,
                                           const GenericTypeParamType *paramTy) {
   llvm::SmallVector<char, 8> OpBuf(Op.begin(), Op.end());
+  if (paramTy->isVariadic()) {
+    OpBuf.push_back('v');
+  }
   if (paramTy->getDepth() > 0) {
     OpBuf.push_back('d');
     return appendOperator(StringRef(OpBuf.data(), OpBuf.size()),
@@ -1497,7 +1509,7 @@ void ASTMangler::appendOpWithGenericParamIndex(StringRef Op,
     OpBuf.push_back('z');
     return appendOperator(StringRef(OpBuf.data(), OpBuf.size()));
   }
-  appendOperator(Op, Index(paramTy->getIndex() - 1));
+  appendOperator(Op, paramTy->isVariadic(), Index(paramTy->getIndex() - 1));
 }
 
 void ASTMangler::appendFlatGenericArgs(SubstitutionMap subs,

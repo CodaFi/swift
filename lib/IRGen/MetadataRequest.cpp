@@ -2549,7 +2549,7 @@ static bool shouldAccessByMangledName(IRGenModule &IGM, CanType type) {
       }
       NumCalls += 1;
     }
-    
+
     void visitAnyFunctionType(CanAnyFunctionType fun) {
       // Need to materialize the arguments and return, then call the
       // getFunctionMetadata accessor.
