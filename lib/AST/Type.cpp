@@ -214,6 +214,7 @@ bool CanType::isReferenceTypeImpl(CanType type, const GenericSignatureImpl *sig,
   case TypeKind::BuiltinDefaultActorStorage:
   case TypeKind::BuiltinUnsafeValueBuffer:
   case TypeKind::BuiltinVector:
+  case TypeKind::BuiltinTypeSequence:
   case TypeKind::Tuple:
   case TypeKind::Enum:
   case TypeKind::Struct:
@@ -4334,6 +4335,10 @@ TypeBase::getContextSubstitutions(const DeclContext *dc,
     if (baseTy->is<ErrorType>())
       break;
 
+    // These always appear at the top level.
+    if (baseTy->is<BuiltinTypeSequenceType>())
+      break;
+
     // For a bound generic type, gather the generic parameter -> generic
     // argument substitutions.
     if (auto boundGeneric = baseTy->getAs<BoundGenericType>()) {
@@ -5369,6 +5374,7 @@ ReferenceCounting TypeBase::getReferenceCounting() {
   case TypeKind::BuiltinDefaultActorStorage:
   case TypeKind::BuiltinUnsafeValueBuffer:
   case TypeKind::BuiltinVector:
+  case TypeKind::BuiltinTypeSequence:
   case TypeKind::Tuple:
   case TypeKind::Enum:
   case TypeKind::Struct:

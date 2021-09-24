@@ -523,6 +523,9 @@ static Type formExtensionInterfaceType(
   if (type->is<ErrorType>())
     return type;
 
+  if (type->is<BuiltinTypeSequenceType>())
+    return type;
+
   // Find the nominal type declaration and its parent type.
   if (type->is<ProtocolCompositionType>())
     type = type->getCanonicalType();

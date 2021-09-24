@@ -3031,6 +3031,10 @@ StringRef BuiltinType::getTypeName(SmallVectorImpl<char> &result,
     }
     break;
   }
+  case BuiltinTypeKind::BuiltinTypeSequence: {
+    printer << MAYBE_GET_NAMESPACED_BUILTIN(BUILTIN_TYPE_NAME_TYPE_SEQUENCE);
+    break;
+  }
   }
 #undef MAYBE_GET_NAMESPACED_BUILTIN
 

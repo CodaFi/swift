@@ -1811,9 +1811,7 @@ public:
   }
 
   void visitExtensionDecl(ExtensionDecl *ED) {
-    auto extendedType = ED->getExtendedNominal();
-    assert(extendedType && "valid extension with no extended type?");
-    if (!extendedType)
+    if (ED->isInvalid())
       return;
 
     // The rules here are tricky.

@@ -2540,6 +2540,20 @@ GenericParamListRequest::evaluate(Evaluator &evaluator, GenericContext *value) c
     auto &ctx = value->getASTContext();
     auto *nominal = ext->getExtendedNominal();
     if (!nominal) {
+      auto extType = ext->getExtendedType();
+      if (extType && extType->is<BuiltinTypeSequenceType>()) {
+        // The generic parameter 'T' in 'T...'.
+        auto &ctx = value->getASTContext();
+        auto selfId = ctx.getIdentifier("T");
+        auto elementDecl = new (ctx) GenericTypeParamDecl(
+            ext, selfId, SourceLoc(), /*variadic=*/false,
+            /*depth=*/0, /*index=*/0);
+        elementDecl->setImplicit();
+
+        // The generic parameter list itself.
+        return GenericParamList::create(ctx, SourceLoc(), elementDecl,
+                                        SourceLoc());
+      }
       return nullptr;
     }
     auto *genericParams = createExtensionGenericParams(ctx, ext, nominal);

@@ -257,6 +257,15 @@ namespace {
 
 #undef IMPL
 
+    RetTy visitBuiltinTypeSequenceType(
+                                         CanBuiltinTypeSequenceType type,
+                                         AbstractionPattern origType,
+                                         IsTypeExpansionSensitive_t isSensitive) {
+      return asImpl().handleAddressOnly(type, {IsNotTrivial, IsFixedABI,
+                                               IsAddressOnly, IsNotResilient,
+                                               isSensitive});
+    }
+
     RetTy visitBuiltinUnsafeValueBufferType(
                                          CanBuiltinUnsafeValueBufferType type,
                                          AbstractionPattern origType,

@@ -2836,7 +2836,7 @@ public:
     auto extType = ED->getExtendedType();
 
     auto nominal = ED->computeExtendedNominal();
-    if (nominal == nullptr) {
+    if (nominal == nullptr && (!extType || !extType->is<BuiltinTypeSequenceType>())) {
       const bool wasAlreadyInvalid = ED->isInvalid();
       ED->setInvalid();
       if (extType && !extType->hasError() && extType->getAnyNominal()) {
@@ -2925,7 +2925,7 @@ public:
 
     checkExplicitAvailability(ED);
 
-    if (nominal->isDistributedActor())
+    if (nominal && nominal->isDistributedActor())
       TypeChecker::checkDistributedActor(dyn_cast<ClassDecl>(nominal));
   }
 

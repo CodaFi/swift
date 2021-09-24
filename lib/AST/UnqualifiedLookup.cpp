@@ -220,8 +220,7 @@ public:
   bool consumePossiblyNotInScope(ArrayRef<VarDecl *> vars) override;
 
   /// returns true if finished
-  bool lookInMembers(DeclContext *const scopeDC,
-                     NominalTypeDecl *const nominal) override;
+  bool lookInMembers(const DeclContext *scopeDC) override;
 
 #ifndef NDEBUG
   void startingNextLookupStep() override {
@@ -649,8 +648,7 @@ bool ASTScopeDeclGatherer::consume(ArrayRef<ValueDecl *> valuesArg,
 
 // TODO: in future, migrate this functionality into ASTScopes
 bool ASTScopeDeclConsumerForUnqualifiedLookup::lookInMembers(
-    DeclContext *const scopeDC,
-    NominalTypeDecl *const nominal) {
+    const DeclContext *scopeDC) {
   if (candidateSelfDC) {
     if (auto *afd = dyn_cast<AbstractFunctionDecl>(candidateSelfDC)) {
       assert(factory.isInsideBodyOfFunction(afd) && "Should be inside");
@@ -820,8 +818,7 @@ public:
     return (!stopAfterInnermostBraceStmt && !results.empty());
   }
 
-  bool lookInMembers(DeclContext *const,
-                     NominalTypeDecl *const) override {
+  bool lookInMembers(const DeclContext *) override {
     return true;
   }
 

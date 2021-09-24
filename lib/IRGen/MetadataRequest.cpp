@@ -1329,6 +1329,13 @@ namespace {
       return emitDirectMetadataRef(type);
     }
 
+    MetadataResponse visitBuiltinTypeSequenceType(CanBuiltinTypeSequenceType type,
+                                                  DynamicMetadataRequest request) {
+      IGF.unimplemented(SourceLoc(),
+                        "metadata ref for type sequence type");
+      return MetadataResponse::getUndef(IGF);
+    }
+
     MetadataResponse visitNominalType(CanNominalType type,
                                       DynamicMetadataRequest request) {
       assert(!type->isExistentialType());

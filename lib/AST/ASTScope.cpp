@@ -184,6 +184,12 @@ ExtensionScope::getCorrespondingNominalTypeDecl() const {
   return decl->getExtendedNominal();
 }
 
+bool ExtensionScope::isTypeSequenceExtension() const {
+  if (auto extTy = decl->getExtendedType())
+    return extTy->is<BuiltinTypeSequenceType>();
+  return false;
+}
+
 void ASTScopeImpl::preOrderDo(function_ref<void(ASTScopeImpl *)> fn) {
   fn(this);
   preOrderChildrenDo(fn);

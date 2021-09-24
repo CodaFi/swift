@@ -202,6 +202,7 @@ public:
   const LoadableTypeInfo &getOpaqueStorageTypeInfo(Size storageSize,
                                                    Alignment storageAlign);
   const TypeInfo &getMetatypeTypeInfo(MetatypeRepresentation representation);
+  const LoadableTypeInfo &getTypeSequenceTypeInfo();
 
 #define REF_STORAGE(Name, ...) \
   const TypeInfo *create##Name##StorageType(llvm::Type *valueType, \

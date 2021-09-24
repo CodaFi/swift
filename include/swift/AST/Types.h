@@ -1790,7 +1790,22 @@ public:
   }
 };
 DEFINE_EMPTY_CAN_TYPE_WRAPPER(BuiltinFloatType, BuiltinType)
-  
+
+class BuiltinTypeSequenceType : public BuiltinType {
+  friend class ASTContext;
+
+  BuiltinTypeSequenceType(const ASTContext &context)
+    : BuiltinType(TypeKind::BuiltinTypeSequence, context) { }
+
+public:
+  static BuiltinTypeSequenceType *get(const ASTContext &context);
+
+  static bool classof(const TypeBase *T) {
+    return T->getKind() == TypeKind::BuiltinTypeSequence;
+  }
+};
+DEFINE_EMPTY_CAN_TYPE_WRAPPER(BuiltinTypeSequenceType, BuiltinType)
+
 /// An abstract type for all sugared types to make getDesugaredType() fast by
 /// sharing field offsets and logic for the fast path.
 class SugarType : public TypeBase {

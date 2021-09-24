@@ -152,7 +152,9 @@ constexpr static BuiltinNameStringLiteral BUILTIN_TYPE_NAME_SILTOKEN = {
 /// The name of the Builtin type for Word
 constexpr static BuiltinNameStringLiteral BUILTIN_TYPE_NAME_WORD = {
     "Builtin.Word"};
-
+/// The name of the Builtin type for T...
+constexpr static BuiltinNameStringLiteral BUILTIN_TYPE_NAME_TYPE_SEQUENCE = {
+    "Builtin.TypeSequence"};
 } // end namespace swift
 
 #endif // SWIFT_STRINGS_H

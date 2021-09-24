@@ -130,6 +130,11 @@ public:
     return asImpl().visit(type1.getElementType(), type2.getElementType());
   }
 
+  bool visitBuiltinTypeSequenceType(CanBuiltinTypeSequenceType type1,
+                                    CanBuiltinTypeSequenceType type2) {
+    return asImpl().visitDifferentTypeStructure(type1, type2);
+  }
+
   bool visitTupleType(CanTupleType type1, CanTupleType type2) {
     return visitComponentArray(type1, type2,
                                type1->getElements(), type2->getElements());

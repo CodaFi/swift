@@ -110,8 +110,12 @@ Type DeclContext::getDeclaredTypeInContext() const {
 Type DeclContext::getDeclaredInterfaceType() const {
   if (auto *ED = dyn_cast<ExtensionDecl>(this)) {
     auto *NTD = ED->getExtendedNominal();
-    if (NTD == nullptr)
+    if (NTD == nullptr) {
+      auto extTy = ED->getExtendedType();
+      if (extTy && extTy->is<BuiltinTypeSequenceType>())
+        return extTy;
       return ErrorType::get(ED->getASTContext());
+    }
     return NTD->getDeclaredInterfaceType();
   }
   if (auto *NTD = dyn_cast<NominalTypeDecl>(this))

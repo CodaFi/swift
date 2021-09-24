@@ -3543,6 +3543,11 @@ namespace {
       PrintWithColorRAII(OS, ParenthesisColor) << ')';
     }
 
+    void visitBuiltinTypeSequenceType(BuiltinTypeSequenceType *T, StringRef label) {
+      printCommon(label, "builtin_type_sequence_type");
+      PrintWithColorRAII(OS, ParenthesisColor) << ')';
+    }
+
     void visitTypeAliasType(TypeAliasType *T, StringRef label) {
       printCommon(label, "type_alias_type");
       printField("decl", T->getDecl()->printRef());

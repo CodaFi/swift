@@ -1106,6 +1106,8 @@ void ASTMangler::appendType(Type type, GenericSignature sig,
         llvm_unreachable("impossible width value");
       return;
     }
+    case TypeKind::BuiltinTypeSequence:
+      llvm_unreachable("");
     case TypeKind::BuiltinIntegerLiteral:
       return appendOperator("BI");
     case TypeKind::BuiltinJob:

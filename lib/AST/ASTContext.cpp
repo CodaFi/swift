@@ -608,19 +608,26 @@ ASTContext::ASTContext(LangOptions &langOpts, TypeCheckerOptions &typeckOpts,
                        ClangImporterOptions &ClangImporterOpts,
                        symbolgraphgen::SymbolGraphOptions &SymbolGraphOpts,
                        SourceManager &SourceMgr, DiagnosticEngine &Diags)
-    : LangOpts(langOpts), TypeCheckerOpts(typeckOpts), SILOpts(silOpts),
-      SearchPathOpts(SearchPathOpts), ClangImporterOpts(ClangImporterOpts),
-      SymbolGraphOpts(SymbolGraphOpts), SourceMgr(SourceMgr), Diags(Diags),
-      evaluator(Diags, langOpts), TheBuiltinModule(createBuiltinModule(*this)),
-      StdlibModuleName(getIdentifier(STDLIB_NAME)),
-      SwiftShimsModuleName(getIdentifier(SWIFT_SHIMS_NAME)),
-      TheErrorType(new (*this, AllocationArena::Permanent) ErrorType(
-          *this, Type(), RecursiveTypeProperties::HasError)),
-      TheUnresolvedType(new (*this, AllocationArena::Permanent)
-                            UnresolvedType(*this)),
-      TheEmptyTupleType(TupleType::get(ArrayRef<TupleTypeElt>(), *this)),
-      TheAnyType(ProtocolCompositionType::get(*this, ArrayRef<Type>(),
-                                              /*HasExplicitAnyObject=*/false)),
+  : LangOpts(langOpts),
+    TypeCheckerOpts(typeckOpts),
+    SearchPathOpts(SearchPathOpts),
+    ClangImporterOpts(ClangImporterOpts),
+    SymbolGraphOpts(SymbolGraphOpts),
+    SourceMgr(SourceMgr), Diags(Diags),
+    evaluator(Diags, langOpts),
+    TheBuiltinModule(createBuiltinModule(*this)),
+    StdlibModuleName(getIdentifier(STDLIB_NAME)),
+    SwiftShimsModuleName(getIdentifier(SWIFT_SHIMS_NAME)),
+    TheErrorType(
+      new (*this, AllocationArena::Permanent)
+        ErrorType(*this, Type(), RecursiveTypeProperties::HasError)),
+    TheUnresolvedType(new (*this, AllocationArena::Permanent)
+                      UnresolvedType(*this)),
+    TheEmptyTupleType(TupleType::get(ArrayRef<TupleTypeElt>(), *this)),
+    TheAnyType(ProtocolCompositionType::get(*this, ArrayRef<Type>(),
+                                            /*HasExplicitAnyObject=*/false)),
+    TheTypeSequenceType(new (*this, AllocationArena::Permanent)
+                          BuiltinTypeSequenceType(*this)),
 #define SINGLETON_TYPE(SHORT_ID, ID) \
     The##SHORT_ID##Type(new (*this, AllocationArena::Permanent) \
                           ID##Type(*this)),
@@ -3145,7 +3152,8 @@ NominalType *NominalType::get(NominalTypeDecl *D, Type Parent, const ASTContext 
          "must be a non-generic type decl");
   assert((!Parent || Parent->is<NominalType>() ||
           Parent->is<BoundGenericType>() ||
-          Parent->is<UnboundGenericType>()) &&
+          Parent->is<UnboundGenericType>() ||
+          Parent->is<BuiltinTypeSequenceType>()) &&
          "parent must be a nominal type");
 
   switch (D->getKind()) {

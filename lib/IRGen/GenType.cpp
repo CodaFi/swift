@@ -1670,6 +1670,14 @@ const LoadableTypeInfo &TypeConverter::getEmptyTypeInfo() {
   return *EmptyTI;
 }
 
+const LoadableTypeInfo &TypeConverter::getTypeSequenceTypeInfo() {
+  if (EmptyTI) return *EmptyTI;
+  EmptyTI = new EmptyTypeInfo(IGM.Int8Ty);
+  EmptyTI->NextConverted = FirstType;
+  FirstType = EmptyTI;
+  return *EmptyTI;
+}
+
 const TypeInfo &
 TypeConverter::getResilientStructTypeInfo(IsABIAccessible_t isAccessible) {
   auto &cache = isAccessible ? AccessibleResilientStructTI
@@ -2076,6 +2084,8 @@ const TypeInfo *TypeConverter::convertType(CanType ty) {
     return &getExecutorTypeInfo();
   case TypeKind::BuiltinIntegerLiteral:
     return &getIntegerLiteralTypeInfo();
+  case TypeKind::BuiltinTypeSequence:
+    return &getTypeSequenceTypeInfo();
   case TypeKind::BuiltinFloat:
   case TypeKind::BuiltinInteger:
   case TypeKind::BuiltinVector: {

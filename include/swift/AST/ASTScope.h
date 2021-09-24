@@ -567,6 +567,10 @@ public:
     return nullptr;
   }
 
+  virtual bool isTypeSequenceExtension() const {
+    return false;
+  }
+
   bool areMembersVisibleFromWhereClause() const;
 
   virtual void createBodyScope(ASTScopeImpl *leaf, ScopeCreator &) {}
@@ -643,6 +647,7 @@ public:
     return decl;
   }
   NullablePtr<NominalTypeDecl> getCorrespondingNominalTypeDecl() const override;
+  bool isTypeSequenceExtension() const override;
   std::string declKindName() const override { return "Extension"; }
   SourceRange getBraces() const override;
   SourceRange moveStartPastExtendedNominal(SourceRange) const override;

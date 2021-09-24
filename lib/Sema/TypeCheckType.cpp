@@ -3689,6 +3689,10 @@ NeverNullType TypeResolver::resolveTupleType(TupleTypeRepr *repr,
   // Variadic tuples are not permitted.
   bool complained = false;
   if (repr->hasEllipsis()) {
+    // Except the sequence extension to T...
+    if (!repr->hasElementNames() && repr->getNumElements() == 1 && options.hasBase(TypeResolverContext::ExtensionBinding)) {
+      return getASTContext().TheTypeSequenceType;
+    }
     diagnose(repr->getEllipsisLoc(), diag::tuple_ellipsis);
     repr->removeEllipsis();
     complained = true;

@@ -833,6 +833,7 @@ public:
   const CanType TheUnresolvedType;        /// This is the UnresolvedType singleton.
   const CanType TheEmptyTupleType;        /// This is '()', aka Void
   const CanType TheAnyType;               /// This is 'Any', the empty protocol composition
+  const CanType TheTypeSequenceType;      /// This is 'T...'
 #define SINGLETON_TYPE(SHORT_ID, ID) \
   const CanType The##SHORT_ID##Type;
 #include "swift/AST/TypeNodes.def"
