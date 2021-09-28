@@ -465,8 +465,14 @@ Type TypeResolution::resolveTypeInContext(TypeDecl *typeDecl,
   if (!typeDecl->getDeclContext()->isTypeContext()) {
     if (auto *aliasDecl = dyn_cast<TypeAliasDecl>(typeDecl)) {
       // For a generic typealias, return the unbound generic form of the type.
-      if (aliasDecl->getGenericParams())
-        return aliasDecl->getUnboundGenericType();
+      if (aliasDecl->getGenericParams()) {
+        Type parentTy;
+        auto parentDC = aliasDecl->getDeclContext();
+        if (auto nominal = parentDC->getSelfNominalTypeDecl())
+          parentTy = nominal->getDeclaredType();
+
+        return UnboundGenericType::get(aliasDecl, parentTy, getASTContext());
+      }
 
       // Otherwise, return the appropriate type.
       if (getStage() == TypeResolutionStage::Structural &&

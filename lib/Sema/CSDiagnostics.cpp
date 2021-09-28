@@ -5643,7 +5643,7 @@ bool MissingGenericArgumentsFailure::diagnoseParameter(
           dyn_cast_or_null<NominalTypeDecl>(DC->getSelfNominalTypeDecl())) {
     baseTyForNote = NTD->getDeclaredType();
   } else if (auto *TAD = dyn_cast<TypeAliasDecl>(DC)) {
-    baseTyForNote = TAD->getUnboundGenericType();
+    baseTyForNote = TAD->getDeclaredInterfaceType();
   } else {
     return true;
   }

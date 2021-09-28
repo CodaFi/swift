@@ -3977,19 +3977,6 @@ void TypeAliasDecl::setUnderlyingType(Type underlying) {
           std::move(underlying));
 }
 
-UnboundGenericType *TypeAliasDecl::getUnboundGenericType() const {
-  assert(getGenericParams());
-
-  Type parentTy;
-  auto parentDC = getDeclContext();
-  if (auto nominal = parentDC->getSelfNominalTypeDecl())
-    parentTy = nominal->getDeclaredType();
-
-  return UnboundGenericType::get(
-      const_cast<TypeAliasDecl *>(this),
-      parentTy, getASTContext());
-}
-
 Type TypeAliasDecl::getStructuralType() const {
   auto &ctx = getASTContext();
   if (auto type = evaluateOrDefault(

@@ -62,11 +62,11 @@ typealias B<T1> = MyType<T1, T1>
 typealias C<T> = MyType<String, T>
 
 // Type aliases with unused generic params.
-typealias D<T1, T2, T3> = MyType<T2, T1>  // expected-note 3 {{'T3' declared as parameter to type 'D'}}
+typealias D<T1, T2, T3> = MyType<T2, T1>  // expected-note 3 {{'T3' declared as parameter to type 'D<T1, T2, T3>' (aka 'MyType<T2, T1>')}}
 
 typealias E<T1, T2> = Int  // expected-note {{generic type 'E' declared here}}
-// expected-note@-1 {{'T1' declared as parameter to type 'E'}}
-// expected-note@-2 {{'T2' declared as parameter to type 'E'}}
+// expected-note@-1 {{'T1' declared as parameter to type 'E<T1, T2>' (aka 'Int')}}
+// expected-note@-2 {{'T2' declared as parameter to type 'E<T1, T2>' (aka 'Int')}}
 
 typealias F<T1, T2> = (T1) -> T2
 
