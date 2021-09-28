@@ -1451,6 +1451,30 @@ TypeBase *TypeBase::getWithoutSyntaxSugar() {
   static_assert(std::is_base_of<SugarType, Id##Type>::value, "Sugar mismatch");
 #include "swift/AST/TypeNodes.def"
 
+BuiltinTypeSequenceType::BuiltinTypeSequenceType(ASTContext &C)
+  : BuiltinType(TypeKind::BuiltinTypeSequence, C) {
+  auto genericParam =
+    new (C) GenericTypeParamDecl(C.TheBuiltinModule->getFiles().front(),
+                                 C.getIdentifier("T"), SourceLoc(),
+                                 /*variadic*/ false,
+                                 /*depth*/ 0, /*index*/ 0);
+  auto *gpd = GenericParamList::create(C, SourceLoc(), genericParam, SourceLoc());
+  auto *structDecl =
+      new (C) StructDecl(SourceLoc(),
+                         C.getIdentifier("_TypeSequence"),
+                         SourceLoc(),
+                         /*Inherited*/ {},
+                         gpd,
+                         C.TheBuiltinModule->getFiles().front());
+  structDecl->setImplicit();
+  structDecl->setSynthesized();
+  structDecl->setAccess(AccessLevel::Public);
+  structDecl->setInterfaceType(Type(this));
+  C.evaluator.cacheOutput(HasMemberwiseInitRequest{structDecl}, false);
+  C.evaluator.cacheOutput(HasUserDefinedDesignatedInitRequest{structDecl}, false);
+  BuiltinNominalDecl = structDecl;
+}
+
 ParenType::ParenType(Type baseType, RecursiveTypeProperties properties,
                      ParameterTypeFlags flags)
   : SugarType(TypeKind::Paren,

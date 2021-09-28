@@ -243,12 +243,11 @@ bool GenericTypeOrExtensionWhereOrBodyPortion::lookupMembersOf(
     ASTScopeImpl::DeclConsumer consumer) const {
   // Special-case extension (T...)
   if (scope->isTypeSequenceExtension())
-    return consumer.lookInMembers(scope->getGenericContext(), nullptr);
+    return consumer.lookInMembers(scope->getGenericContext());
 
-  auto nt = scope->getCorrespondingNominalTypeDecl().getPtrOrNull();
-  if (!nt)
+  if (scope->getCorrespondingNominalTypeDecl().isNull())
     return false;
-  return consumer.lookInMembers(scope->getGenericContext(), nt);
+  return consumer.lookInMembers(scope->getGenericContext());
 }
 
 bool GenericTypeOrExtensionWherePortion::lookupMembersOf(

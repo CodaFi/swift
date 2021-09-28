@@ -933,6 +933,14 @@ BUILTIN_MISC_OPERATION_WITH_SILGEN(BuildDefaultActorExecutorRef,
 BUILTIN_MISC_OPERATION_WITH_SILGEN(BuildMainActorExecutorRef,
                                    "buildMainActorExecutorRef", "n", Special)
 
+/// countTypeSequence has type (T...) -> Int.
+BUILTIN_MISC_OPERATION_WITH_SILGEN(CountTypeSequence,
+                                   "countTypeSequence", "", Special)
+
+/// subscriptTypeSequence has type (T..., Int) -> T.
+BUILTIN_MISC_OPERATION_WITH_SILGEN(SubscriptTypeSequence,
+                                   "subscriptTypeSequence", "", Special)
+
 #undef BUILTIN_MISC_OPERATION_WITH_SILGEN
 
 #undef BUILTIN_MISC_OPERATION

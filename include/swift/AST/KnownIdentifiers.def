@@ -266,6 +266,9 @@ IDENTIFIER(_distributedActorDestroy)
 IDENTIFIER(__isRemoteActor)
 IDENTIFIER(whenLocal)
 
+// Type Sequences
+IDENTIFIER_(TypeSequence)
+
 #undef IDENTIFIER
 #undef IDENTIFIER_
 #undef IDENTIFIER_WITH_NAME

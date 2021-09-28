@@ -1793,12 +1793,16 @@ DEFINE_EMPTY_CAN_TYPE_WRAPPER(BuiltinFloatType, BuiltinType)
 
 class BuiltinTypeSequenceType : public BuiltinType {
   friend class ASTContext;
+  NominalTypeDecl *BuiltinNominalDecl;
 
-  BuiltinTypeSequenceType(const ASTContext &context)
-    : BuiltinType(TypeKind::BuiltinTypeSequence, context) { }
+  BuiltinTypeSequenceType(ASTContext &context);
 
 public:
-  static BuiltinTypeSequenceType *get(const ASTContext &context);
+  static Type get(const ASTContext &context);
+
+  const NominalTypeDecl *getDecl() const {
+    return BuiltinNominalDecl;
+  }
 
   static bool classof(const TypeBase *T) {
     return T->getKind() == TypeKind::BuiltinTypeSequence;

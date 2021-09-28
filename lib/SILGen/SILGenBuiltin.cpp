@@ -1662,6 +1662,42 @@ static ManagedValue emitBuiltinBuildMainActorExecutorRef(
                               BuiltinValueKind::BuildMainActorExecutorRef);
 }
 
+static ManagedValue
+emitBuiltinCountTypeSequence(SILGenFunction &SGF, SILLocation loc,
+                             SubstitutionMap subs,
+                             ArrayRef<ManagedValue> args, SGFContext C) {
+  assert(args.size() == 1);
+
+  SILValue argValue = args[0].getValue();
+  auto &astContext = SGF.getASTContext();
+  Identifier builtinId = astContext.getIdentifier(
+      getBuiltinName(BuiltinValueKind::CountTypeSequence));
+
+  auto intTy = astContext.getIntType()->getCanonicalType();
+  auto resultVal = SGF.B.createBuiltin(loc, builtinId,
+                                       SILType::getPrimitiveObjectType(intTy),
+                                       subs, ArrayRef<SILValue>(argValue));
+  return SGF.emitManagedRValueWithCleanup(resultVal);
+}
+
+static ManagedValue
+emitBuiltinSubscriptTypeSequence(SILGenFunction &SGF, SILLocation loc,
+                                 SubstitutionMap subs,
+                                 ArrayRef<ManagedValue> args, SGFContext C) {
+  assert(args.size() == 1);
+
+  SILValue argValue = args[0].getValue();
+  SILValue idxValue = args[1].getValue();
+  auto &astContext = SGF.getASTContext();
+  Identifier builtinId = astContext.getIdentifier(
+      getBuiltinName(BuiltinValueKind::SubscriptTypeSequence));
+
+  auto resultVal = SGF.B.createBuiltin(loc, builtinId,
+                                       argValue->getType(),
+                                       subs, { argValue, idxValue });
+  return SGF.emitManagedRValueWithCleanup(resultVal);
+}
+
 Optional<SpecializedEmitter>
 SpecializedEmitter::forDecl(SILGenModule &SGM, SILDeclRef function) {
   // Only consider standalone declarations in the Builtin module.

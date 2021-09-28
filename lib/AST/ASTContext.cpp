@@ -2816,6 +2816,10 @@ BuiltinVectorType *BuiltinVectorType::get(const ASTContext &context,
   return vecTy;
 }
 
+Type BuiltinTypeSequenceType::get(const ASTContext &context) {
+  return context.TheTypeSequenceType;
+}
+
 ParenType *ParenType::get(const ASTContext &C, Type underlying,
                           ParameterTypeFlags fl) {
   if (fl.isInOut())

@@ -2694,6 +2694,10 @@ TypeResolver::resolveAttributedType(TypeAttributes &attrs, TypeRepr *repr,
                       diag::attribute_does_not_apply_to_type);
     }
 
+    auto decl = getASTContext().TheTypeSequenceType
+                                ->castTo<BuiltinTypeSequenceType>()
+                                ->getDecl();
+    ty = BoundGenericStructType::get(cast<StructDecl>(const_cast<NominalTypeDecl *>(decl)), Type(), ty);
     attrs.clearAttribute(TAK__typeSequence);
   }
 

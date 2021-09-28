@@ -2284,6 +2284,14 @@ directReferencesForTypeRepr(Evaluator &evaluator,
       return directReferencesForTypeRepr(evaluator, ctx,
                                          tupleRepr->getElementType(0), dc);
     }
+    if (!tupleRepr->hasElementNames() &&
+        tupleRepr->getNumElements() == 1 &&
+        tupleRepr->hasEllipsis()) {
+      auto *decl = ctx.TheTypeSequenceType
+                        ->castTo<BuiltinTypeSequenceType>()
+                        ->getDecl();
+      return { 1, const_cast<NominalTypeDecl *>(decl) };
+    }
     return { };
   }
 
@@ -2542,17 +2550,9 @@ GenericParamListRequest::evaluate(Evaluator &evaluator, GenericContext *value) c
     if (!nominal) {
       auto extType = ext->getExtendedType();
       if (extType && extType->is<BuiltinTypeSequenceType>()) {
-        // The generic parameter 'T' in 'T...'.
-        auto &ctx = value->getASTContext();
-        auto selfId = ctx.getIdentifier("T");
-        auto elementDecl = new (ctx) GenericTypeParamDecl(
-            ext, selfId, SourceLoc(), /*variadic=*/false,
-            /*depth=*/0, /*index=*/0);
-        elementDecl->setImplicit();
-
-        // The generic parameter list itself.
-        return GenericParamList::create(ctx, SourceLoc(), elementDecl,
-                                        SourceLoc());
+        return extType->castTo<BuiltinTypeSequenceType>()
+                      ->getDecl()
+                      ->getGenericParams();
       }
       return nullptr;
     }

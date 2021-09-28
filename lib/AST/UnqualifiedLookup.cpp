@@ -507,6 +507,12 @@ UnqualifiedLookupFactory::ResultFinderForTypeContext::
 UnqualifiedLookupFactory::ResultFinderForTypeContext::SelfBounds
 UnqualifiedLookupFactory::ResultFinderForTypeContext::findSelfBounds(
     const DeclContext *dc) {
+  auto ty = dc->getDeclaredTypeInContext();
+  if (ty && ty->is<BuiltinTypeSequenceType>())
+    return {
+      const_cast<NominalTypeDecl *>(ty->castTo<BuiltinTypeSequenceType>()->getDecl())
+    };
+
   auto nominal = dc->getSelfNominalTypeDecl();
   if (!nominal)
     return {};

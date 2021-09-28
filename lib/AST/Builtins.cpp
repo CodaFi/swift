@@ -1879,6 +1879,18 @@ static ValueDecl *getHopToActor(ASTContext &ctx, Identifier id) {
   return builder.build(id);
 }
 
+static ValueDecl *getCountTypeSequence(ASTContext &Context, Identifier Id) {
+  // (T...) -> Int
+  return getBuiltinFunction(Id, {Context.TheTypeSequenceType},
+                            Context.getIntType());
+}
+
+static ValueDecl *getSubscriptTypeSequence(ASTContext &Context, Identifier Id) {
+  // (T..., Int) -> T
+  return getBuiltinFunction(Id, {Context.TheTypeSequenceType, Context.getIntType()},
+                            Context.getIntType());
+}
+
 /// An array of the overloaded builtin kinds.
 static const OverloadedBuiltinKind OverloadedBuiltinKinds[] = {
   OverloadedBuiltinKind::None,
@@ -2896,6 +2908,12 @@ ValueDecl *swift::getBuiltinValueDecl(ASTContext &Context, Identifier Id) {
 
   case BuiltinValueKind::AutoDiffAllocateSubcontext:
     return getAutoDiffAllocateSubcontext(Context, Id);
+
+  case BuiltinValueKind::CountTypeSequence:
+    return getCountTypeSequence(Context, Id);
+
+  case BuiltinValueKind::SubscriptTypeSequence:
+    return getSubscriptTypeSequence(Context, Id);
   }
 
   llvm_unreachable("bad builtin value!");

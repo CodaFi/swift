@@ -2836,7 +2836,7 @@ public:
     auto extType = ED->getExtendedType();
 
     auto nominal = ED->computeExtendedNominal();
-    if (nominal == nullptr && (!extType || !extType->is<BuiltinTypeSequenceType>())) {
+    if (nominal == nullptr) {
       const bool wasAlreadyInvalid = ED->isInvalid();
       ED->setInvalid();
       if (extType && !extType->hasError() && extType->getAnyNominal()) {
