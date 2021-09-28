@@ -344,7 +344,7 @@ extension Tree.BoughPayload.Contents {
 
 // SR-10466 Check 'where' clause when referencing type defined inside extension
 struct SR_10466<T> {
-  var a : A // expected-error {{'SR_10466<T>.A' (aka 'Int') requires the types 'T' and 'Never' be equivalent}}
+  var a : A // expected-error {{'SR_10466.A' (aka 'Int') requires the types 'T' and 'Never' be equivalent}}
 }
 extension SR_10466 where T == Never { // expected-note {{requirement specified as 'T' == 'Never' [with T = T]}}
   typealias A = Int

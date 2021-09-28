@@ -819,7 +819,7 @@ GenericSignatureRequest::evaluate(Evaluator &evaluator,
 ///
 
 RequirementCheckResult TypeChecker::checkGenericArguments(
-    DeclContext *dc, SourceLoc loc, SourceLoc noteLoc, Type owner,
+    DeclContext *dc, SourceLoc loc, SourceLoc noteLoc, GenericTypeDecl *owner,
     TypeArrayView<GenericTypeParamType> genericParams,
     ArrayRef<Requirement> requirements,
     TypeSubstitutionFn substitutions,
@@ -873,7 +873,7 @@ RequirementCheckResult TypeChecker::checkGenericArguments(
       }
 
       if (loc.isValid()) {
-        Diag<Type, Type, Type> diagnostic;
+        Diag<Unbound<Type>, Type, Type> diagnostic;
         Diag<Type, Type, StringRef> diagnosticNote;
 
         switch (req.getKind()) {
@@ -912,7 +912,8 @@ RequirementCheckResult TypeChecker::checkGenericArguments(
         }
 
         // FIXME: Poor source-location information.
-        ctx.Diags.diagnose(loc, diagnostic, owner,
+        ctx.Diags.diagnose(loc, diagnostic,
+                           owner->getDeclaredInterfaceType(),
                            req.getFirstType(), secondType);
 
         std::string genericParamBindingsText;

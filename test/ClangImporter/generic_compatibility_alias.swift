@@ -10,12 +10,12 @@ import Foundation
 import ObjCIRExtras
 
 func foo(_: SwiftConstrGenericNameAlias<String>) {
-// expected-error@-1 {{'SwiftConstrGenericNameAlias' requires that 'String' inherit from 'NSNumber'}}
+// expected-error@-1 {{'SwiftConstrGenericNameAlias<T>' (aka 'SwiftConstrGenericNameTest<T>') requires that 'String' inherit from 'NSNumber'}}
 // expected-note@-2  {{requirement specified as 'T' : 'NSNumber' [with T = String]}}
 }
 
 func faz(_: SwiftGenericNameAlias<Int>) {
-// expected-error@-1 {{'SwiftGenericNameAlias' requires that 'Int' be a class type}}
+// expected-error@-1 {{'SwiftGenericNameAlias<T>' (aka 'SwiftGenericNameTest<T>') requires that 'Int' be a class type}}
 // expected-note@-2  {{requirement specified as 'T' : 'AnyObject' [with T = Int]}}
 }
 

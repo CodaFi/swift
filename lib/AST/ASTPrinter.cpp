@@ -4573,7 +4573,7 @@ public:
       }
     }
     printQualifiedType(T);
-    if (T->isSpecialized())
+    if (T->isSpecialized() && Options.PrintBoundGenericArguments)
       printGenericArgs(T->getGenericArgs());
   }
 

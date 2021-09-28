@@ -34,9 +34,9 @@ func testRenamedGeneric() {
 
   class SwiftClass {}
 
-  // CHECK-DIAGS-4:[[@LINE+1]]:{{[0-9]+}}: error: 'OldRenamedGeneric' requires that 'SwiftClass' inherit from 'Base'
+  // CHECK-DIAGS-4:[[@LINE+1]]:{{[0-9]+}}: error: 'OldRenamedGeneric<Element>' requires that 'SwiftClass' inherit from 'Base'
   let _: OldRenamedGeneric<SwiftClass> = RenamedGeneric<SwiftClass>()
-  // CHECK-DIAGS-5:[[@LINE-1]]:{{[0-9]+}}: error: 'OldRenamedGeneric' requires that 'SwiftClass' inherit from 'Base'
+  // CHECK-DIAGS-5:[[@LINE-1]]:{{[0-9]+}}: note: requirement specified as 'Element' : 'Base' [with Element = SwiftClass]
 
   // CHECK-DIAGS-4:[[@LINE+1]]:{{[0-9]+}}: error: 'RenamedGeneric' requires that 'SwiftClass' inherit from 'Base'
   let _: RenamedGeneric<SwiftClass> = OldRenamedGeneric<SwiftClass>()

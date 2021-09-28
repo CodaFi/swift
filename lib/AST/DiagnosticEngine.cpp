@@ -634,6 +634,7 @@ static void formatDiagnosticArgument(StringRef Modifier,
     break;
 
   case DiagnosticArgumentKind::FullyQualifiedType:
+  case DiagnosticArgumentKind::UnboundGenericType:
   case DiagnosticArgumentKind::Type: {
     assert(Modifier.empty() && "Improper modifier for Type argument");
     
@@ -647,6 +648,20 @@ static void formatDiagnosticArgument(StringRef Modifier,
 
     if (Arg.getKind() == DiagnosticArgumentKind::Type) {
       type = Arg.getAsType()->getWithoutParens();
+      if (type.isNull()) {
+        // FIXME: We should never receive a nullptr here, but this is causing
+        // crashes (rdar://75740683). Remove once ParenType never contains
+        // nullptr as the underlying type.
+        Out << "<null>";
+        break;
+      }
+      if (type->getASTContext().TypeCheckerOpts.PrintFullConvention)
+        printOptions.PrintFunctionRepresentationAttrs =
+            PrintOptions::FunctionRepresentationMode::Full;
+      needsQualification = typeSpellingIsAmbiguous(type, Args, printOptions);
+    } else if (Arg.getKind() == DiagnosticArgumentKind::UnboundGenericType) {
+      printOptions.PrintBoundGenericArguments = false;
+      type = Arg.getAsUnboundGenericType().getType()->getWithoutParens();
       if (type.isNull()) {
         // FIXME: We should never receive a nullptr here, but this is causing
         // crashes (rdar://75740683). Remove once ParenType never contains

@@ -1966,14 +1966,14 @@ ERROR(protocol_does_not_conform_static,none,
 ERROR(protocol_derivation_is_broken,none,
       "protocol %0 is broken; cannot derive conformance for type %1", (Type, Type))
 ERROR(type_does_not_inherit,none,
-      "%0 requires that %1 inherit from %2", (Type, Type, Type))
+      "%0 requires that %1 inherit from %2", (Unbound<Type>, Type, Type))
 NOTE(type_does_not_inherit_or_conform_requirement,none,
      "requirement specified as %0 : %1%2", (Type, Type, StringRef))
 ERROR(types_not_equal,none,
       "%0 requires the types %1 and %2 be equivalent",
-      (Type, Type, Type))
+      (Unbound<Type>, Type, Type))
 ERROR(type_does_not_conform_owner,none,
-      "%0 requires that %1 conform to %2", (Type, Type, Type))
+      "%0 requires that %1 conform to %2", (Unbound<Type>, Type, Type))
 ERROR(type_does_not_conform_in_decl_ref,none,
       "referencing %0 %1 on %2 requires that %3 conform to %4",
       (DescriptiveDeclKind, DeclName, Type, Type, Type))
@@ -2030,7 +2030,7 @@ NOTE(candidate_types_inheritance_requirement,none,
 NOTE(types_not_equal_requirement,none,
      "requirement specified as %0 == %1%2", (Type, Type, StringRef))
 ERROR(type_is_not_a_class,none,
-      "%0 requires that %1 be a class type", (Type, Type, Type))
+      "%0 requires that %1 be a class type", (Unbound<Type>, Type, Type))
 NOTE(anyobject_requirement,none,
      "requirement specified as %0 : 'AnyObject'%2", (Type, Type, StringRef))
 ERROR(non_class_cannot_conform_to_class_protocol,none,

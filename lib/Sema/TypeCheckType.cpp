@@ -612,7 +612,7 @@ bool TypeChecker::checkContextualRequirements(GenericTypeDecl *decl,
   const auto result =
     TypeChecker::checkGenericArguments(
         dc, loc, noteLoc,
-        decl->getDeclaredInterfaceType(),
+        decl,
         genericSig.getGenericParams(),
         genericSig.getRequirements(),
         QueryTypeSubstitutionMap{subMap});
@@ -912,8 +912,7 @@ Type TypeResolution::applyUnboundGenericArguments(
 
   if (!skipRequirementsCheck && getStage() > TypeResolutionStage::Structural) {
     auto result = TypeChecker::checkGenericArguments(
-        getDeclContext(), loc, noteLoc,
-        UnboundGenericType::get(decl, parentTy, getASTContext()),
+        getDeclContext(), loc, noteLoc, decl,
         genericSig.getGenericParams(), genericSig.getRequirements(),
         QueryTypeSubstitutionMap{subs});
 

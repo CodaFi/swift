@@ -1087,7 +1087,7 @@ bool AssociatedTypeInference::checkCurrentTypeWitnesses(
                                sanitizedRequirements);
   auto result =
     TypeChecker::checkGenericArguments(dc, SourceLoc(), SourceLoc(),
-                                       typeInContext,
+                                       typeInContext->getAnyGeneric(),
                                        { proto->getSelfInterfaceType() },
                                        sanitizedRequirements,
                                        QuerySubstitutionMap{substitutions},
@@ -1134,7 +1134,8 @@ bool AssociatedTypeInference::checkConstrainedExtension(ExtensionDecl *ext) {
 
   SubstOptions options = getSubstOptionsWithCurrentTypeWitnesses();
   switch (TypeChecker::checkGenericArguments(
-                       dc, SourceLoc(), SourceLoc(), adoptee,
+                       dc, SourceLoc(), SourceLoc(),
+                       adoptee->getAnyNominal(),
                        ext->getGenericSignature().getGenericParams(),
                        ext->getGenericSignature().getRequirements(),
                        QueryTypeSubstitutionMap{subs},

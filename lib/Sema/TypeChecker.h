@@ -473,13 +473,13 @@ std::string gatherGenericParamBindingsText(
 /// \param dc The context in which the generic arguments should be checked.
 /// \param loc The location at which any diagnostics should be emitted.
 /// \param noteLoc The location at which any notes will be printed.
-/// \param owner The type that owns the generic signature.
+/// \param owner The declaration that owns the generic signature.
 /// \param genericParams The generic parameters being substituted.
 /// \param requirements The requirements against which the generic arguments
 /// should be checked.
 /// \param substitutions Substitutions from interface types of the signature.
 RequirementCheckResult checkGenericArguments(
-    DeclContext *dc, SourceLoc loc, SourceLoc noteLoc, Type owner,
+    DeclContext *dc, SourceLoc loc, SourceLoc noteLoc, GenericTypeDecl *owner,
     TypeArrayView<GenericTypeParamType> genericParams,
     ArrayRef<Requirement> requirements, TypeSubstitutionFn substitutions,
     SubstOptions options = None);

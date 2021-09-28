@@ -95,6 +95,19 @@ namespace swift {
     Type getType() const { return t; }
   };
 
+  template <typename T, typename = void> struct Unbound {};
+
+  template <typename T>
+  struct Unbound<
+      T, typename std::enable_if<std::is_convertible<T, Type>::value>::type> {
+    Type t;
+
+  public:
+    Unbound(T t) : t(t){};
+
+    Type getType() const { return t; }
+  };
+
   /// Describes the kind of diagnostic argument we're storing.
   ///
   enum class DiagnosticArgumentKind {
@@ -107,6 +120,7 @@ namespace swift {
     Type,
     TypeRepr,
     FullyQualifiedType,
+    UnboundGenericType,
     PatternKind,
     SelfAccessKind,
     ReferenceOwnership,
@@ -139,6 +153,7 @@ namespace swift {
       Type TypeVal;
       TypeRepr *TyR;
       FullyQualified<Type> FullyQualifiedTypeVal;
+      Unbound<Type> UnboundTypeVal;
       PatternKind PatternKindVal;
       SelfAccessKind SelfAccessKindVal;
       ReferenceOwnership ReferenceOwnershipVal;
@@ -199,6 +214,10 @@ namespace swift {
     DiagnosticArgument(FullyQualified<Type> FQT)
         : Kind(DiagnosticArgumentKind::FullyQualifiedType),
           FullyQualifiedTypeVal(FQT) {}
+
+    DiagnosticArgument(Unbound<Type> UBT)
+        : Kind(DiagnosticArgumentKind::UnboundGenericType),
+          UnboundTypeVal(UBT) {}
 
     DiagnosticArgument(const TypeLoc &TL) {
       if (TypeRepr *tyR = TL.getTypeRepr()) {
@@ -305,6 +324,11 @@ namespace swift {
     FullyQualified<Type> getAsFullyQualifiedType() const {
       assert(Kind == DiagnosticArgumentKind::FullyQualifiedType);
       return FullyQualifiedTypeVal;
+    }
+
+    Unbound<Type> getAsUnboundGenericType() const {
+      assert(Kind == DiagnosticArgumentKind::UnboundGenericType);
+      return UnboundTypeVal;
     }
 
     PatternKind getAsPatternKind() const {

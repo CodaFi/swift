@@ -4609,7 +4609,7 @@ void ConformanceChecker::ensureRequirementsAreSatisfied() {
   auto result = TypeChecker::checkGenericArguments(
       DC, Loc, Loc,
       // FIXME: maybe this should be the conformance's type
-      proto->getDeclaredInterfaceType(),
+      proto,
       { proto->getSelfInterfaceType() },
       proto->getRequirementSignature(),
       QuerySubstitutionMap{substitutions});
