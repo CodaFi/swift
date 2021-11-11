@@ -264,9 +264,10 @@ PatternBindingEntryRequest::evaluate(Evaluator &eval,
 
   // If the pattern contains some form of unresolved type, we'll need to
   // check the initializer.
-  if (patternType->hasUnresolvedType() ||
+  if (pbe.isInitialized() &&
+      (patternType->hasUnresolvedType() ||
       patternType->hasPlaceholder() ||
-      patternType->hasUnboundGenericType()) {
+      patternType->hasUnboundGenericType())) {
     if (TypeChecker::typeCheckPatternBinding(binding, entryNumber,
                                              patternType)) {
       binding->setInvalid();

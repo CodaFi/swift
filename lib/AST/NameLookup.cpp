@@ -894,8 +894,8 @@ namespace {
 /// Retrieve the set of type declarations that are directly referenced from
 /// the given parsed type representation.
 static DirectlyReferencedTypeDecls
-directReferencesForTypeRepr(Evaluator &evaluator, ASTContext &ctx,
-                            TypeRepr *typeRepr, DeclContext *dc);
+directReferencesForTypeRepr(ASTContext &ctx, TypeRepr *typeRepr,
+                            DeclContext *dc);
 
 /// Retrieve the set of type declarations that are directly referenced from
 /// the given type.
@@ -904,9 +904,7 @@ static DirectlyReferencedTypeDecls directReferencesForType(Type type);
 /// Given a set of type declarations, find all of the nominal type declarations
 /// that they reference, looking through typealiases as appropriate.
 static TinyPtrVector<NominalTypeDecl *>
-resolveTypeDeclsToNominal(Evaluator &evaluator,
-                          ASTContext &ctx,
-                          ArrayRef<TypeDecl *> typeDecls,
+resolveTypeDeclsToNominal(ASTContext &ctx, ArrayRef<TypeDecl *> typeDecls,
                           SmallVectorImpl<ModuleDecl *> &modulesFound,
                           bool &anyObject);
 
@@ -955,12 +953,11 @@ SelfBounds SelfBoundsFromWhereClauseRequest::evaluate(
     // Resolve the right-hand side.
     DirectlyReferencedTypeDecls rhsDecls;
     if (auto typeRepr = req.getConstraintRepr()) {
-      rhsDecls = directReferencesForTypeRepr(evaluator, ctx, typeRepr, lookupDC);
+      rhsDecls = directReferencesForTypeRepr(ctx, typeRepr, lookupDC);
     }
 
     SmallVector<ModuleDecl *, 2> modulesFound;
-    auto rhsNominals = resolveTypeDeclsToNominal(evaluator, ctx, rhsDecls,
-                                                 modulesFound,
+    auto rhsNominals = resolveTypeDeclsToNominal(ctx, rhsDecls, modulesFound,
                                                  result.anyObject);
     result.decls.insert(result.decls.end(),
                         rhsNominals.begin(),
@@ -987,7 +984,7 @@ TypeDeclsFromWhereClauseRequest::evaluate(Evaluator &evaluator,
 
   TinyPtrVector<TypeDecl *> result;
   auto resolve = [&](TypeRepr *typeRepr) {
-    auto decls = directReferencesForTypeRepr(evaluator, ctx, typeRepr, ext);
+    auto decls = directReferencesForTypeRepr(ctx, typeRepr, ext);
     result.insert(result.end(), decls.begin(), decls.end());
   };
 
@@ -2006,9 +2003,7 @@ void DeclContext::lookupAllObjCMethods(
 /// Given a set of type declarations, find all of the nominal type declarations
 /// that they reference, looking through typealiases as appropriate.
 static TinyPtrVector<NominalTypeDecl *>
-resolveTypeDeclsToNominal(Evaluator &evaluator,
-                          ASTContext &ctx,
-                          ArrayRef<TypeDecl *> typeDecls,
+resolveTypeDeclsToNominal(ASTContext &ctx, ArrayRef<TypeDecl *> typeDecls,
                           SmallVectorImpl<ModuleDecl *> &modulesFound,
                           bool &anyObject,
                           llvm::SmallPtrSetImpl<TypeAliasDecl *> &typealiases) {
@@ -2033,12 +2028,11 @@ resolveTypeDeclsToNominal(Evaluator &evaluator,
       if (!typealiases.insert(typealias).second)
         continue;
 
-      auto underlyingTypeReferences = evaluateOrDefault(evaluator,
-        UnderlyingTypeDeclsReferencedRequest{typealias}, {});
+      auto underlyingTypeReferences = evaluateOrDefault(
+          ctx.evaluator, UnderlyingTypeDeclsReferencedRequest{typealias}, {});
 
-      auto underlyingNominalReferences
-        = resolveTypeDeclsToNominal(evaluator, ctx, underlyingTypeReferences,
-                                    modulesFound, anyObject, typealiases);
+      auto underlyingNominalReferences = resolveTypeDeclsToNominal(
+          ctx, underlyingTypeReferences, modulesFound, anyObject, typealiases);
       std::for_each(underlyingNominalReferences.begin(),
                     underlyingNominalReferences.end(),
                     addNominalDecl);
@@ -2082,14 +2076,12 @@ resolveTypeDeclsToNominal(Evaluator &evaluator,
 }
 
 static TinyPtrVector<NominalTypeDecl *>
-resolveTypeDeclsToNominal(Evaluator &evaluator,
-                          ASTContext &ctx,
-                          ArrayRef<TypeDecl *> typeDecls,
+resolveTypeDeclsToNominal(ASTContext &ctx, ArrayRef<TypeDecl *> typeDecls,
                           SmallVectorImpl<ModuleDecl *> &modulesFound,
                           bool &anyObject) {
   llvm::SmallPtrSet<TypeAliasDecl *, 4> typealiases;
-  return resolveTypeDeclsToNominal(evaluator, ctx, typeDecls, modulesFound,
-                                   anyObject, typealiases);
+  return resolveTypeDeclsToNominal(ctx, typeDecls, modulesFound, anyObject,
+                                   typealiases);
 }
 
 /// Perform unqualified name lookup for types at the given location.
@@ -2155,11 +2147,9 @@ directReferencesForUnqualifiedTypeLookup(DeclNameRef name,
 
 /// Perform qualified name lookup for types.
 static DirectlyReferencedTypeDecls
-directReferencesForQualifiedTypeLookup(Evaluator &evaluator,
-                                       ASTContext &ctx,
+directReferencesForQualifiedTypeLookup(ASTContext &ctx,
                                        ArrayRef<TypeDecl *> baseTypes,
-                                       DeclNameRef name,
-                                       DeclContext *dc) {
+                                       DeclNameRef name, DeclContext *dc) {
   DirectlyReferencedTypeDecls result;
   auto addResults = [&result](ArrayRef<ValueDecl *> found){
     for (auto decl : found){
@@ -2179,8 +2169,7 @@ directReferencesForQualifiedTypeLookup(Evaluator &evaluator,
     SmallVector<ModuleDecl *, 2> moduleDecls;
     bool anyObject = false;
     auto nominalTypeDecls =
-      resolveTypeDeclsToNominal(ctx.evaluator, ctx, baseTypes, moduleDecls,
-                                anyObject);
+        resolveTypeDeclsToNominal(ctx, baseTypes, moduleDecls, anyObject);
 
     dc->lookupQualified(nominalTypeDecls, name, options, members);
 
@@ -2202,8 +2191,7 @@ directReferencesForQualifiedTypeLookup(Evaluator &evaluator,
 
 /// Determine the types directly referenced by the given identifier type.
 static DirectlyReferencedTypeDecls
-directReferencesForIdentTypeRepr(Evaluator &evaluator,
-                                 ASTContext &ctx, IdentTypeRepr *ident,
+directReferencesForIdentTypeRepr(ASTContext &ctx, IdentTypeRepr *ident,
                                  DeclContext *dc) {
   DirectlyReferencedTypeDecls current;
 
@@ -2232,9 +2220,8 @@ directReferencesForIdentTypeRepr(Evaluator &evaluator,
     }
 
     // For subsequent components, perform qualified name lookup.
-    current =
-        directReferencesForQualifiedTypeLookup(evaluator, ctx, current,
-                                               component->getNameRef(), dc);
+    current = directReferencesForQualifiedTypeLookup(
+        ctx, current, component->getNameRef(), dc);
     if (current.empty())
       return current;
   }
@@ -2243,8 +2230,7 @@ directReferencesForIdentTypeRepr(Evaluator &evaluator,
 }
 
 static DirectlyReferencedTypeDecls
-directReferencesForTypeRepr(Evaluator &evaluator,
-                            ASTContext &ctx, TypeRepr *typeRepr,
+directReferencesForTypeRepr(ASTContext &ctx, TypeRepr *typeRepr,
                             DeclContext *dc) {
   switch (typeRepr->getKind()) {
   case TypeReprKind::Array:
@@ -2252,16 +2238,14 @@ directReferencesForTypeRepr(Evaluator &evaluator,
 
   case TypeReprKind::Attributed: {
     auto attributed = cast<AttributedTypeRepr>(typeRepr);
-    return directReferencesForTypeRepr(evaluator, ctx,
-                                       attributed->getTypeRepr(), dc);
+    return directReferencesForTypeRepr(ctx, attributed->getTypeRepr(), dc);
   }
 
   case TypeReprKind::Composition: {
     DirectlyReferencedTypeDecls result;
     auto composition = cast<CompositionTypeRepr>(typeRepr);
     for (auto component : composition->getTypes()) {
-      auto componentResult =
-          directReferencesForTypeRepr(evaluator, ctx, component, dc);
+      auto componentResult = directReferencesForTypeRepr(ctx, component, dc);
       result.insert(result.end(),
                     componentResult.begin(),
                     componentResult.end());
@@ -2272,8 +2256,8 @@ directReferencesForTypeRepr(Evaluator &evaluator,
   case TypeReprKind::CompoundIdent:
   case TypeReprKind::GenericIdent:
   case TypeReprKind::SimpleIdent:
-    return directReferencesForIdentTypeRepr(evaluator, ctx,
-                                            cast<IdentTypeRepr>(typeRepr), dc);
+    return directReferencesForIdentTypeRepr(ctx, cast<IdentTypeRepr>(typeRepr),
+                                            dc);
 
   case TypeReprKind::Dictionary:
     return { 1, ctx.getDictionaryDecl()};
@@ -2281,8 +2265,7 @@ directReferencesForTypeRepr(Evaluator &evaluator,
   case TypeReprKind::Tuple: {
     auto tupleRepr = cast<TupleTypeRepr>(typeRepr);
     if (tupleRepr->isParenType()) {
-      return directReferencesForTypeRepr(evaluator, ctx,
-                                         tupleRepr->getElementType(0), dc);
+      return directReferencesForTypeRepr(ctx, tupleRepr->getElementType(0), dc);
     }
     return { };
   }
@@ -2342,6 +2325,63 @@ static DirectlyReferencedTypeDecls directReferencesForType(Type type) {
   return { };
 }
 
+static bool isDirectUnboundGenericTypeRepr(TypeRepr *subject) {
+  while (true) {
+    switch (subject->getKind()) {
+    case TypeReprKind::SimpleIdent:
+      return true;
+
+    case TypeReprKind::Attributed: {
+      subject = cast<AttributedTypeRepr>(subject)->getTypeRepr();
+      continue;
+    }
+
+    case TypeReprKind::CompoundIdent: {
+      subject =
+          cast<CompoundIdentTypeRepr>(subject)->getComponentRange().back();
+      continue;
+    }
+
+    case TypeReprKind::Tuple: {
+      auto tupleRepr = cast<TupleTypeRepr>(subject);
+      if (tupleRepr->isParenType()) {
+        subject = tupleRepr->getElementType(0);
+        continue;
+      }
+      return false;
+    }
+
+    case TypeReprKind::Isolated: {
+      subject = cast<IsolatedTypeRepr>(subject)->getBase();
+      continue;
+    }
+
+    case TypeReprKind::Composition:
+    case TypeReprKind::Array:
+    case TypeReprKind::Dictionary:
+    case TypeReprKind::GenericIdent:
+    case TypeReprKind::Error:
+    case TypeReprKind::Function:
+    case TypeReprKind::InOut:
+    case TypeReprKind::Metatype:
+    case TypeReprKind::Owned:
+    case TypeReprKind::Protocol:
+    case TypeReprKind::Shared:
+    case TypeReprKind::SILBox:
+    case TypeReprKind::OpaqueReturn:
+    case TypeReprKind::Optional:
+    case TypeReprKind::ImplicitlyUnwrappedOptional:
+    case TypeReprKind::Placeholder:
+    case TypeReprKind::NamedOpaqueReturn:
+      return false;
+
+    case TypeReprKind::Fixed:
+      llvm_unreachable("Cannot get fixed TypeReprs in name lookup");
+    }
+    llvm_unreachable("unhandled kind");
+  }
+}
+
 DirectlyReferencedTypeDecls InheritedDeclsReferencedRequest::evaluate(
     Evaluator &evaluator,
     llvm::PointerUnion<const TypeDecl *, const ExtensionDecl *> decl,
@@ -2357,7 +2397,7 @@ DirectlyReferencedTypeDecls InheritedDeclsReferencedRequest::evaluate(
     else
       dc = (DeclContext *)decl.get<const ExtensionDecl *>();
 
-    return directReferencesForTypeRepr(evaluator, dc->getASTContext(), typeRepr,
+    return directReferencesForTypeRepr(dc->getASTContext(), typeRepr,
                                        const_cast<DeclContext *>(dc));
   }
 
@@ -2376,8 +2416,8 @@ DirectlyReferencedTypeDecls UnderlyingTypeDeclsReferencedRequest::evaluate(
     TypeAliasDecl *typealias) const {
   // Prefer syntactic information when we have it.
   if (auto typeRepr = typealias->getUnderlyingTypeRepr()) {
-    return directReferencesForTypeRepr(evaluator, typealias->getASTContext(),
-                                       typeRepr, typealias);
+    return directReferencesForTypeRepr(typealias->getASTContext(), typeRepr,
+                                       typealias);
   }
 
   // Fall back to semantic types.
@@ -2423,9 +2463,8 @@ SuperclassDeclRequest::evaluate(Evaluator &evaluator,
     // Resolve those type declarations to nominal type declarations.
     SmallVector<ModuleDecl *, 2> modulesFound;
     bool anyObject = false;
-    auto inheritedNominalTypes
-      = resolveTypeDeclsToNominal(evaluator, Ctx,
-                                  inheritedTypes, modulesFound, anyObject);
+    auto inheritedNominalTypes =
+        resolveTypeDeclsToNominal(Ctx, inheritedTypes, modulesFound, anyObject);
 
     // Look for a class declaration.
     ClassDecl *superclass = nullptr;
@@ -2486,14 +2525,13 @@ ExtendedNominalRequest::evaluate(Evaluator &evaluator,
 
   ASTContext &ctx = ext->getASTContext();
   DirectlyReferencedTypeDecls referenced =
-    directReferencesForTypeRepr(evaluator, ctx, typeRepr, ext->getParent());
+      directReferencesForTypeRepr(ctx, typeRepr, ext->getParent());
 
   // Resolve those type declarations to nominal type declarations.
   SmallVector<ModuleDecl *, 2> modulesFound;
   bool anyObject = false;
-  auto nominalTypes
-    = resolveTypeDeclsToNominal(evaluator, ctx, referenced, modulesFound,
-                                anyObject);
+  auto nominalTypes =
+      resolveTypeDeclsToNominal(ctx, referenced, modulesFound, anyObject);
 
   // If there is more than 1 element, we will emit a warning or an error
   // elsewhere, so don't handle that case here.
@@ -2530,6 +2568,74 @@ createExtensionGenericParams(ASTContext &ctx,
   }
 
   return toParams;
+}
+
+static GenericTypeDecl *
+getUnboundDeclReferencedFromUnderlyingType(TypeAliasDecl *typeAlias) {
+  if (typeAlias->getTrailingWhereClause())
+    return nullptr;
+
+  assert(typeAlias->getParsedGenericParams() == nullptr &&
+         "Typealias is not actually unbound!");
+
+  auto *typeRepr = typeAlias->getUnderlyingTypeRepr();
+  if (typeRepr == nullptr)
+    return nullptr;
+
+  // Check if the underlying type is written as a (possibly nested)
+  // identifier without generic arguments applied.
+  if (!isDirectUnboundGenericTypeRepr(typeRepr))
+    return nullptr;
+
+  // Look up the referenced declaration.
+  ASTContext &ctx = typeAlias->getASTContext();
+  DirectlyReferencedTypeDecls referenced =
+      directReferencesForTypeRepr(ctx, typeRepr, typeAlias->getDeclContext());
+
+  if (referenced.size() != 1)
+    return nullptr;
+
+  // Check if it's the right kind of declaration.
+  auto *decl = dyn_cast<GenericTypeDecl>(referenced[0]);
+  if (decl == nullptr || isa<ProtocolDecl>(decl) || !decl->isGeneric())
+    return nullptr;
+
+  assert(isa<ClassDecl>(decl) || isa<StructDecl>(decl) || isa<EnumDecl>(decl) ||
+         isa<TypeAliasDecl>(decl));
+
+  // A reference to a declaration inside its own context is own context is not
+  // unbound; we implicitly add the context generic parameters if they're
+  // missing.
+  //
+  // eg,
+  //
+  // struct S<T> {
+  //   typealias A = S
+  //   // desugars to 'typealias A = S<T>' and not
+  //   // 'typealias A<T2> = S<T2>'.
+  // }
+  //
+  // See resolveTypeInContext() for the gory details.
+  bool isInOwnContext = [&]() {
+    // Only unqualified references have this behavior.
+    if (isa<CompoundIdentTypeRepr>(typeRepr))
+      return false;
+
+    auto *dc = typeAlias->getDeclContext();
+    while (!dc->isModuleScopeContext()) {
+      if (dc->getSelfNominalTypeDecl() == decl)
+        return true;
+
+      dc = dc->getParent();
+    }
+
+    return false;
+  }();
+
+  if (isInOwnContext)
+    return nullptr;
+
+  return decl;
 }
 
 GenericParamList *
@@ -2578,6 +2684,10 @@ GenericParamListRequest::evaluate(Evaluator &evaluator, GenericContext *value) c
     auto result = GenericParamList::create(ctx, SourceLoc(), selfDecl,
                                            SourceLoc());
     return result;
+  } else if (auto *typeAlias = dyn_cast<TypeAliasDecl>(value)) {
+    if (auto *decl = getUnboundDeclReferencedFromUnderlyingType(typeAlias))
+      if (auto *params = decl->getGenericParams())
+        return params->clone(typeAlias);
   }
   return nullptr;
 }
@@ -2589,8 +2699,7 @@ CustomAttrNominalRequest::evaluate(Evaluator &evaluator,
   auto &ctx = dc->getASTContext();
   DirectlyReferencedTypeDecls decls;
   if (auto *typeRepr = attr->getTypeRepr()) {
-    decls = directReferencesForTypeRepr(
-        evaluator, ctx, typeRepr, dc);
+    decls = directReferencesForTypeRepr(ctx, typeRepr, dc);
   } else if (Type type = attr->getType()) {
     decls = directReferencesForType(type);
   }
@@ -2598,8 +2707,8 @@ CustomAttrNominalRequest::evaluate(Evaluator &evaluator,
   // Dig out the nominal type declarations.
   SmallVector<ModuleDecl *, 2> modulesFound;
   bool anyObject = false;
-  auto nominals = resolveTypeDeclsToNominal(evaluator, ctx, decls,
-                                            modulesFound, anyObject);
+  auto nominals =
+      resolveTypeDeclsToNominal(ctx, decls, modulesFound, anyObject);
   if (nominals.size() == 1 && !isa<ProtocolDecl>(nominals.front()))
     return nominals.front();
 
@@ -2615,8 +2724,8 @@ CustomAttrNominalRequest::evaluate(Evaluator &evaluator,
         decls = directReferencesForUnqualifiedTypeLookup(
             identTypeRepr->getNameRef(), identTypeRepr->getLoc(), dc,
             LookupOuterResults::Included);
-        nominals = resolveTypeDeclsToNominal(evaluator, ctx, decls,
-                                             modulesFound, anyObject);
+        nominals =
+            resolveTypeDeclsToNominal(ctx, decls, modulesFound, anyObject);
         if (nominals.size() == 1 && !isa<ProtocolDecl>(nominals.front())) {
           auto nominal = nominals.front();
           if (nominal->getDeclContext()->isModuleScopeContext()) {
@@ -2666,9 +2775,8 @@ void swift::getDirectlyInheritedNominalTypeDecls(
 
   // Resolve those type declarations to nominal type declarations.
   SmallVector<ModuleDecl *, 2> modulesFound;
-  auto nominalTypes
-    = resolveTypeDeclsToNominal(ctx.evaluator, ctx, referenced, modulesFound,
-                                anyObject);
+  auto nominalTypes =
+      resolveTypeDeclsToNominal(ctx, referenced, modulesFound, anyObject);
 
   // Dig out the source location
   // FIXME: This is a hack. We need cooperation from

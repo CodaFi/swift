@@ -1246,7 +1246,7 @@ Optional<uint8_t> SDKContext::getFixedBinaryOrder(ValueDecl *VD) const {
   }
 }
 
-// check for if it has @available(macOS 9999, iOS 9999, tvOS 9999, watchOS 9999, *)
+// check for if it has @available(macOS 9999, iOS 9999, tvOS 9999, watchOS       , *)
 static bool isABIPlaceHolder(Decl *D) {
   llvm::SmallSet<PlatformKind, 4> Platforms;
   for (auto *ATT: D->getAttrs()) {
