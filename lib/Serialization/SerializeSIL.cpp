@@ -2178,6 +2178,7 @@ void SILSerializer::writeSILInstruction(const SILInstruction &SI) {
     const ObjCMethodInst *OMI = cast<ObjCMethodInst>(&SI);
     SILType Ty = OMI->getType();
     SmallVector<ValueID, 9> ListOfValues;
+    ListOfValues.push_back(OMI->isDirect());
     handleMethodInst(OMI, OMI->getOperand(), ListOfValues);
 
     SILOneTypeValuesLayout::emitRecord(Out, ScratchRecord,

@@ -363,7 +363,8 @@ protected:
   SWIFT_INLINE_BITFIELD_EMPTY(MethodInst, SingleValueInstruction);
   // Ensure that WitnessMethodInst bitfield does not overflow.
   IBWTO_BITFIELD_EMPTY(WitnessMethodInst, MethodInst);
-  UIWTDOB_BITFIELD_EMPTY(ObjCMethodInst, MethodInst);
+  SWIFT_INLINE_BITFIELD(ObjCMethodInst, MethodInst, 1,
+                        Direct : 1);
 
   SWIFT_INLINE_BITFIELD_EMPTY(ConversionInst, SingleValueInstruction);
   SWIFT_INLINE_BITFIELD(PointerToAddressInst, ConversionInst, 8 + 1 + 1,

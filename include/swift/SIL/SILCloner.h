@@ -2109,7 +2109,9 @@ SILCloner<ImplClass>::visitObjCMethodInst(ObjCMethodInst *Inst) {
   getBuilder().setCurrentDebugScope(getOpScope(Inst->getDebugScope()));
   recordClonedInstruction(
       Inst, getBuilder().createObjCMethod(
-                getOpLocation(Inst->getLoc()), getOpValue(Inst->getOperand()),
+                getOpLocation(Inst->getLoc()),
+                Inst->isDirect(),
+                getOpValue(Inst->getOperand()),
                 Inst->getMember(), getOpType(Inst->getType())));
 }
 

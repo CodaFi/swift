@@ -29,6 +29,7 @@
 #include "swift/SIL/SILArgument.h"
 #include "swift/SIL/SILUndef.h"
 #include "swift/SIL/TypeLowering.h"
+#include "clang/AST/DeclObjC.h"
 
 using namespace swift;
 using namespace Lowering;
@@ -1991,7 +1992,7 @@ void SILGenFunction::emitNativeToForeignThunk(SILDeclRef thunk) {
 
 static SILValue
 getThunkedForeignFunctionRef(SILGenFunction &SGF,
-                             SILLocation loc,
+                             AbstractFunctionDecl *fd,
                              SILDeclRef foreign,
                              ArrayRef<ManagedValue> args,
                              const SILConstantInfo &foreignCI) {
@@ -2001,13 +2002,17 @@ getThunkedForeignFunctionRef(SILGenFunction &SGF,
   if (foreignCI.SILFnType->getRepresentation()
         == SILFunctionTypeRepresentation::ObjCMethod) {
     SILValue thisArg = args.back().getValue();
-
-    return SGF.B.createObjCMethod(loc, thisArg, foreign,
+    auto objcDecl = dyn_cast_or_null<clang::ObjCMethodDecl>(fd->getClangDecl());
+    const bool isObjCDirect = objcDecl && objcDecl->isDirectMethod();
+    if (isObjCDirect) {
+      (void)SGF.SGM.getFunction(foreign, NotForDefinition);
+    }
+    return SGF.B.createObjCMethod(fd, isObjCDirect, thisArg, foreign,
                                   foreignCI.getSILType());
   }
 
   // Otherwise, emit a function_ref.
-  return SGF.emitGlobalFunctionRef(loc, foreign);
+  return SGF.emitGlobalFunctionRef(fd, foreign);
 }
 
 /// Generate code to emit a thunk with native conventions that calls a

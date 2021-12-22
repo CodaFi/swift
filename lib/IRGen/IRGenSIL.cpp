@@ -526,11 +526,11 @@ public:
   }
 
   /// Create a new Objective-C method corresponding to the given SIL value.
-  void setLoweredObjCMethod(SILValue v, SILDeclRef method) {
+  void setLoweredObjCMethod(SILValue v, SILDeclRef method, bool direct) {
     assert(v->getType().isObject() && "function for address value?!");
     assert(v->getType().is<SILFunctionType>() &&
            "function for non-function value?!");
-    setLoweredValue(v, ObjCMethod{method, SILType(), false});
+    setLoweredValue(v, ObjCMethod{method, direct, SILType(), false});
   }
 
   /// Create a new Objective-C method corresponding to the given SIL value that
@@ -550,7 +550,7 @@ public:
     assert(v->getType().isObject() && "function for address value?!");
     assert(v->getType().is<SILFunctionType>() &&
            "function for non-function value?!");
-    setLoweredValue(v, ObjCMethod{method, searchType, startAtSuper});
+    setLoweredValue(v, ObjCMethod{method, /*direct*/ false, searchType, startAtSuper});
   }
 
   void setLoweredCoroutine(SILValue tokenResult, CoroutineState &&state) {
@@ -2897,10 +2897,7 @@ Callee LoweredValue::getCallee(IRGenFunction &IGF,
   switch (kind) {
   case Kind::FunctionPointer: {
     auto &fn = getFunctionPointer();
-    if (calleeInfo.OrigFnType->getRepresentation() ==
-        SILFunctionTypeRepresentation::ObjCMethod) {
-      return getObjCDirectMethodCallee(std::move(calleeInfo), fn, selfValue);
-    }
+
     return Callee(std::move(calleeInfo), fn, selfValue);
   }
 
@@ -2917,8 +2914,13 @@ Callee LoweredValue::getCallee(IRGenFunction &IGF,
       selfValue = getObjCClassForValue(IGF, selfValue, metatype);
     }
 
-    return getObjCMethodCallee(IGF, objcMethod, selfValue,
-                               std::move(calleeInfo));
+    if (objcMethod.isDirect()) {
+      return getObjCDirectMethodCallee(IGF, objcMethod, selfValue,
+                                       std::move(calleeInfo));
+    } else {
+      return getObjCMethodCallee(IGF, objcMethod, selfValue,
+                                 std::move(calleeInfo));
+    }
   }
 
   case Kind::SingletonExplosion: {
@@ -4429,7 +4431,7 @@ void IRGenSILFunction::visitDynamicMethodBranchInst(DynamicMethodBranchInst *i){
   LoweredValues.erase(methodArg);
   
   // Replace the lowered value with an ObjCMethod lowering.
-  setLoweredObjCMethod(methodArg, i->getMember());
+  setLoweredObjCMethod(methodArg, i->getMember(), /*direct*/ false);
   
   // Create the branch.
   Builder.CreateCondBr(call, hasMethodBB.bb, noMethodBB.bb);
@@ -7006,7 +7008,7 @@ void IRGenSILFunction::visitObjCMethodInst(swift::ObjCMethodInst *i) {
   // For Objective-C classes we need to arrange for a msgSend
   // to happen when the method is called.
   assert(i->getMember().isForeign);
-  setLoweredObjCMethod(i, i->getMember());
+  setLoweredObjCMethod(i, i->getMember(), i->isDirect());
 }
 
 void IRGenModule::emitSILStaticInitializers() {
