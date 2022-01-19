@@ -2646,6 +2646,14 @@ AllMembersRequest::evaluate(
   return evaluateMembersRequest(idc, MembersRequestKind::All);
 }
 
+static bool isNonGenericTypeAliasType(Type type) {
+  // A non-generic typealias can extend a specialized type.
+  if (auto *aliasType = dyn_cast<TypeAliasType>(type.getPointer()))
+    return aliasType->getDecl()->getGenericContextDepth() == (unsigned)-1;
+
+  return false;
+}
+
 Type
 ExtendedTypeRequest::evaluate(Evaluator &eval, ExtensionDecl *ext) const {
   auto error = [&ext]() {
@@ -2706,6 +2714,14 @@ ExtendedTypeRequest::evaluate(Evaluator &eval, ExtensionDecl *ext) const {
     diags.diagnose(ext->getLoc(), diag::extension_placeholder)
          .highlight(extendedRepr->getSourceRange());
     return error();
+  }
+
+  // 
+  if (!ext->getASTContext().TypeCheckerOpts.EnableBoundGenericExtensions &&
+      !isNonGenericTypeAliasType(extendedType) &&
+      extendedType->isSpecialized()) {
+    diags.diagnose(ext->getLoc(), diag::extension_specialization,
+                   extendedType->getAnyNominal()->getName());
   }
 
   return extendedType;

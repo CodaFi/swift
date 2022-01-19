@@ -970,4 +970,8 @@ def new_driver_path
   : Separate<["-"], "new-driver-path">, MetaVarName<"<path>">,
   HelpText<"Path of the new driver to be used">;
 
+def enable_experimental_bound_generic_extensions :
+  Flag<["-"], "enable-experimental-bound-generic-extensions">,
+  HelpText<"Enable experimental extensions of bound generic types">;
+
 } // end let Flags = [FrontendOption, NoDriverOption, HelpHidden]

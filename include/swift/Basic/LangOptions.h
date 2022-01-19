@@ -699,6 +699,14 @@ namespace swift {
 
     /// See \ref FrontendOptions.PrintFullConvention
     bool PrintFullConvention = false;
+
+    /// Enable the extension of bound generic types as sugar for
+    /// same-type constraints.
+    ///
+    /// \code
+    /// extension [Int] { /**/ }
+    /// \endcode
+    bool EnableBoundGenericExtensions = false;
   };
 
   /// Options for controlling the behavior of the Clang importer.

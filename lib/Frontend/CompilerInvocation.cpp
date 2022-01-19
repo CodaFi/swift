@@ -1025,6 +1025,9 @@ static bool ParseTypeCheckerArgs(TypeCheckerOptions &Opts, ArgList &Args,
   Opts.PrintFullConvention |=
       Args.hasArg(OPT_experimental_print_full_convention);
 
+  Opts.EnableBoundGenericExtensions |=
+      Args.hasArg(OPT_enable_experimental_bound_generic_extensions);
+
   Opts.DebugConstraintSolver |= Args.hasArg(OPT_debug_constraints);
 
   for (const Arg *A : Args.filtered(OPT_debug_constraints_on_line)) {
