@@ -207,6 +207,13 @@ SourceRange GenericTypeOrExtensionWholePortion::getChildlessSourceRangeOf(
 
 SourceRange
 ExtensionScope::moveStartPastExtendedNominal(const SourceRange sr) const {
+  // Types in generic extensions are written in terms of the
+  // generic parameters of the extension so they behave like bound generic
+  // types.
+  if (decl->getParsedGenericParams()) {
+    return sr;
+  }
+
   const auto afterExtendedNominal = getLocAfterExtendedNominal(decl);
   // Illegal code can have an endLoc that is before the end of the
   // ExtendedNominal

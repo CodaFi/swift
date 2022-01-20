@@ -95,8 +95,10 @@ NominalTypeDecl *SemaTest::getStdlibNominalTypeDecl(StringRef name) const {
 
 VarDecl *SemaTest::addExtensionVarMember(NominalTypeDecl *decl,
                                          StringRef name, Type type) const {
-  auto *ext = ExtensionDecl::create(Context, SourceLoc(), nullptr, { }, DC,
-                                    nullptr);
+  auto *ext = ExtensionDecl::create(Context, SourceLoc(),
+                                    /*genericParams=*/nullptr,
+                                    /*extendedType=*/nullptr,
+                                    { }, DC, nullptr);
   decl->addExtension(ext);
   ext->setExtendedNominal(decl);
 

@@ -126,7 +126,11 @@ void DeclContext::forEachGenericContext(
     if (auto decl = dc->getAsDecl()) {
       // Extensions do not capture outer generic parameters.
       if (auto *ext = dyn_cast<ExtensionDecl>(decl)) {
-        for (auto *gpList = ext->getGenericParams();
+        auto params = ext->getParsedGenericParams()
+                    ? ext->getExtendedNominal()->getGenericParams()
+                    : ext->getGenericParams();
+
+        for (auto *gpList = params;
              gpList != nullptr;
              gpList = gpList->getOuterParameters()) {
           fn(gpList);

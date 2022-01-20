@@ -4017,7 +4017,9 @@ ProtocolConformance *GetImplicitSendableRequest::evaluate(
       // If you change the use of AtLoc in the ExtensionDecl, make sure you
       // update isNonSendableExtension() in ASTPrinter.
       auto extension = ExtensionDecl::create(ctx, attrMakingUnavailable->AtLoc,
-                                             nullptr, inherits,
+                                             /*genericParams=*/nullptr,
+                                             /*extendedType=*/nullptr,
+                                             inherits,
                                              nominal->getModuleScopeContext(),
                                              nullptr);
       extension->setImplicit();

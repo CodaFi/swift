@@ -2724,7 +2724,7 @@ ExtendedTypeRequest::evaluate(Evaluator &eval, ExtensionDecl *ext) const {
   if (ext->isInSpecializeExtensionContext())
     options |= TypeResolutionFlags::AllowUsableFromInline;
   const auto resolution = TypeResolution::forStructural(
-      ext->getDeclContext(), options,
+      ext->getParsedGenericParams() ? ext : ext->getDeclContext(), options,
       [](auto unboundTy) {
         // FIXME: Don't let unbound generic types escape type resolution.
         // For now, just return the unbound generic type.
@@ -2781,7 +2781,8 @@ ExtendedTypeRequest::evaluate(Evaluator &eval, ExtensionDecl *ext) const {
 
   // Cannot extend a bound generic type, unless it's referenced via a
   // non-generic typealias type.
-  if (extendedType->isSpecialized() &&
+  if (!ext->getParsedGenericParams() &&
+      extendedType->isSpecialized() &&
       !isNonGenericTypeAliasType(extendedType)) {
     diags.diagnose(ext->getLoc(), diag::extension_specialization,
                    extendedType->getAnyNominal()->getName())

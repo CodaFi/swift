@@ -2907,6 +2907,9 @@ public:
   }
 
   void visitExtensionDecl(ExtensionDecl *ED) {
+    // Force creation of the generic signature.
+    (void) ED->getGenericSignature();
+
     // Produce any diagnostics for the extended type.
     auto extType = ED->getExtendedType();
 
@@ -2936,10 +2939,10 @@ public:
       return;
     }
 
-    // Produce any diagnostics for the generic signature.
-    (void) ED->getGenericSignature();
-
     if (extType && !extType->hasError()) {
+      if (ED->getParsedGenericParams())
+        TypeChecker::checkReferencedGenericParams(ED);
+
       // The first condition catches syntactic forms like
       //     protocol A & B { ... } // may be protocols or typealiases
       // The second condition also looks through typealiases and catches

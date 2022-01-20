@@ -384,8 +384,6 @@ void TypeChecker::checkReferencedGenericParams(GenericContext *dc) {
   if (!genericParams)
     return;
 
-  auto *decl = cast<ValueDecl>(dc->getInnermostDeclarationDeclContext());
-
   // A helper class to collect referenced generic type parameters
   // and dependent member types.
   class ReferencedGenericTypeWalker : public TypeWalker {
@@ -413,10 +411,15 @@ void TypeChecker::checkReferencedGenericParams(GenericContext *dc) {
   // Collect all generic params referenced in parameter types and
   // return type.
   ReferencedGenericTypeWalker paramsAndResultWalker;
-  auto *funcTy = decl->getInterfaceType()->castTo<GenericFunctionType>();
-  for (const auto &param : funcTy->getParams())
-    param.getPlainType().walk(paramsAndResultWalker);
-  funcTy->getResult().walk(paramsAndResultWalker);
+  if (auto *decl = dyn_cast<ValueDecl>(dc->getInnermostDeclarationDeclContext())) {
+    auto *funcTy = decl->getInterfaceType()->castTo<GenericFunctionType>();
+    for (const auto &param : funcTy->getParams())
+      param.getPlainType().walk(paramsAndResultWalker);
+    funcTy->getResult().walk(paramsAndResultWalker);
+  } else {
+    auto *ED = cast<ExtensionDecl>(dc);
+    ED->getExtendedType().walk(paramsAndResultWalker);
+  }
 
   // Set of generic params referenced in parameter types,
   // return type or requirements.
@@ -519,6 +522,8 @@ void TypeChecker::checkReferencedGenericParams(GenericContext *dc) {
   // among referencedGenericParams.
   for (auto *genParam : genericSig.getGenericParams()) {
     auto *paramDecl = genParam->getDecl();
+    if (paramDecl->isImplicit())
+      continue;
     if (paramDecl->getDepth() != fnGenericParamsDepth)
       continue;
     if (!referencedGenericParams.count(genParam->getCanonicalType())) {
@@ -536,7 +541,6 @@ void TypeChecker::checkReferencedGenericParams(GenericContext *dc) {
       // Produce an error that this generic parameter cannot be bound.
       paramDecl->diagnose(diag::unreferenced_generic_parameter,
                           paramDecl->getNameStr());
-      decl->setInvalid();
     }
   }
 }
@@ -588,6 +592,9 @@ static Type formExtensionInterfaceType(
     resultType = NominalType::get(nominal, parentType,
                                   nominal->getASTContext());
   } else if (genericParams) {
+    if (ext->getParsedGenericParams()) {
+      genericParams = nominal->getGenericParams();
+    }
     auto currentBoundType = type->getAs<BoundGenericType>();
 
     // Form the bound generic type with the type parameters provided.

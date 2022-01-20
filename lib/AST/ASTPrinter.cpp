@@ -2916,6 +2916,13 @@ static bool usesFeatureBuiltinAssumeAlignment(Decl *decl) {
   return false;
 }
 
+static bool usesFeatureGenericExtensions(Decl *decl) {
+  if (auto *ED = dyn_cast<ExtensionDecl>(decl)) {
+    return ED->getGenericParams();
+  }
+  return false;
+}
+
 /// Determine the set of "new" features used on a given declaration.
 ///
 /// Note: right now, all features we check for are "new". At some point, we'll

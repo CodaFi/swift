@@ -1247,11 +1247,12 @@ InheritedEntry::InheritedEntry(const TypeLoc &typeLoc)
 }
 
 ExtensionDecl::ExtensionDecl(SourceLoc extensionLoc,
+                             GenericParamList *genericParams,
                              TypeRepr *extendedType,
                              ArrayRef<InheritedEntry> inherited,
                              DeclContext *parent,
                              TrailingWhereClause *trailingWhereClause)
-  : GenericContext(DeclContextKind::ExtensionDecl, parent, nullptr),
+  : GenericContext(DeclContextKind::ExtensionDecl, parent, genericParams),
     Decl(DeclKind::Extension, parent),
     IterableDeclContext(IterableDeclContextKind::ExtensionDecl),
     ExtensionLoc(extensionLoc),
@@ -1264,6 +1265,7 @@ ExtensionDecl::ExtensionDecl(SourceLoc extensionLoc,
 }
 
 ExtensionDecl *ExtensionDecl::create(ASTContext &ctx, SourceLoc extensionLoc,
+                                     GenericParamList *genericParams,
                                      TypeRepr *extendedType,
                                      ArrayRef<InheritedEntry> inherited,
                                      DeclContext *parent,
@@ -1275,7 +1277,9 @@ ExtensionDecl *ExtensionDecl::create(ASTContext &ctx, SourceLoc extensionLoc,
                                                        !clangNode.isNull());
 
   // Construct the extension.
-  auto result = ::new (declPtr) ExtensionDecl(extensionLoc, extendedType,
+  auto result = ::new (declPtr) ExtensionDecl(extensionLoc,
+                                              genericParams,
+                                              extendedType,
                                               inherited, parent,
                                               trailingWhereClause);
   if (clangNode)

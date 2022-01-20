@@ -2554,6 +2554,10 @@ createExtensionGenericParams(ASTContext &ctx,
                              NominalTypeDecl *nominal) {
   // Collect generic parameters from all outer contexts.
   SmallVector<GenericParamList *, 2> allGenericParams;
+  if (auto *GP = ext->getParsedGenericParams()) {
+    allGenericParams.push_back(GP);
+  }
+
   nominal->forEachGenericContext([&](GenericParamList *gpList) {
     allGenericParams.push_back(gpList->clone(ext));
   });

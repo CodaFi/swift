@@ -1314,7 +1314,9 @@ class ExtensionDecl final : public GenericContext, public Decl,
   friend class ConformanceLookupTable;
   friend class IterableDeclContext;
 
-  ExtensionDecl(SourceLoc extensionLoc, TypeRepr *extendedType,
+  ExtensionDecl(SourceLoc extensionLoc,
+                GenericParamList *genericParams,
+                TypeRepr *extendedType,
                 ArrayRef<InheritedEntry> inherited,
                 DeclContext *parent,
                 TrailingWhereClause *trailingWhereClause);
@@ -1338,7 +1340,9 @@ public:
   using Decl::getASTContext;
 
   /// Create a new extension declaration.
-  static ExtensionDecl *create(ASTContext &ctx, SourceLoc extensionLoc,
+  static ExtensionDecl *create(ASTContext &ctx,
+                               SourceLoc extensionLoc,
+                               GenericParamList *genericParams,
                                TypeRepr *extendedType,
                                ArrayRef<InheritedEntry> inherited,
                                DeclContext *parent,
