@@ -763,7 +763,7 @@ public:
   bool isClassExistentialType();
 
   /// Opens an existential instance or meta-type and returns the opened type.
-  Type openAnyExistentialType(OpenedArchetypeType *&opened);
+  Type openAnyExistentialType(OpenedArchetypeType *&opened, DeclContext *useDC);
 
   /// Break an existential down into a set of constraints.
   ExistentialLayout getExistentialLayout();
@@ -5752,8 +5752,8 @@ public:
   ///
   /// \param knownID When non-empty, the known ID of the archetype. When empty,
   /// a fresh archetype with a unique ID will be opened.
-  static CanTypeWrapper<OpenedArchetypeType> get(
-      CanType existential, Optional<UUID> knownID = None);
+  static CanTypeWrapper<OpenedArchetypeType>
+  get(CanType existential, DeclContext *useDC, Optional<UUID> knownID = None);
 
   /// Get or create an archetype that represents the opened type
   /// of an existential value.
@@ -5763,21 +5763,24 @@ public:
   ///
   /// \param knownID When non-empty, the known ID of the archetype. When empty,
   /// a fresh archetype with a unique ID will be opened.
-  static CanTypeWrapper<OpenedArchetypeType> get(
-      CanType existential, Type interfaceType, Optional<UUID> knownID = None);
+  static CanTypeWrapper<OpenedArchetypeType> get(CanType existential,
+                                                 Type interfaceType,
+                                                 DeclContext *useDC,
+                                                 Optional<UUID> knownID = None);
 
   /// Create a new archetype that represents the opened type
   /// of an existential value.
   ///
   /// \param existential The existential type or existential metatype to open.
   /// \param interfaceType The interface type represented by this archetype.
-  static CanType getAny(CanType existential, Type interfaceType);
+  static CanType getAny(CanType existential, Type interfaceType,
+                        DeclContext *useDC);
 
   /// Create a new archetype that represents the opened type
   /// of an existential value.
   ///
   /// \param existential The existential type or existential metatype to open.
-  static CanType getAny(CanType existential);
+  static CanType getAny(CanType existential, DeclContext *useDC);
 
   /// Retrieve the ID number of this opened existential.
   UUID getOpenedExistentialID() const;
@@ -6386,9 +6389,10 @@ inline bool TypeBase::isAnyExistentialType() {
 }
 
 inline bool CanType::isExistentialTypeImpl(CanType type) {
-  return (isa<ProtocolType>(type) ||
-          isa<ProtocolCompositionType>(type) ||
-          isa<ExistentialType>(type));
+  return isa<ProtocolType>(type) ||
+         isa<ProtocolCompositionType>(type) ||
+         isa<ExistentialType>(type) ||
+         isa<ParameterizedProtocolType>(type);
 }
 
 inline bool CanType::isAnyExistentialTypeImpl(CanType type) {
@@ -6484,6 +6488,8 @@ inline NominalTypeDecl *CanType::getNominalOrBoundGenericNominal() const {
     return Ty->getDecl();
   if (auto Ty = dyn_cast<ExistentialType>(*this))
     return Ty->getConstraintType()->getNominalOrBoundGenericNominal();
+  if (auto Ty = dyn_cast<ParameterizedProtocolType>(*this))
+    return Ty->getBaseType()->getNominalOrBoundGenericNominal();
   return nullptr;
 }
 

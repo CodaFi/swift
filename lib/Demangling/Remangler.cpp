@@ -601,6 +601,13 @@ ManglingError Remangler::mangleGenericArgs(Node *node, char &Separator,
       break;
     }
 
+    case Node::Kind::ParameterizedProtocol: {
+      Buffer << Separator;
+      Separator = '_';
+      RETURN_IF_ERROR(mangleChildNodes(node->getChild(1), depth + 1));
+      break;
+    }
+
     case Node::Kind::BoundGenericFunction: {
       fullSubstitutionMap = true;
 
@@ -1215,6 +1222,15 @@ ManglingError Remangler::mangleEnum(Node *node, unsigned depth) {
 
 ManglingError Remangler::mangleErrorType(Node *node, unsigned depth) {
   Buffer << "Xe";
+  return ManglingError::Success;
+}
+
+ManglingError Remangler::mangleParameterizedProtocol(Node *node,
+                                                     unsigned int depth) {
+  RETURN_IF_ERROR(mangleAnyGenericType(node->getChild(0), "", depth + 1));
+  char separator = 'y';
+  RETURN_IF_ERROR(mangleGenericArgs(node, separator, depth + 1));
+  Buffer << "XP";
   return ManglingError::Success;
 }
 
@@ -3461,6 +3477,7 @@ bool Demangle::isSpecialized(Node *node) {
     case Node::Kind::BoundGenericTypeAlias:
     case Node::Kind::BoundGenericProtocol:
     case Node::Kind::BoundGenericFunction:
+    case Node::Kind::ParameterizedProtocol:
       return true;
 
     case Node::Kind::Structure:
@@ -3561,6 +3578,11 @@ ManglingErrorOr<NodePointer> Demangle::getUnspecialized(Node *node,
       if (isSpecialized(nominalType))
         return getUnspecialized(nominalType, Factory);
       return nominalType;
+    }
+
+    case Node::Kind::ParameterizedProtocol: {
+      NodePointer unboundType = node->getChild(0);
+      DEMANGLER_ASSERT(unboundType->getKind() == Node::Kind::Type, unboundType);
     }
 
     case Node::Kind::BoundGenericFunction: {
