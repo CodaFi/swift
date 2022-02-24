@@ -1300,7 +1300,7 @@ public:
   /// Retrieve a generic signature with a single type parameter conforming
   /// to the given protocol or composition type, like <T: type>.
   CanGenericSignature getOpenedArchetypeSignature(Type type,
-                                                  GenericSignature contextSig);
+                                                  DeclContext *useDC);
 
   GenericSignature getOverrideGenericSignature(const ValueDecl *base,
                                                const ValueDecl *derived);

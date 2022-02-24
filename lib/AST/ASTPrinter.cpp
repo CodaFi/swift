@@ -6151,7 +6151,11 @@ public:
 
     const auto Name = T->getName();
     if (Name.empty()) {
-      Printer << "<anonymous>";
+      if (T->getFullName().empty()) {
+        Printer << "<anonymous>";
+      } else {
+        Printer << T->getFullName();
+      }
     } else if (Decl) {
       Printer.printTypeRef(T, Decl, Name);
     } else {

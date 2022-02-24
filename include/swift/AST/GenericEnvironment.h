@@ -161,6 +161,11 @@ public:
   static GenericEnvironment *forOpenedExistential(Type existential, UUID uuid,
                                                   DeclContext *useDC);
 
+  static GenericEnvironment *forOpenedExistential(Type existential,
+                                                  UUID uuid,
+                                                  GenericSignature sig);
+
+          
   /// Create a new generic environment for an opaque type with the given set of
   /// outer substitutions.
   static GenericEnvironment *forOpaqueType(

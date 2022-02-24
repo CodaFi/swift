@@ -480,7 +480,7 @@ Type TypeBase::typeEraseOpenedArchetypesWithRoot(
     return type;
 
   const auto sig = root->getASTContext().getOpenedArchetypeSignature(
-      root->getExistentialType());
+      root->getExistentialType(), nullptr);
 
   unsigned metatypeDepth = 0;
 
@@ -4007,7 +4007,7 @@ CanType ProtocolCompositionType::getMinimalCanonicalType() const {
 
   // Use generic signature minimization: the requirements of the signature will
   // represent the minimal composition.
-  const auto Sig = Ctx.getOpenedArchetypeSignature(CanTy);
+  const auto Sig = Ctx.getOpenedArchetypeSignature(CanTy, nullptr);
   const auto &Reqs = Sig.getRequirements();
   if (Reqs.size() == 1) {
     return Reqs.front().getSecondType()->getCanonicalType();
@@ -5977,17 +5977,18 @@ SILBoxType::SILBoxType(ASTContext &C,
   assert(Substitutions.isCanonical());
 }
 
-Type TypeBase::openAnyExistentialType(OpenedArchetypeType *&opened) {
+Type TypeBase::openAnyExistentialType(OpenedArchetypeType *&opened,
+                                      DeclContext *useDC) {
   assert(isAnyExistentialType());
   if (auto metaty = getAs<ExistentialMetatypeType>()) {
     opened = OpenedArchetypeType::get(
-        metaty->getExistentialInstanceType()->getCanonicalType());
+        metaty->getExistentialInstanceType()->getCanonicalType(), useDC);
     if (metaty->hasRepresentation())
       return MetatypeType::get(opened, metaty->getRepresentation());
     else
       return MetatypeType::get(opened);
   }
-  opened = OpenedArchetypeType::get(getCanonicalType());
+  opened = OpenedArchetypeType::get(getCanonicalType(), useDC);
   return opened;
 }
 

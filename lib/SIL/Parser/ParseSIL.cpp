@@ -5421,7 +5421,8 @@ bool SILParser::parseSpecificSILInstruction(SILBuilder &B,
         return true;
 
       // Lower the type at the abstraction level of the existential.
-      auto archetype = OpenedArchetypeType::get(Val->getType().getASTType())
+      auto archetype = OpenedArchetypeType::get(Val->getType().getASTType(),
+                                                F->getDeclContext())
                            ->getCanonicalType();
 
       auto &F = B.getFunction();

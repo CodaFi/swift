@@ -4516,11 +4516,15 @@ public:
 
   void visitOpenedArchetypeType(const OpenedArchetypeType *archetypeTy) {
     using namespace decls_block;
+    auto sig = archetypeTy->getGenericEnvironment()->getGenericSignature();
+
     auto existentialTypeID = S.addTypeRef(archetypeTy->getExistentialType());
     auto interfaceTypeID = S.addTypeRef(archetypeTy->getInterfaceType());
+    auto sigID = S.addGenericSignatureRef(sig);
     unsigned abbrCode = S.DeclTypeAbbrCodes[OpenedArchetypeTypeLayout::Code];
     OpenedArchetypeTypeLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
-                                          existentialTypeID, interfaceTypeID);
+                                          existentialTypeID, interfaceTypeID,
+                                          sigID);
   }
 
   void

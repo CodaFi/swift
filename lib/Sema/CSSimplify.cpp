@@ -3388,6 +3388,25 @@ ConstraintSystem::matchExistentialTypes(Type type1, Type type2,
     }
   }
 
+  auto constraintType = type2;
+  if (auto existential = constraintType->getAs<ExistentialType>())
+    constraintType = existential->getConstraintType();
+
+  // Discharge the requirements of parameterized protocols.
+  // FIXME: Extend the locator path to point to the requirement argument.
+  if (auto PPT = constraintType->getAs<ParameterizedProtocolType>()) {
+    SmallVector<Requirement, 2> reqs;
+    PPT->getRequirements(type1, reqs);
+    for (const auto &req : reqs) {
+      auto result = matchTypes(req.getFirstType(), req.getSecondType(),
+                               ConstraintKind::Bind,
+                               subflags, locator);
+      if (result.isFailure())
+        return result;
+    }
+  }
+
+
   return getTypeMatchSuccess();
 }
 
@@ -9959,7 +9978,8 @@ ConstraintSystem::simplifyOpenedExistentialOfConstraint(
       instanceTy = metaTy->getExistentialInstanceType();
     }
     assert(instanceTy->isExistentialType());
-    Type openedTy = OpenedArchetypeType::get(instanceTy->getCanonicalType());
+    Type openedTy =
+        OpenedArchetypeType::get(instanceTy->getCanonicalType(), DC);
     if (isMetatype)
       openedTy = MetatypeType::get(openedTy, getASTContext());
     return matchTypes(type1, openedTy, ConstraintKind::Bind, subflags, locator);

@@ -570,10 +570,13 @@ public:
                                               isClassBound);
   }
 
-  const ParameterizedProtocolRef *
-  createParameterizedProtocolType(ProtocolCompositionTypeRef *protocols,
-                                  llvm::ArrayRef<TypeRef *> args) {
-    return ParameterizedProtocolRef::create(*this, protocolRefs, args);
+  const ParameterizedProtocolTypeRef *
+  createParameterizedProtocolType(const TypeRef *base,
+                                  llvm::ArrayRef<const TypeRef *> args) {
+    auto *baseProto = llvm::dyn_cast<ProtocolCompositionTypeRef>(base);
+    if (!baseProto)
+      return nullptr;
+    return ParameterizedProtocolTypeRef::create(*this, baseProto, args);
   }
 
   const ExistentialMetatypeTypeRef *createExistentialMetatypeType(

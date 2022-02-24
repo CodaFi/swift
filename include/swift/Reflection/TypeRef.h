@@ -590,7 +590,7 @@ public:
     FIND_OR_CREATE_TYPEREF(A, ParameterizedProtocolTypeRef, Protocol, Args);
   }
 
-  const TypeRef *getBase() const { return Base; }
+  const ProtocolCompositionTypeRef *getBase() const { return Base; }
 
   const std::vector<const TypeRef *> &getArgs() const { return Args; }
 

@@ -4099,7 +4099,9 @@ public:
 
     if (!ExprType->getMetatypeInstanceType()->isAnyObject())
       if (ExprType->isAnyExistentialType())
-        ExprType = OpenedArchetypeType::getAny(ExprType->getCanonicalType());
+        ExprType = OpenedArchetypeType::getAny(
+            ExprType->getCanonicalType(),
+            const_cast<DeclContext *>(CurrDeclContext));
 
     if (!IsSelfRefExpr && !IsSuperRefExpr && ExprType->getAnyNominal() &&
         ExprType->getAnyNominal()->isActor()) {

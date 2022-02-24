@@ -1635,6 +1635,23 @@ void namelookup::extractDirectlyReferencedNominalTypes(
     return;
   }
 
+  if (auto parameterizedTy = type->getAs<ParameterizedProtocolType>()) {
+    auto layout = parameterizedTy->getExistentialLayout();
+
+    for (auto proto : layout.getProtocols()) {
+      auto *protoDecl = proto->getDecl();
+      decls.push_back(protoDecl);
+    }
+
+    if (auto superclass = layout.explicitSuperclass) {
+      auto *superclassDecl = superclass->getClassOrBoundGenericClass();
+      if (superclassDecl)
+        decls.push_back(superclassDecl);
+    }
+
+    return;
+  }
+
   if (auto existential = type->getAs<ExistentialType>()) {
     extractDirectlyReferencedNominalTypes(
         existential->getConstraintType(), decls);

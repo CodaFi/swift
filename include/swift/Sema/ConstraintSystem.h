@@ -4129,6 +4129,11 @@ private:
   Type openOpaqueType(OpaqueTypeArchetypeType *type,
                       ConstraintLocatorBuilder locator);
 
+  void openGenericRequirement(
+      const Requirement &req,
+      ConstraintLocatorBuilder locator,
+      llvm::function_ref<Type(Type)> substFn);
+
 public:
   /// Recurse over the given type and open any opaque archetype types.
   Type openOpaqueType(Type type, ContextualTypePurpose context,

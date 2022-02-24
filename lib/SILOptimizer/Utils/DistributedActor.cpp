@@ -75,7 +75,8 @@ void emitDistributedActorSystemWitnessCall(
   if (systemASTType->isAnyExistentialType()) {
     OpenedArchetypeType *opened;
     systemASTType =
-        systemASTType->openAnyExistentialType(opened)->getCanonicalType();
+        systemASTType->openAnyExistentialType(opened, F.getDeclContext())
+            ->getCanonicalType();
     base = B.createOpenExistentialAddr(
         loc, base, F.getLoweredType(systemASTType),
         OpenedExistentialAccess::Immutable);

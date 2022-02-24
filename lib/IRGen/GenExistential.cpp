@@ -1445,7 +1445,7 @@ static const TypeInfo *createExistentialTypeInfo(IRGenModule &IGM, CanType T) {
     T = existential->getConstraintType()->getCanonicalType();
   }
   llvm::StructType *type;
-  if (isa<ProtocolType>(T))
+  if (isa<ProtocolType>(T) || isa<ParameterizedProtocolType>(T))
     type = IGM.createNominalType(T);
   else
     type = IGM.createNominalType(cast<ProtocolCompositionType>(T.getPointer()));
@@ -1726,7 +1726,7 @@ OwnedAddress irgen::emitBoxedExistentialContainerAllocation(IRGenFunction &IGF,
   auto box = IGF.Builder.CreateExtractValue(result, 0);
   auto addr = IGF.Builder.CreateExtractValue(result, 1);
 
-  auto archetype = OpenedArchetypeType::get(destType.getASTType());
+  auto archetype = OpenedArchetypeType::get(destType.getASTType(), nullptr);
   auto &srcTI = IGF.getTypeInfoForUnlowered(AbstractionPattern(archetype),
                                             formalSrcType);
   addr = IGF.Builder.CreateBitCast(addr,

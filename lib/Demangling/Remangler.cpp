@@ -3583,6 +3583,7 @@ ManglingErrorOr<NodePointer> Demangle::getUnspecialized(Node *node,
     case Node::Kind::ParameterizedProtocol: {
       NodePointer unboundType = node->getChild(0);
       DEMANGLER_ASSERT(unboundType->getKind() == Node::Kind::Type, unboundType);
+      return unboundType->getChild(0);
     }
 
     case Node::Kind::BoundGenericFunction: {

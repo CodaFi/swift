@@ -576,7 +576,7 @@ ConstraintLocator *ConstraintSystem::getOpenOpaqueLocator(
 std::pair<Type, OpenedArchetypeType *> ConstraintSystem::openExistentialType(
     Type type, ConstraintLocator *locator) {
   OpenedArchetypeType *opened = nullptr;
-  Type result = type->openAnyExistentialType(opened);
+  Type result = type->openAnyExistentialType(opened, DC);
   assert(OpenedExistentialTypes.count(locator) == 0);
   OpenedExistentialTypes.insert({locator, opened});
   return {result, opened};
@@ -1616,37 +1616,45 @@ void ConstraintSystem::openGenericRequirements(
   auto requirements = signature.getRequirements();
   for (unsigned pos = 0, n = requirements.size(); pos != n; ++pos) {
     const auto &req = requirements[pos];
-
-    Optional<Requirement> openedReq;
-    auto openedFirst = substFn(req.getFirstType());
-
-    auto kind = req.getKind();
-    switch (kind) {
-    case RequirementKind::Conformance: {
-      auto protoDecl = req.getProtocolDecl();
-      // Determine whether this is the protocol 'Self' constraint we should
-      // skip.
-      if (skipProtocolSelfConstraint && protoDecl == outerDC &&
-          protoDecl->getSelfInterfaceType()->isEqual(req.getFirstType()))
-        continue;
-      openedReq = Requirement(kind, openedFirst, req.getSecondType());
-      break;
-    }
-    case RequirementKind::Superclass:
-    case RequirementKind::SameType:
-      openedReq = Requirement(kind, openedFirst, substFn(req.getSecondType()));
-      break;
-    case RequirementKind::Layout:
-      openedReq = Requirement(kind, openedFirst, req.getLayoutConstraint());
-      break;
+    // Determine whether this is the protocol 'Self' constraint we should
+    // skip.
+    if (req.getKind() == RequirementKind::Conformance &&
+        skipProtocolSelfConstraint &&
+        req.getProtocolDecl() == outerDC &&
+        req.getProtocolDecl()->getSelfInterfaceType()->isEqual(req.getFirstType())) {
+      continue;
     }
 
     auto openedGenericLoc =
         locator.withPathElement(LocatorPathElt::OpenedGeneric(signature));
-    addConstraint(*openedReq,
-                  openedGenericLoc.withPathElement(
-                      LocatorPathElt::TypeParameterRequirement(pos, kind)));
+    auto paramRequirement = openedGenericLoc.withPathElement(
+          LocatorPathElt::TypeParameterRequirement(pos, req.getKind()));
+    openGenericRequirement(req, paramRequirement, substFn);
   }
+}
+
+void ConstraintSystem::openGenericRequirement(
+    const Requirement &req,
+    ConstraintLocatorBuilder locator,
+    llvm::function_ref<Type(Type)> substFn) {
+  Optional<Requirement> openedReq;
+  auto openedFirst = substFn(req.getFirstType());
+
+  auto kind = req.getKind();
+  switch (kind) {
+  case RequirementKind::Conformance:
+    openedReq = Requirement(kind, openedFirst, req.getSecondType());
+    break;
+  case RequirementKind::Superclass:
+  case RequirementKind::SameType:
+    openedReq = Requirement(kind, openedFirst, substFn(req.getSecondType()));
+    break;
+  case RequirementKind::Layout:
+    openedReq = Requirement(kind, openedFirst, req.getLayoutConstraint());
+    break;
+  }
+
+  addConstraint(*openedReq, locator);
 }
 
 /// Add the constraint on the type used for the 'Self' type for a member
@@ -1773,7 +1781,7 @@ static Type typeEraseCovariantExistentialSelfReferences(Type refTy,
   }
 
   const auto existentialSig =
-      baseTy->getASTContext().getOpenedArchetypeSignature(baseTy);
+      baseTy->getASTContext().getOpenedArchetypeSignature(baseTy, nullptr);
 
   unsigned metatypeDepth = 0;
 
@@ -2097,8 +2105,8 @@ ConstraintSystem::getTypeOfMemberReference(
       }
     }
   } else if (baseObjTy->isExistentialType()) {
-    auto openedArchetype = OpenedArchetypeType::get(
-        baseObjTy->getCanonicalType());
+    auto openedArchetype =
+        OpenedArchetypeType::get(baseObjTy->getCanonicalType(), DC);
     OpenedExistentialTypes.insert(
         {getConstraintLocator(locator), openedArchetype});
     baseOpenedTy = openedArchetype;
@@ -6025,8 +6033,8 @@ static bool doesMemberHaveUnfulfillableConstraintsWithExistentialBase(
 
       return Action::Stop;
     }
-  } isDependentOnSelfWalker(
-      member->getASTContext().getOpenedArchetypeSignature(baseTy));
+  } isDependentOnSelfWalker(member->getASTContext().getOpenedArchetypeSignature(
+      baseTy, nullptr));
 
   for (const auto &req : sig.getRequirements()) {
     switch (req.getKind()) {
@@ -6069,7 +6077,7 @@ bool ConstraintSystem::isMemberAvailableOnExistential(
   // If the type of the member references 'Self' or a 'Self'-rooted associated
   // type in non-covariant position, we cannot reference the member.
   const auto info = member->findExistentialSelfReferences(
-      baseTy, /*treatNonResultCovariantSelfAsInvariant=*/false);
+      baseTy, DC, /*treatNonResultCovariantSelfAsInvariant=*/false);
   if (info.selfRef > TypePosition::Covariant ||
       info.assocTypeRef > TypePosition::Covariant) {
     return false;

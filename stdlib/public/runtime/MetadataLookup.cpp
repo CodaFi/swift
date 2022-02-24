@@ -1507,6 +1507,12 @@ public:
                                             protocols.size(), protocols.data());
   }
 
+  TypeLookupErrorOr<BuiltType>
+  createParameterizedProtocolType(BuiltType base,
+                                  llvm::ArrayRef<BuiltType> args) const {
+    return BuiltType();
+  }
+
   TypeLookupErrorOr<BuiltType> createDynamicSelfType(BuiltType selfType) const {
     // Free-standing mangled type strings should not contain DynamicSelfType.
     return BuiltType();
