@@ -2262,7 +2262,7 @@ NodePointer NodePrinter::print(NodePointer Node, unsigned depth,
     return nullptr;
   }
   case Node::Kind::ParameterizedProtocol: {
-    Printer << "parameterized protocol";
+    printBoundGeneric(Node, depth);
     return nullptr;
   }
   case Node::Kind::ExistentialMetatype: {
