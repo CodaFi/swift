@@ -1460,6 +1460,50 @@ public:
     return CanType(gp);
   }
 
+  CanType visitExistentialType(ExistentialType *et,
+                               AbstractionPattern pattern) {
+    // If there are no loose type parameters in the pattern here, we don't need
+    // to do a recursive visit at all.
+    auto orig = pattern.getType();
+    if (!orig->hasTypeParameter()
+        && !orig->hasArchetype()
+        && !orig->hasOpaqueArchetype()) {
+      return CanType(et);
+    }
+
+    assert(et->getConstraintType()->getAs<ParameterizedProtocolType>());
+    auto substConstraint = visit(et->getConstraintType(), pattern);
+    return CanType(ExistentialType::get(substConstraint));
+  }
+
+  CanType visitParameterizedProtocolType(ParameterizedProtocolType *ppt,
+                                         AbstractionPattern pattern) {
+    if (auto gp = handleTypeParameterInAbstractionPattern(pattern, ppt))
+      return gp;
+
+    auto patternSig = pattern.getGenericSignature();
+    if (!patternSig) {
+      return CanType(ppt);
+    }
+
+    // FIXME: This is unbelievably wrong.
+    for (unsigned i = 0; i < patternSig.getGenericParams().size(); ++i) {
+      auto nomTyParam = patternSig.getGenericParams()[i];
+      // If the nominal type same-type constrains away this generic parameter,
+      // we don't need to visit it.
+      if (patternSig->isConcreteType(nomTyParam))
+        continue;
+
+      unsigned substGPIndex = substGenericParams.size();
+      auto substGP = GenericTypeParamType::get(false, 0,
+                                               substGPIndex, TC.Context);
+      substGenericParams.push_back(substGP);
+      substReplacementTypes.push_back(substGP);
+    }
+
+    return CanType(ppt);
+  }
+
   CanType visitType(TypeBase *t, AbstractionPattern pattern) {
     if (auto gp = handleTypeParameterInAbstractionPattern(pattern, t))
       return gp;
