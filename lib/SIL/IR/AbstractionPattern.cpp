@@ -1462,6 +1462,9 @@ public:
 
   CanType visitExistentialType(ExistentialType *et,
                                AbstractionPattern pattern) {
+    if (auto gp = handleTypeParameterInAbstractionPattern(pattern, et))
+      return gp;
+
     // If there are no loose type parameters in the pattern here, we don't need
     // to do a recursive visit at all.
     auto orig = pattern.getType();
@@ -1471,7 +1474,6 @@ public:
       return CanType(et);
     }
 
-    assert(et->getConstraintType()->getAs<ParameterizedProtocolType>());
     auto substConstraint = visit(et->getConstraintType(), pattern);
     return CanType(ExistentialType::get(substConstraint));
   }
