@@ -577,7 +577,27 @@ std::pair<Type, OpenedArchetypeType *> ConstraintSystem::openExistentialType(
     Type type, ConstraintLocator *locator) {
   OpenedArchetypeType *opened = nullptr;
   auto sig = DC->getGenericSignatureOfContext();
-  Type result = type->openAnyExistentialType(opened, sig);
+  TypeSubstitutionMap subs;
+  for (const auto &opened : getOpenedTypes(locator))
+    subs[opened.first] = getFixedType(opened.second);
+
+  auto lookupConformanceFn =
+      [&](CanType original, Type replacement,
+          ProtocolDecl *protoType) -> ProtocolConformanceRef {
+    if (replacement->hasError() ||
+        replacement->is<GenericTypeParamType>()) {
+      return ProtocolConformanceRef(protoType);
+    }
+
+    // FIXME: Retrieve the conformance from the solution itself.
+    return TypeChecker::conformsToProtocol(replacement, protoType,
+                                           DC->getParentModule());
+  };
+
+  Type result = type->openAnyExistentialType(
+                    opened, sig, SubstitutionMap::get(sig,
+                                                      QueryTypeSubstitutionMap{subs},
+                                                      lookupConformanceFn));
   assert(OpenedExistentialTypes.count(locator) == 0);
   OpenedExistentialTypes.insert({locator, opened});
   return {result, opened};
@@ -2120,7 +2140,8 @@ ConstraintSystem::getTypeOfMemberReference(
   } else if (baseObjTy->isExistentialType()) {
     auto openedArchetype =
         OpenedArchetypeType::get(baseObjTy->getCanonicalType(),
-                                 useDC->getGenericSignatureOfContext());
+                                 useDC->getGenericSignatureOfContext(),
+                                 useDC->getGenericSignatureOfContext().getIdentitySubstitutionMap());
     OpenedExistentialTypes.insert(
         {getConstraintLocator(locator), openedArchetype});
     baseOpenedTy = openedArchetype;

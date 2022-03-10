@@ -2029,7 +2029,7 @@ IsaEncoding irgen::getIsaEncodingForType(IRGenModule &IGM,
   // Existentials use the encoding of the enclosed dynamic type.
   if (type->isAnyExistentialType()) {
     return getIsaEncodingForType(
-        IGM, OpenedArchetypeType::getAny(type, outerSignature),
+        IGM, OpenedArchetypeType::getAny(type, outerSignature, outerSignature.getIdentitySubstitutionMap()),
         outerSignature);
   }
 

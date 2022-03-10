@@ -255,8 +255,11 @@ public:
     auto sig = Builder.getFunction().getGenericSignature();
     auto existentialTy = archetypeTy->getExistentialType()->getCanonicalType();
     auto env = GenericEnvironment::forOpenedExistential(
-        getOpASTType(existentialTy), sig, UUID::fromTime());
-    auto interfaceTy = OpenedArchetypeType::getSelfInterfaceTypeFromContext(sig, existentialTy->getASTContext());
+        getOpASTType(existentialTy), sig,
+        getOpSubstitutionMap(archetypeTy->getSubstitutions()),
+        UUID::fromTime());
+    auto interfaceTy = OpenedArchetypeType::getSelfInterfaceTypeFromContext(
+        sig, existentialTy->getASTContext());
     auto replacementTy =
         env->mapTypeIntoContext(interfaceTy)
             ->template castTo<OpenedArchetypeType>();

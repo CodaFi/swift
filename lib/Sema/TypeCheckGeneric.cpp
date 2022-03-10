@@ -595,7 +595,7 @@ static Type formExtensionInterfaceType(
     auto typealiasSig = typealias->getGenericSignature();
     SubstitutionMap subMap;
     if (typealiasSig) {
-      subMap = typealiasSig->getIdentitySubstitutionMap();
+      subMap = typealiasSig.getIdentitySubstitutionMap();
 
       mustInferRequirements = true;
     }
@@ -1040,7 +1040,7 @@ Type StructuralTypeRequest::evaluate(Evaluator &evaluator,
   auto genericSig = typeAlias->getGenericSignature();
   SubstitutionMap subs;
   if (genericSig)
-    subs = genericSig->getIdentitySubstitutionMap();
+    subs = genericSig.getIdentitySubstitutionMap();
 
   Type parent;
   auto parentDC = typeAlias->getDeclContext();

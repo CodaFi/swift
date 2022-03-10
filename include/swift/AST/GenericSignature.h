@@ -213,6 +213,10 @@ public:
   /// signature.
   CanType getCanonicalTypeInContext(Type type) const;
 
+  /// Get a substitution map that maps all of the generic signature's
+  /// generic parameters to themselves.
+  SubstitutionMap getIdentitySubstitutionMap() const;
+
   /// Check invariants.
   void verify() const;
 
@@ -419,10 +423,6 @@ public:
   /// then this will return 0 for t_0_0, 1 for t_0_1, and 2 for t_1_0.
   unsigned getGenericParamOrdinal(GenericTypeParamType *param) const;
 
-  /// Get a substitution map that maps all of the generic signature's
-  /// generic parameters to themselves.
-  SubstitutionMap getIdentitySubstitutionMap() const;
-
   /// Get the sugared form of a generic parameter type.
   GenericTypeParamType *getSugaredType(GenericTypeParamType *type) const;
 
@@ -486,6 +486,10 @@ private:
   /// Return the canonical version of the given type under this generic
   /// signature.
   CanType getCanonicalTypeInContext(Type type) const;
+
+  /// Get a substitution map that maps all of the generic signature's
+  /// generic parameters to themselves.
+  SubstitutionMap getIdentitySubstitutionMap() const;
 };
 
 void simple_display(raw_ostream &out, GenericSignature sig);

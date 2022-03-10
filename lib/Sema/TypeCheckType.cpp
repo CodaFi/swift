@@ -293,7 +293,7 @@ static Type getIdentityOpaqueTypeArchetypeType(
 
   SubstitutionMap subs;
   if (outerGenericSignature)
-    subs = outerGenericSignature->getIdentitySubstitutionMap();
+    subs = outerGenericSignature.getIdentitySubstitutionMap();
 
   Type interfaceType = opaqueDecl->getOpaqueGenericParams()[ordinal];
   return OpaqueTypeArchetypeType::get(opaqueDecl, interfaceType, subs);
@@ -2175,7 +2175,7 @@ NeverNullType TypeResolver::resolveType(TypeRepr *repr,
 
           SubstitutionMap subs;
           if (outerGenericSignature)
-            subs = outerGenericSignature->getIdentitySubstitutionMap();
+            subs = outerGenericSignature.getIdentitySubstitutionMap();
 
           return OpaqueTypeArchetypeType::get(
               opaqueDecl, gpDecl->getDeclaredInterfaceType(), subs);
@@ -2759,6 +2759,7 @@ TypeResolver::resolveAttributedType(TypeAttributes &attrs, TypeRepr *repr,
                  resolution.getGenericSignature().getGenericEnvironment(), ty);
       ty = OpenedArchetypeType::get(ty->getCanonicalType(),
                                     resolution.getGenericSignature(),
+                                    resolution.getGenericSignature().getIdentitySubstitutionMap(),
                                     attrs.OpenedID);
     }
     attrs.clearAttribute(TAK_opened);

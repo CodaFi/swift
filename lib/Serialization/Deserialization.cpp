@@ -5626,9 +5626,10 @@ public:
     TypeID existentialID;
     TypeID interfaceID;
     GenericSignatureID sigID;
+    SubstitutionMapID subsID;
 
-    decls_block::OpenedArchetypeTypeLayout::readRecord(scratch, existentialID,
-                                                       interfaceID, sigID);
+    decls_block::OpenedArchetypeTypeLayout::readRecord(
+        scratch, existentialID, interfaceID, sigID, subsID);
 
     auto sigOrError = MF.getGenericSignatureChecked(sigID);
     if (!sigOrError)
@@ -5642,8 +5643,13 @@ public:
     if (!existentialTypeOrError)
       return existentialTypeOrError.takeError();
 
+    auto subsOrError = MF.getSubstitutionMapChecked(subsID);
+    if (!subsOrError)
+      return subsOrError.takeError();
+
     auto env = GenericEnvironment::forOpenedArchetypeSignature(
-        existentialTypeOrError.get(), sigOrError.get(), UUID::fromTime());
+        existentialTypeOrError.get(), sigOrError.get(), subsOrError.get(),
+        UUID::fromTime());
     return env->mapTypeIntoContext(interfaceTypeOrError.get())
         ->castTo<OpenedArchetypeType>();
   }

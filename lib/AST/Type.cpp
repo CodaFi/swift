@@ -3451,6 +3451,10 @@ OpenedArchetypeType::OpenedArchetypeType(
 {
 }
 
+SubstitutionMap OpenedArchetypeType::getSubstitutions() const {
+  return Environment->getOpenedArchetypeSubstitutions();
+}
+
 UUID OpenedArchetypeType::getOpenedExistentialID() const {
   return getGenericEnvironment()->getOpenedExistentialUUID();
 }
@@ -6036,19 +6040,21 @@ SILBoxType::SILBoxType(ASTContext &C,
 }
 
 Type TypeBase::openAnyExistentialType(OpenedArchetypeType *&opened,
-                                      GenericSignature parentSig) {
+                                      GenericSignature parentSig,
+                                      SubstitutionMap subs) {
   assert(isAnyExistentialType());
   if (auto metaty = getAs<ExistentialMetatypeType>()) {
     opened = OpenedArchetypeType::get(
         metaty->getExistentialInstanceType()->getCanonicalType(),
-        parentSig.getCanonicalSignature());
+        parentSig.getCanonicalSignature(), subs);
     if (metaty->hasRepresentation())
       return MetatypeType::get(opened, metaty->getRepresentation());
     else
       return MetatypeType::get(opened);
   }
   opened = OpenedArchetypeType::get(getCanonicalType(),
-                                    parentSig.getCanonicalSignature());
+                                    parentSig.getCanonicalSignature(),
+                                    subs);
   return opened;
 }
 

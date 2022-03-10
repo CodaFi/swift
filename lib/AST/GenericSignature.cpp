@@ -454,6 +454,13 @@ CanType GenericSignature::getCanonicalTypeInContext(Type type) const {
   return getPointer()->getCanonicalTypeInContext(type);
 }
 
+SubstitutionMap GenericSignature::getIdentitySubstitutionMap() const {
+  if (isNull()) {
+    return SubstitutionMap();
+  }
+  return getPointer()->getIdentitySubstitutionMap();
+}
+
 CanType GenericSignatureImpl::getCanonicalTypeInContext(Type type) const {
   type = type->getCanonicalType();
 

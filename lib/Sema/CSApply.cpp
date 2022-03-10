@@ -5237,7 +5237,8 @@ Expr *ExprRewriter::coerceSuperclass(Expr *expr, Type toType) {
     // concrete superclass.
     auto fromArchetype =
         OpenedArchetypeType::getAny(fromType->getCanonicalType(),
-                                    cs.DC->getGenericSignatureOfContext());
+                                    cs.DC->getGenericSignatureOfContext(),
+                                    cs.DC->getGenericSignatureOfContext().getIdentitySubstitutionMap());
 
     auto *archetypeVal = cs.cacheType(new (ctx) OpaqueValueExpr(
         expr->getSourceRange(), fromArchetype));
@@ -5245,8 +5246,7 @@ Expr *ExprRewriter::coerceSuperclass(Expr *expr, Type toType) {
     auto *result = coerceSuperclass(archetypeVal, toType);
 
     return cs.cacheType(
-      new (ctx) OpenExistentialExpr(expr, archetypeVal, result,
-                                           toType));
+      new (ctx) OpenExistentialExpr(expr, archetypeVal, result, toType));
   }
 
   // Coercion from subclass to superclass.
@@ -6302,7 +6302,8 @@ Expr *ExprRewriter::coerceExistential(Expr *expr, Type toType,
   // For existential-to-existential coercions, open the source existential.
   if (fromType->isAnyExistentialType()) {
     fromType = OpenedArchetypeType::getAny(fromType->getCanonicalType(),
-                                           cs.DC->getGenericSignatureOfContext());
+                                           cs.DC->getGenericSignatureOfContext(),
+                                           cs.DC->getGenericSignatureOfContext().getIdentitySubstitutionMap());
 
     auto *archetypeVal = cs.cacheType(
         new (ctx) OpaqueValueExpr(expr->getSourceRange(), fromType));

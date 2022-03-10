@@ -4527,10 +4527,11 @@ public:
     auto existentialTypeID = S.addTypeRef(archetypeTy->getExistentialType());
     auto interfaceTypeID = S.addTypeRef(archetypeTy->getInterfaceType());
     auto sigID = S.addGenericSignatureRef(sig);
+    auto substMapID = S.addSubstitutionMapRef(archetypeTy->getSubstitutions());
     unsigned abbrCode = S.DeclTypeAbbrCodes[OpenedArchetypeTypeLayout::Code];
     OpenedArchetypeTypeLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
                                           existentialTypeID, interfaceTypeID,
-                                          sigID);
+                                          sigID, substMapID);
   }
 
   void

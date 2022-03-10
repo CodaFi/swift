@@ -94,6 +94,11 @@ SubstitutionMap GenericEnvironment::getOpaqueSubstitutions() const {
   return *getTrailingObjects<SubstitutionMap>();
 }
 
+SubstitutionMap GenericEnvironment::getOpenedArchetypeSubstitutions() const {
+  assert(getKind() == Kind::OpenedExistential);
+  return *getTrailingObjects<SubstitutionMap>();
+}
+
 Type GenericEnvironment::getOpenedExistentialType() const {
   assert(getKind() == Kind::OpenedExistential);
   return getTrailingObjects<OpenedGenericEnvironmentData>()->existential;
@@ -112,12 +117,13 @@ GenericEnvironment::GenericEnvironment(GenericSignature signature)
                           Type());
 }
 
-GenericEnvironment::GenericEnvironment(
-    GenericSignature signature, Type existential, UUID uuid)
-  : SignatureAndKind(signature, Kind::OpenedExistential)
-{
+GenericEnvironment::GenericEnvironment(GenericSignature signature,
+                                       Type existential, SubstitutionMap subs,
+                                       UUID uuid)
+    : SignatureAndKind(signature, Kind::OpenedExistential) {
   new (getTrailingObjects<OpenedGenericEnvironmentData>())
     OpenedGenericEnvironmentData{ existential, uuid };
+  new (getTrailingObjects<SubstitutionMap>()) SubstitutionMap(subs);
 
   // Clear out the memory that holds the context types.
   std::uninitialized_fill(getContextTypes().begin(), getContextTypes().end(),

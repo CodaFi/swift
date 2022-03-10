@@ -448,7 +448,8 @@ void ExistentialTransform::populateThunkBody() {
       auto SwiftType = ArgDesc.Arg->getType().getASTType();
       auto OpenedType =
           SwiftType
-              ->openAnyExistentialType(Opened, F->getGenericSignature())
+              ->openAnyExistentialType(Opened, F->getGenericSignature(),
+                                       F->getGenericSignature().getIdentitySubstitutionMap())
               ->getCanonicalType();
       auto OpenedSILType = NewF->getLoweredType(OpenedType);
       SILValue archetypeValue;

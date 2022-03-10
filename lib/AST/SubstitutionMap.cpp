@@ -513,7 +513,7 @@ SubstitutionMap::getOverrideSubstitutions(
   if (auto baseProto = baseDecl->getDeclContext()->getSelfProtocolDecl()) {
     auto baseSig = baseDecl->getInnermostDeclContext()
         ->getGenericSignatureOfContext();
-    return baseSig->getIdentitySubstitutionMap();
+    return baseSig.getIdentitySubstitutionMap();
   }
 
   auto *baseClass = baseDecl->getDeclContext()->getSelfClassDecl();
@@ -563,7 +563,7 @@ SubstitutionMap::getOverrideSubstitutions(const ClassDecl *baseClass,
   if (derivedSubs)
     origSubMap = *derivedSubs;
   else if (derivedSig)
-    origSubMap = derivedSig->getIdentitySubstitutionMap();
+    origSubMap = derivedSig.getIdentitySubstitutionMap();
 
   return combineSubstitutionMaps(baseSubMap, origSubMap,
                                  CombineSubstitutionMaps::AtDepth,

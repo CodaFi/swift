@@ -765,7 +765,8 @@ public:
 
   /// Opens an existential instance or meta-type and returns the opened type.
   Type openAnyExistentialType(OpenedArchetypeType *&opened,
-                              GenericSignature parentSig);
+                              GenericSignature parentSig,
+                              SubstitutionMap subs);
 
   /// Break an existential down into a set of constraints.
   ExistentialLayout getExistentialLayout();
@@ -5771,6 +5772,7 @@ public:
   /// a fresh archetype with a unique ID will be opened.
   static CanTypeWrapper<OpenedArchetypeType> get(CanType existential,
                                                  GenericSignature parentSig,
+                                                 SubstitutionMap subs,
                                                  Optional<UUID> knownID = None);
 
   /// Get or create an archetype that represents the opened type
@@ -5786,6 +5788,7 @@ public:
   static CanTypeWrapper<OpenedArchetypeType> get(CanType existential,
                                                  Type interfaceType,
                                                  GenericSignature parentSig,
+                                                 SubstitutionMap subs,
                                                  Optional<UUID> knownID = None);
 
   /// Create a new archetype that represents the opened type
@@ -5800,7 +5803,8 @@ public:
   /// \param parentSig The generic signature of the context opening
   /// this existential.
   static CanType getAny(CanType existential, Type interfaceType,
-                        GenericSignature parentSig);
+                        GenericSignature parentSig,
+                        SubstitutionMap subs);
 
   /// Create a new archetype that represents the opened type
   /// of an existential value.
@@ -5812,7 +5816,12 @@ public:
   /// \param existential The existential type or existential metatype to open.
   /// \param parentSig The generic signature of the context opening
   /// this existential.
-  static CanType getAny(CanType existential, GenericSignature parentSig);
+  static CanType getAny(CanType existential,
+                        GenericSignature parentSig,
+                        SubstitutionMap subs);
+
+public:
+  SubstitutionMap getSubstitutions() const;
 
   /// Retrieve the ID number of this opened existential.
   UUID getOpenedExistentialID() const;

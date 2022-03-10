@@ -2197,7 +2197,7 @@ InterfaceTypeRequest::evaluate(Evaluator &eval, ValueDecl *D) const {
     auto genericSig = typeAlias->getGenericSignature();
     SubstitutionMap subs;
     if (genericSig)
-      subs = genericSig->getIdentitySubstitutionMap();
+      subs = genericSig.getIdentitySubstitutionMap();
 
     Type parent;
     auto parentDC = typeAlias->getDeclContext();

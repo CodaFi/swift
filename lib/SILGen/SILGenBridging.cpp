@@ -733,7 +733,8 @@ static ManagedValue emitNativeToCBridgedNonoptionalValue(SILGenFunction &SGF,
   // some work by opening it.
   if (nativeType->isExistentialType()) {
     auto openedType = OpenedArchetypeType::get(nativeType,
-                                               SGF.F.getGenericSignature());
+                                               SGF.F.getGenericSignature(),
+                                               SGF.F.getGenericSignature().getIdentitySubstitutionMap());
 
     FormalEvaluationScope scope(SGF);
 

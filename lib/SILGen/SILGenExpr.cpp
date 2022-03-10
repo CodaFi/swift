@@ -1851,7 +1851,8 @@ RValue RValueEmitter::visitErasureExpr(ErasureExpr *E, SGFContext C) {
   auto concreteFormalType = E->getSubExpr()->getType()->getCanonicalType();
 
   auto archetype = OpenedArchetypeType::getAny(E->getType()->getCanonicalType(),
-                                               SGF.F.getGenericSignature());
+                                               SGF.F.getGenericSignature(),
+                                               SGF.F.getGenericSignature().getIdentitySubstitutionMap());
   AbstractionPattern abstractionPattern(archetype);
   auto &concreteTL = SGF.getTypeLowering(abstractionPattern,
                                          concreteFormalType);
@@ -2626,7 +2627,8 @@ emitKeyPathRValueBase(SILGenFunction &subSGF,
     ArchetypeType *opened;
     if (storage->getDeclContext()->getSelfClassDecl()) {
       opened = OpenedArchetypeType::get(baseType,
-                                        subSGF.F.getGenericSignature());
+                                        subSGF.F.getGenericSignature(),
+                                        subSGF.F.getGenericSignature().getIdentitySubstitutionMap());
     } else {
       opened = subs.getReplacementTypes()[0]->castTo<ArchetypeType>();
     }

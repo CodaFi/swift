@@ -109,8 +109,8 @@ private:
   NestedTypeStorage &getOrCreateNestedTypeStorage();
 
   explicit GenericEnvironment(GenericSignature signature);
-  explicit GenericEnvironment(
-      GenericSignature signature, Type existential, UUID uuid);
+  explicit GenericEnvironment(GenericSignature signature, Type existential,
+                              SubstitutionMap subs, UUID uuid);
   explicit GenericEnvironment(
       GenericSignature signature, OpaqueTypeDecl *opaque, SubstitutionMap subs);
 
@@ -151,6 +151,8 @@ public:
   /// create a generic environment.
   SubstitutionMap getOpaqueSubstitutions() const;
 
+  SubstitutionMap getOpenedArchetypeSubstitutions() const;
+
   /// Create a new, "incomplete" generic environment that will be populated
   /// by calls to \c addMapping().
   static
@@ -166,8 +168,10 @@ public:
   /// \param existential The subject existential type
   /// \param parentSig The signature of the context where this existential type is being opened
   /// \param uuid The unique identifier for this opened existential
-  static GenericEnvironment *
-  forOpenedExistential(Type existential, GenericSignature parentSig, UUID uuid);
+  static GenericEnvironment *forOpenedExistential(Type existential,
+                                                  GenericSignature parentSig,
+                                                  SubstitutionMap subs,
+                                                  UUID uuid);
 
   /// Create a new generic environment for an opened existential.
   ///
@@ -178,8 +182,8 @@ public:
   /// \param signature The signature of the opened archetype
   /// \param uuid The unique identifier for this opened existential
   static GenericEnvironment *
-  forOpenedArchetypeSignature(Type existential,
-                              GenericSignature signature, UUID uuid);
+  forOpenedArchetypeSignature(Type existential, GenericSignature signature,
+                              SubstitutionMap subs, UUID uuid);
 
   /// Create a new generic environment for an opaque type with the given set of
   /// outer substitutions.

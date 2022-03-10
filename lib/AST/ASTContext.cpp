@@ -4378,8 +4378,8 @@ CanTypeWrapper<OpenedArchetypeType> OpenedArchetypeType::getNew(
   // FIXME: It'd be great if all of our callers could submit interface types.
   // But the constraint solver submits archetypes when e.g. trying to issue
   // checks against members of existential types.
-  //  assert((!superclass || !superclass->hasArchetype())
-  //         && "superclass must be interface type");
+  assert((!superclass || !superclass->hasArchetype()) &&
+         "superclass must be interface type");
   auto arena = AllocationArena::Permanent;
   ASTContext &ctx = interfaceType->getASTContext();
   void *mem = ctx.Allocate(
@@ -4394,17 +4394,20 @@ CanTypeWrapper<OpenedArchetypeType> OpenedArchetypeType::getNew(
 }
 
 CanTypeWrapper<OpenedArchetypeType>
-OpenedArchetypeType::get(CanType existential, GenericSignature parentSig,
+OpenedArchetypeType::get(CanType existential,
+                         GenericSignature parentSig,
+                         SubstitutionMap subs,
                          Optional<UUID> knownID) {
   assert(existential->isExistentialType());
   auto interfaceType = OpenedArchetypeType::getSelfInterfaceTypeFromContext(
       parentSig, existential->getASTContext());
-  return get(existential, interfaceType, parentSig, knownID);
+  return get(existential, interfaceType, parentSig, subs, knownID);
 }
 
 CanOpenedArchetypeType OpenedArchetypeType::get(CanType existential,
                                                 Type interfaceType,
                                                 GenericSignature parentSig,
+                                                SubstitutionMap subs,
                                                 Optional<UUID> knownID) {
   assert(existential->isExistentialType());
   assert(!interfaceType->hasArchetype() && "must be interface type");
@@ -4440,7 +4443,8 @@ CanOpenedArchetypeType OpenedArchetypeType::get(CanType existential,
 
   /// Create a generic environment for this opened archetype.
   auto genericEnv =
-      GenericEnvironment::forOpenedExistential(existential, parentSig, *knownID);
+      GenericEnvironment::forOpenedExistential(existential, parentSig,
+                                               subs, *knownID);
   openedExistentialEnvironments[*knownID] = genericEnv;
 
   // Map the interface type into that environment.
@@ -4449,24 +4453,27 @@ CanOpenedArchetypeType OpenedArchetypeType::get(CanType existential,
   return CanOpenedArchetypeType(result);
 }
 
-CanType OpenedArchetypeType::getAny(CanType existential, Type interfaceType,
-                                    GenericSignature parentSig) {
+CanType OpenedArchetypeType::getAny(CanType existential,
+                                    Type interfaceType,
+                                    GenericSignature parentSig,
+                                    SubstitutionMap subs) {
   assert(existential->isAnyExistentialType());
   if (auto metatypeTy = existential->getAs<ExistentialMetatypeType>()) {
     auto instanceTy =
         metatypeTy->getExistentialInstanceType()->getCanonicalType();
     return CanMetatypeType::get(
-        OpenedArchetypeType::getAny(instanceTy, interfaceType, parentSig));
+        OpenedArchetypeType::getAny(instanceTy, interfaceType, parentSig, subs));
   }
   assert(existential->isExistentialType());
-  return OpenedArchetypeType::get(existential, interfaceType, parentSig);
+  return OpenedArchetypeType::get(existential, interfaceType, parentSig, subs);
 }
 
 CanType OpenedArchetypeType::getAny(CanType existential,
-                                    GenericSignature parentSig) {
+                                    GenericSignature parentSig,
+                                    SubstitutionMap subs) {
   auto interfaceTy = OpenedArchetypeType::getSelfInterfaceTypeFromContext(
       parentSig, existential->getASTContext());
-  return getAny(existential, interfaceTy, parentSig);
+  return getAny(existential, interfaceTy, parentSig, subs);
 }
 
 void SubstitutionMap::Storage::Profile(
@@ -4622,15 +4629,18 @@ GenericEnvironment *GenericEnvironment::getIncomplete(
 
 /// Create a new generic environment for an opened archetype.
 GenericEnvironment *
-GenericEnvironment::forOpenedExistential(
-    Type existential, GenericSignature parentSig, UUID uuid) {
+GenericEnvironment::forOpenedExistential(Type existential,
+                                         GenericSignature parentSig,
+                                         SubstitutionMap subs, UUID uuid) {
   auto &ctx = existential->getASTContext();
   auto signature = ctx.getOpenedArchetypeSignature(existential, parentSig);
-  return GenericEnvironment::forOpenedArchetypeSignature(existential, signature, uuid);
+  return GenericEnvironment::forOpenedArchetypeSignature(existential, signature,
+                                                         subs, uuid);
 }
 
 GenericEnvironment *GenericEnvironment::forOpenedArchetypeSignature(
-    Type existential, GenericSignature signature, UUID uuid) {
+    Type existential, GenericSignature signature, SubstitutionMap subs,
+    UUID uuid) {
   // Allocate and construct the new environment.
   auto &ctx = existential->getASTContext();
   unsigned numGenericParams = signature.getGenericParams().size();
@@ -4638,7 +4648,7 @@ GenericEnvironment *GenericEnvironment::forOpenedArchetypeSignature(
                                   OpenedGenericEnvironmentData, Type>(
       0, 0, 1, numGenericParams);
   void *mem = ctx.Allocate(bytes, alignof(GenericEnvironment));
-  return new (mem) GenericEnvironment(signature, existential, uuid);
+  return new (mem) GenericEnvironment(signature, existential, subs, uuid);
 }
 
 /// Create a new generic environment for an opaque type with the given set of
