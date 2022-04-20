@@ -1898,7 +1898,7 @@ public:
 
   const GenericParamDescriptor *getReqSigParams() const {
     return Flags.hasImplicitReqSigParams()
-             ? ImplicitGenericParamDescriptors
+             ? swift::targetImplicitGenericParamDescriptors<Runtime>()
              : this->template getTrailingObjects<GenericParamDescriptor>();
   }
 

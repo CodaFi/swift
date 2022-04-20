@@ -422,13 +422,13 @@ struct GenericSignatureLayout {
     return NumKeyParameters + NumWitnessTables;
   }
 
-  friend bool operator==(const GenericSignatureLayout &lhs,
-                         const GenericSignatureLayout &rhs) {
+  friend bool operator==(const GenericSignatureLayout<Runtime> &lhs,
+                         const GenericSignatureLayout<Runtime> &rhs) {
     return lhs.NumKeyParameters == rhs.NumKeyParameters &&
            lhs.NumWitnessTables == rhs.NumWitnessTables;
   }
-  friend bool operator!=(const GenericSignatureLayout &lhs,
-                         const GenericSignatureLayout &rhs) {
+  friend bool operator!=(const GenericSignatureLayout<Runtime> &lhs,
+                         const GenericSignatureLayout<Runtime> &rhs) {
     return !(lhs == rhs);
   }
 };
@@ -436,7 +436,7 @@ struct GenericSignatureLayout {
 /// A key value as provided to the concurrent map.
 class MetadataCacheKey {
   const void * const *Data;
-  GenericSignatureLayout Layout;
+  GenericSignatureLayout<InProcess> Layout;
   uint32_t Hash;
 
   /// Compare two witness tables, which may involving checking the
@@ -479,7 +479,7 @@ private:
   /// Compare the content from two keys.
   static int compareContent(const void * const *adata,
                             const void * const *bdata,
-                            const GenericSignatureLayout &layout) {
+                            const GenericSignatureLayout<InProcess> &layout) {
     // Compare generic arguments for key parameters.
     for (unsigned i = 0; i != layout.NumKeyParameters; ++i) {
       if (auto result = comparePointers(*adata++, *bdata++))
@@ -498,11 +498,11 @@ private:
   }
 
 public:
-  MetadataCacheKey(const GenericSignatureLayout &layout,
+  MetadataCacheKey(const GenericSignatureLayout<InProcess> &layout,
                    const void * const *data)
       : Data(data), Layout(layout), Hash(computeHash()) { }
 
-  MetadataCacheKey(const GenericSignatureLayout &layout,
+  MetadataCacheKey(const GenericSignatureLayout<InProcess> &layout,
                    const void * const *data,
                    uint32_t hash)
     : Data(data), Layout(layout), Hash(hash) {}
@@ -546,7 +546,7 @@ public:
     return Hash;
   }
 
-  const GenericSignatureLayout &layout() const {
+  const GenericSignatureLayout<InProcess> &layout() const {
     return Layout;
   }
 
@@ -1379,7 +1379,7 @@ protected:
 
 private:
   /// These are set during construction and never changed.
-  const GenericSignatureLayout Layout;
+  const GenericSignatureLayout<InProcess> Layout;
   const uint32_t Hash;
 
   /// Valid if TrackingInfo.getState() >= PrivateMetadataState::Abstract.

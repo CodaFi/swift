@@ -605,9 +605,9 @@ public:
         continue;
 
       if (protocol->second)
-        protocolRefs.push_back(createObjCProtocolType(protocol->first));
+        protocolRefs.push_back(createObjCProtocolType(*protocol));
       else
-        protocolRefs.push_back(createNominalType(protocol->first));
+        protocolRefs.push_back(createNominalType(*protocol));
     }
 
     return ProtocolCompositionTypeRef::create(*this, protocolRefs, superclass,
@@ -720,14 +720,18 @@ public:
   }
 
   const ObjCProtocolTypeRef *
-  createObjCProtocolType(const std::string &name) {
-    return ObjCProtocolTypeRef::create(*this, name);
+  createObjCProtocolType(BuiltProtocolDecl type) {
+    assert(type->second);
+    return ObjCProtocolTypeRef::create(*this, type->first);
   }
 
   const ForeignClassTypeRef *
-  createForeignClassType(const std::string &mangledName) {
-    return ForeignClassTypeRef::create(*this, mangledName);
+  createForeignClassType(BuiltProtocolDecl type) {
+    assert(!type->second);
+    return ForeignClassTypeRef::create(*this, type->first);
   }
+
+
 
   const ForeignClassTypeRef *
   getUnnamedForeignClassType() {

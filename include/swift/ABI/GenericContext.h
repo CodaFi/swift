@@ -191,6 +191,9 @@ using GenericRequirementDescriptor =
 extern const GenericParamDescriptor
 ImplicitGenericParamDescriptors[MaxNumImplicitGenericParamDescriptors];
 
+template <class Runtime>
+const GenericParamDescriptor *targetImplicitGenericParamDescriptors();
+
 /// A runtime description of a generic signature.
 template<typename Runtime>
 class RuntimeGenericSignature {

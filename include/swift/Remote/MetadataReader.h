@@ -942,8 +942,24 @@ public:
       }
 
       Demangler dem;
-      ProtocolReferenceResolver resolver{Builder};
-      BuiltProtocolDecl builtHeadProto;
+      struct ProtocolReferenceTypeResolver {
+        using Result = BuiltType;
+
+        BuilderType &builder;
+
+        BuiltType failure() const { return BuiltType(); }
+
+        BuiltType swiftProtocol(Demangle::Node *node) {
+          return builder.createNominalType(builder.createProtocolDecl(node));
+        }
+
+    #if SWIFT_OBJC_INTEROP
+        BuiltType objcProtocol(StringRef name) {
+          return builder.createObjCProtocolType(builder.createObjCProtocolDecl(name.str()));
+        }
+    #endif
+      } resolver{Builder};
+      BuiltType builtHeadProto;
       for (auto &req : Shape->getRequirementSignature().getRequirements()) {
         if (req.Flags.getKind() != GenericRequirementKind::Protocol)
           continue;
@@ -960,8 +976,8 @@ public:
       if (!builtHeadProto)
         return BuiltType();
 
-      auto builtProto = Builder.createParameterizedProtocolType(
-          builtHeadProto->getDeclaredType(), builtArgs);
+      BuiltType builtProto = Builder.createParameterizedProtocolType(
+          builtHeadProto, builtArgs);
 
       // Read the type expression to build up any remaining layers of
       // existential metatype.

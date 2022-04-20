@@ -55,14 +55,6 @@ static unsigned long long computeClassIsSwiftMask(void) {
 extern "C" unsigned long long _swift_classIsSwiftMask =
   computeClassIsSwiftMask();
 
-const GenericParamDescriptor
-swift::ImplicitGenericParamDescriptors[MaxNumImplicitGenericParamDescriptors] = {
-#define D GenericParamDescriptor::implicit()
-  D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D,
-  D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D
-#undef D
-};
-
 /// The context for the code we're running.  Set by the observer.
 static ASTContext *context = nullptr;
 
