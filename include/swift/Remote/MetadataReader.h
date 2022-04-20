@@ -190,6 +190,10 @@ private:
       RemoteRef<const TargetContextDescriptor<Runtime>>;
   using OwnedContextDescriptorRef = MemoryReader::ReadBytesResult;
 
+  using ShapeRef =
+      RemoteRef<const TargetExtendedExistentialTypeShape<Runtime>>;
+  using OwnedShapeRef = MemoryReader::ReadBytesResult;
+
   /// A reference to a context descriptor that may be in an unloaded image.
   class ParentContextDescriptorRef {
     bool IsResolved;
@@ -259,6 +263,26 @@ private:
       return !isResolved() || getResolved();
     }
   };
+
+  /// Resolver to turn a protocol reference into a protocol declaration.
+  struct ProtocolReferenceResolver {
+    using Result = BuiltProtocolDecl;
+
+    BuilderType &builder;
+
+    BuiltProtocolDecl failure() const { return BuiltProtocolDecl(); }
+
+    BuiltProtocolDecl swiftProtocol(Demangle::Node *node) {
+      return builder.createProtocolDecl(node);
+    }
+
+#if SWIFT_OBJC_INTEROP
+    BuiltProtocolDecl objcProtocol(StringRef name) {
+      return builder.createObjCProtocolDecl(name.str());
+    }
+#endif
+  };
+
   /// A cache of read nominal type descriptors, keyed by the address of the
   /// nominal type descriptor.
   std::unordered_map<StoredPointer, OwnedContextDescriptorRef>
@@ -266,6 +290,9 @@ private:
 
   using OwnedProtocolDescriptorRef =
     std::unique_ptr<const TargetProtocolDescriptor<Runtime>, delete_with_free>;
+
+  std::unordered_map<StoredPointer, OwnedShapeRef>
+    ShapeCache;
 
   enum class IsaEncodingKind {
     /// We haven't checked yet.
@@ -882,27 +909,7 @@ public:
         HasExplicitAnyObject = true;
       }
 
-      /// Resolver to turn a protocol reference into a protocol declaration.
-      struct ProtocolResolver {
-        using Result = BuiltProtocolDecl;
-
-        BuilderType &builder;
-
-        BuiltProtocolDecl failure() const {
-          return BuiltProtocolDecl();
-        }
-
-        BuiltProtocolDecl swiftProtocol(Demangle::Node *node) {
-          return builder.createProtocolDecl(node);
-        }
-
-#if SWIFT_OBJC_INTEROP
-        BuiltProtocolDecl objcProtocol(StringRef name) {
-          return builder.createObjCProtocolDecl(name.str());
-        }
-#endif
-      } resolver{Builder};
-
+      ProtocolReferenceResolver resolver{Builder};
       Demangler dem;
       std::vector<BuiltProtocolDecl> Protocols;
       for (auto ProtocolAddress : Exist->getProtocols()) {
@@ -916,6 +923,73 @@ public:
       TypeCache[MetadataAddress] = BuiltExist;
       return BuiltExist;
     }
+    case MetadataKind::ExtendedExistential: {
+      auto Exist = cast<TargetExtendedExistentialTypeMetadata<Runtime>>(Meta);
+
+      StoredPointer shapeAddress = stripSignedPointer(Exist->Shape);
+      ShapeRef Shape = readShape(shapeAddress);
+      if (!Shape)
+        return BuiltType();
+
+      assert(Shape->hasGeneralizationSignature());
+      std::vector<BuiltType> builtArgs;
+      for (unsigned i = 0; i < Shape->getGenSigArgumentLayoutSizeInWords(); ++i) {
+        auto remoteArg = Exist->getGeneralizationArguments()[i];
+        auto builtArg = readTypeFromMetadata(remoteArg);
+        if (!builtArg)
+          return BuiltType();
+        builtArgs.push_back(builtArg);
+      }
+
+      Demangler dem;
+      ProtocolReferenceResolver resolver{Builder};
+      BuiltProtocolDecl builtHeadProto;
+      for (auto &req : Shape->getRequirementSignature().getRequirements()) {
+        if (req.Flags.getKind() != GenericRequirementKind::Protocol)
+          continue;
+
+        auto protocolAddress =
+          resolveRelativeIndirectProtocol(Shape, req.Protocol);
+        builtHeadProto = readProtocol(protocolAddress, dem, resolver);
+        if (!builtHeadProto) {
+          return BuiltType();
+        }
+        break;
+      }
+
+      if (!builtHeadProto)
+        return BuiltType();
+
+      auto builtProto = Builder.createParameterizedProtocolType(
+          builtHeadProto->getDeclaredType(), builtArgs);
+
+      // Read the type expression to build up any remaining layers of
+      // existential metatype.
+      if (Shape->Flags.hasTypeExpression()) {
+        Demangler dem;
+
+        // Read the mangled name.
+        auto mangledContextName = Shape->getTypeExpression();
+        auto mangledNameAddress =
+            resolveRelativeField(Shape, mangledContextName->name);
+        auto node = readMangledName(RemoteAddress(mangledNameAddress),
+                                    MangledNameKind::Type, dem);
+        if (!node)
+          return BuiltType();
+
+        while (node->getKind() == Demangle::Node::Kind::Type &&
+               node->getNumChildren() &&
+               node->getChild(0)->getKind() == Demangle::Node::Kind::Metatype &&
+               node->getChild(0)->getNumChildren()) {
+          builtProto = Builder.createExistentialMetatypeType(builtProto);
+          node = node->getChild(0)->getChild(0);
+        }
+      }
+
+      TypeCache[MetadataAddress] = builtProto;
+      return builtProto;
+    }
+
     case MetadataKind::Metatype: {
       auto Metatype = cast<TargetMetatypeMetadata<Runtime>>(Meta);
       auto Instance = readTypeFromMetadata(Metatype->InstanceType);
@@ -1007,7 +1081,68 @@ public:
     return ParentContextDescriptorRef(
           readContextDescriptor(address.getResolvedAddress().getAddressData()));
   }
-  
+
+  ShapeRef
+  readShape(StoredPointer address) {
+    if (address == 0)
+      return nullptr;
+
+    auto cached = ShapeCache.find(address);
+    if (cached != ShapeCache.end())
+      return ShapeRef(address, reinterpret_cast<const TargetExtendedExistentialTypeShape<Runtime> *>(cached->second.get()));
+
+    ExtendedExistentialTypeShapeFlags flags;
+    if (!Reader->readBytes(RemoteAddress(address), (uint8_t*)&flags,
+                           sizeof(flags)))
+      return nullptr;
+
+    switch (flags.getSpecialKind()) {
+    case ExtendedExistentialTypeShapeFlags::SpecialKind::Class:
+    case ExtendedExistentialTypeShapeFlags::SpecialKind::ExplicitLayout:
+      return nullptr;
+    case ExtendedExistentialTypeShapeFlags::SpecialKind::Metatype:
+    case ExtendedExistentialTypeShapeFlags::SpecialKind::None:
+      break;
+    default:
+      // We don't know about this kind of special existential shape.
+      return nullptr;
+    }
+
+    // Read the size of the requirement signature.
+    uint64_t reqSigGenericSize = 0;
+    uint64_t genericHeaderSize = sizeof(GenericContextDescriptorHeader);
+    {
+      GenericContextDescriptorHeader header;
+      auto headerAddr = address + sizeof(flags);
+
+      if (!Reader->readBytes(RemoteAddress(headerAddr),
+                             (uint8_t*)&header, sizeof(header)))
+        return nullptr;
+
+      reqSigGenericSize = reqSigGenericSize
+        + (header.NumParams + 3u & ~3u)
+        + header.NumRequirements
+          * sizeof(TargetGenericRequirementDescriptor<Runtime>);
+    }
+    uint64_t typeExprSize = flags.hasTypeExpression() ? sizeof(StoredPointer) : 0;
+    uint64_t suggestedVWSize = flags.hasSuggestedValueWitnesses() ? sizeof(StoredPointer) : 0;
+
+    uint64_t size = sizeof(ExtendedExistentialTypeShapeFlags) + genericHeaderSize + typeExprSize + suggestedVWSize + reqSigGenericSize;
+    if (size > MaxMetadataSize)
+      return nullptr;
+    auto readResult = Reader->readBytes(RemoteAddress(address), size);
+    if (!readResult)
+      return nullptr;
+
+    auto descriptor =
+        reinterpret_cast<const TargetExtendedExistentialTypeShape<Runtime> *>(
+            readResult.get());
+
+    ShapeCache.insert(
+        std::make_pair(address, std::move(readResult)));
+    return ShapeRef(address, descriptor);
+  }
+
   /// Given the address of a context descriptor, attempt to read it.
   ContextDescriptorRef
   readContextDescriptor(StoredPointer address) {
@@ -1714,6 +1849,8 @@ protected:
       }
       case MetadataKind::ExistentialMetatype:
         return _readMetadata<TargetExistentialMetatypeMetadata>(address);
+      case MetadataKind::ExtendedExistential:
+        return _readMetadata<TargetExtendedExistentialTypeMetadata>(address);
       case MetadataKind::ForeignClass:
         return _readMetadata<TargetForeignClassMetadata>(address);
       case MetadataKind::Function: {
@@ -2133,8 +2270,9 @@ private:
   /// Resolve a relative target protocol descriptor pointer, which uses
   /// the lowest bit to indicate an indirect vs. direct relative reference and
   /// the second lowest bit to indicate whether it is an Objective-C protocol.
+  template<typename Base>
   StoredPointer resolveRelativeIndirectProtocol(
-      ContextDescriptorRef descriptor,
+      RemoteRef<Base> descriptor,
       const RelativeTargetProtocolDescriptorPointer<Runtime> &protocol) {
     // Map the offset from within our local buffer to the remote address.
     auto distance = (intptr_t)&protocol - (intptr_t)descriptor.getLocalBuffer();

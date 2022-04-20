@@ -401,11 +401,12 @@ public:
 
 /// A summary of the information from a generic signature that's
 /// sufficient to compare arguments.
+template<typename Runtime>
 struct GenericSignatureLayout {
   uint16_t NumKeyParameters = 0;
   uint16_t NumWitnessTables = 0;
 
-  GenericSignatureLayout(const RuntimeGenericSignature &sig) {
+  GenericSignatureLayout(const RuntimeGenericSignature<Runtime> &sig) {
     for (const auto &gp : sig.getParams()) {
       if (gp.hasKeyArgument())
         ++NumKeyParameters;

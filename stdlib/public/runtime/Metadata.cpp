@@ -77,7 +77,7 @@ using namespace metadataimpl;
 // GenericParamDescriptor is a single byte, so while it's difficult to
 // imagine needing even a quarter this many generic params, there's very
 // little harm in doing it.
-constexpr GenericParamDescriptor
+const GenericParamDescriptor
 swift::ImplicitGenericParamDescriptors[MaxNumImplicitGenericParamDescriptors] = {
 #define D GenericParamDescriptor::implicit()
   D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D, D,D,D,D,
