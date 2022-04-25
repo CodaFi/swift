@@ -22,6 +22,8 @@ struct Pen: Paddock {
   typealias Animal = Pig
 }
 
+struct Field<Animal>: Paddock {}
+
 let coop = Coop()
 // CHECK: Coop
 printDynamicTypeAndAddressForExistential(coop as any Paddock)
@@ -42,5 +44,14 @@ printDynamicTypeAndAddressForExistential(pen as any Paddock)
 // CHECK-NEXT: Pen
 printDynamicTypeAndAddressForExistential(pen as any Paddock<Pig>)
 
+
+func freeRange<Animal>(_ x: Animal.Type) {
+  printDynamicTypeAndAddressForExistential(Field<Animal>() as any Paddock<Animal>)
+}
+
+// CHECK-NEXT: Field<Chicken>
+freeRange(Chicken.self)
+// CHECK-NEXT: Field<Pig>
+freeRange(Pig.self)
 
 stopRemoteAST()

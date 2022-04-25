@@ -1883,7 +1883,7 @@ public:
   /// we nonetheless distinguish at compile time.  Storing this also
   /// allows us to far more easily produce a formal type from this
   /// shape reflectively.
-  RelativeStringPointer ExistentialType;
+  TargetRelativeDirectPointer<Runtime, const char, /*nullable*/ false> ExistentialType;
 
   /// The header describing the requirement signature of the existential.
   TargetGenericContextDescriptorHeader<Runtime> ReqSigHeader;
@@ -1979,7 +1979,7 @@ public:
   const GenericParamDescriptor *getGenSigParams() const {
     assert(hasGeneralizationSignature());
     if (Flags.hasImplicitGenSigParams())
-      return ImplicitGenericParamDescriptors;
+      return swift::targetImplicitGenericParamDescriptors<Runtime>();
     auto base = this->template getTrailingObjects<GenericParamDescriptor>();
     if (!Flags.hasImplicitReqSigParams())
       base += getNumReqSigParams();

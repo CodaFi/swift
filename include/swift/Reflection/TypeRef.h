@@ -741,6 +741,24 @@ public:
   }
 };
 
+class GenericSignatureRef final {
+  std::vector<const GenericTypeParameterTypeRef *> Params; 
+  std::vector<TypeRefRequirement> Requirements;
+
+public:
+  GenericSignatureRef(llvm::ArrayRef<const GenericTypeParameterTypeRef *> Params,
+                      llvm::ArrayRef<TypeRefRequirement> Requirements)
+    : Params(Params.begin(), Params.end()),
+      Requirements(Requirements.begin(), Requirements.end()) {}
+
+  template <typename Allocator>
+  static const GenericSignatureRef *create(Allocator &A,
+                                           llvm::ArrayRef<const GenericTypeParameterTypeRef *> Params,
+                                           llvm::ArrayRef<TypeRefRequirement> Requirements) {
+    return A.template makeGenericSignatureRef(Params, Requirements);
+  }
+};
+
 class ForeignClassTypeRef final : public TypeRef {
   std::string Name;
 

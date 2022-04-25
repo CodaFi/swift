@@ -58,7 +58,7 @@ struct TargetGenericContextDescriptorHeader {
   /// Key arguments include generic parameters and conformance
   /// requirements which are part of the identity of the context.
   ///
-  /// The key area of the argument layout considers of a sequence
+  /// The key area of the argument layout consists of a sequence
   /// of type metadata pointers (in the same order as the parameter
   /// descriptors, for those parameters which satisfy hasKeyArgument())
   /// followed by a sequence of witness table pointers (in the same

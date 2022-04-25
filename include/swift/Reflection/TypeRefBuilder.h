@@ -356,6 +356,12 @@ public:
   using BuiltTypeDecl = llvm::Optional<std::string>;
   using BuiltProtocolDecl =
       llvm::Optional<std::pair<std::string, bool /*isObjC*/>>;
+  using BuiltSubstitution = std::pair<const TypeRef *, const TypeRef *>;
+  using BuiltRequirement = TypeRefRequirement;
+  using BuiltLayoutConstraint = TypeRefLayoutConstraint;
+  using BuiltGenericTypeParam = const GenericTypeParameterTypeRef *;
+  using BuiltGenericSignature = const GenericSignatureRef *;
+  using BuiltSubstitutionMap = llvm::DenseMap<DepthAndIndex, const TypeRef *>;
 
   TypeRefBuilder(const TypeRefBuilder &other) = delete;
   TypeRefBuilder &operator=(const TypeRefBuilder &other) = delete;
@@ -374,6 +380,8 @@ private:
   /// Cache for field info lookups.
   std::unordered_map<std::string, RemoteRef<FieldDescriptor>> FieldTypeInfoCache;
 
+  std::vector<std::unique_ptr<const GenericSignatureRef>> SignatureRefPool;
+
   TypeConverter TC;
   MetadataSourceBuilder MSB;
 
@@ -387,6 +395,13 @@ public:
   const TypeRefTy *makeTypeRef(Args... args) {
     const auto TR = new TypeRefTy(::std::forward<Args>(args)...);
     TypeRefPool.push_back(std::unique_ptr<const TypeRef>(TR));
+    return TR;
+  }
+
+  template <typename... Args>
+  const GenericSignatureRef *makeGenericSignatureRef(Args... args) {
+    const auto TR = new GenericSignatureRef(::std::forward<Args>(args)...);
+    SignatureRefPool.push_back(std::unique_ptr<const GenericSignatureRef>(TR));
     return TR;
   }
 
@@ -595,6 +610,15 @@ public:
         *this, {}, result, funcFlags, diffKind, nullptr);
   }
 
+  BuiltType
+  createProtocolTypeFromDecl(BuiltProtocolDecl protocol) {
+    if (protocol->second) {
+      return llvm::cast<TypeRef>(createObjCProtocolType(protocol->first));
+    } else {
+      return llvm::cast<TypeRef>(createNominalType(protocol->first));
+    }
+  }
+
   const ProtocolCompositionTypeRef *
   createProtocolCompositionType(llvm::ArrayRef<BuiltProtocolDecl> protocols,
                                 BuiltType superclass, bool isClassBound,
@@ -604,10 +628,10 @@ public:
       if (!protocol)
         continue;
 
-      if (protocol->second)
-        protocolRefs.push_back(createObjCProtocolType(*protocol));
-      else
-        protocolRefs.push_back(createNominalType(*protocol));
+      auto protocolType = createProtocolTypeFromDecl(*protocol);
+      if (!protocolType)
+        continue;
+      protocolRefs.push_back(protocolType);
     }
 
     return ProtocolCompositionTypeRef::create(*this, protocolRefs, superclass,
@@ -670,9 +694,6 @@ public:
   }
 
   using BuiltSILBoxField = typename SILBoxTypeWithLayoutTypeRef::Field;
-  using BuiltSubstitution = std::pair<const TypeRef *, const TypeRef *>;
-  using BuiltRequirement = TypeRefRequirement;
-  using BuiltLayoutConstraint = TypeRefLayoutConstraint;
   BuiltLayoutConstraint getLayoutConstraint(LayoutConstraintKind kind) {
     // FIXME: Implement this.
     return {};
@@ -720,15 +741,13 @@ public:
   }
 
   const ObjCProtocolTypeRef *
-  createObjCProtocolType(BuiltProtocolDecl type) {
-    assert(type->second);
-    return ObjCProtocolTypeRef::create(*this, type->first);
+  createObjCProtocolType(const std::string &name) {
+    return ObjCProtocolTypeRef::create(*this, name);
   }
 
   const ForeignClassTypeRef *
-  createForeignClassType(BuiltProtocolDecl type) {
-    assert(!type->second);
-    return ForeignClassTypeRef::create(*this, type->first);
+  createForeignClassType(const std::string &mangledName) {
+    return ForeignClassTypeRef::create(*this, mangledName);
   }
 
 
@@ -740,6 +759,29 @@ public:
 
   const OpaqueTypeRef *getOpaqueType() {
     return OpaqueTypeRef::get();
+  }
+
+  BuiltGenericSignature
+  createGenericSignature(llvm::ArrayRef<BuiltType> builtParams,
+                         llvm::ArrayRef<BuiltRequirement> requirements) {
+    std::vector<BuiltGenericTypeParam> params;
+    for (auto &builtParam : builtParams) {
+      auto *genericRef = llvm::dyn_cast<GenericTypeParameterTypeRef>(builtParam);
+      if (!genericRef)
+        return nullptr;
+      params.push_back(genericRef);
+    }
+    return GenericSignatureRef::create(*this, params, requirements);
+  }
+
+  BuiltSubstitutionMap
+  createSubstitutionMap(BuiltGenericSignature sig,
+                        llvm::ArrayRef<BuiltType> replacements) {
+    return BuiltSubstitutionMap{};
+  }
+
+  BuiltType subst(BuiltType subject, const BuiltSubstitutionMap &Subs) {
+    return subject->subst(*this, Subs);
   }
 
   ///
