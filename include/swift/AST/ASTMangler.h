@@ -521,6 +521,9 @@ protected:
                                    Demangle::AutoDiffFunctionKind kind,
                                    const AutoDiffConfig &config);
   void appendIndexSubset(IndexSubset *indexSubset);
+
+  void appendConstrainedExistential(Type base, GenericSignature sig,
+                                    const ValueDecl *forDecl);
 };
 
 } // end namespace Mangle
