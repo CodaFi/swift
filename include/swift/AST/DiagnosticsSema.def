@@ -3410,6 +3410,13 @@ ERROR(attr_MainType_without_main,none,
       SELECT_APPLICATION_MAIN_TYPES "1",
       (DeclName, bool))
 
+ERROR(attr_ApplicationMain_deprecated,none,
+      "%" SELECT_APPLICATION_MAIN "0 attribute is deprecated",
+      (unsigned))
+NOTE(attr_ApplicationMain_deprecated_use_main,none,
+     "use '@main' instead",
+     ())
+
 #undef SELECT_APPLICATION_MAIN_TYPES
 #undef SELECT_APPLICATION_MAIN
 #undef SELECT_APPLICATION_DELEGATE
